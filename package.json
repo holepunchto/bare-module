@@ -1,0 +1,29 @@
+{
+  "name": "@pearjs/module",
+  "version": "1.0.0",
+  "description": "Module support for JavaScript",
+  "main": "index.js",
+  "scripts": {
+    "test": "standard && brittle test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/holepunchto/pearjs-module.git"
+  },
+  "author": "Holepunch",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/holepunchto/pearjs-module/issues"
+  },
+  "homepage": "https://github.com/holepunchto/pearjs-module#readme",
+  "dependencies": {
+    "@pearjs/events": "^1.0.0",
+    "@pearjs/fs": "^1.0.0",
+    "@pearjs/path": "^1.0.0",
+    "@pearjs/timers": "^1.0.0"
+  },
+  "devDependencies": {
+    "brittle": "^3.1.1",
+    "standard": "^17.0.0"
+  }
+}
