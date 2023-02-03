@@ -90,9 +90,8 @@ module.exports = class Module {
 
       while (ticks-- > 0) {
         const nm = path.join(tmp, target)
-        const stat = fs.statSync(nm)
 
-        if (!stat.isFile() && !stat.isDirectory()) {
+        if (!isFile(nm) && !isDirectory(nm)) {
           const parent = path.dirname(tmp)
           if (parent === tmp) ticks = -1
           else tmp = parent
@@ -108,29 +107,29 @@ module.exports = class Module {
     while (ticks-- > 0) {
       p = path.join(dirname, req)
 
-      if (/\.(js|mjs|cjs|json)$/i.test(req) && fs.statSync(p).isFile()) {
+      if (/\.(js|mjs|cjs|json)$/i.test(req) && isFile(p)) {
         return p
       }
 
-      if (fs.statSync(p + '.js').isFile()) {
+      if (isFile(p + '.js')) {
         return p + '.js'
       }
 
-      if (fs.statSync(p + '.cjs').isFile()) {
+      if (isFile(p + '.cjs')) {
         return p + '.cjs'
       }
 
-      if (fs.statSync(p + '.mjs').isFile()) {
+      if (isFile(p + '.mjs')) {
         return p + '.mjs'
       }
 
-      if (fs.statSync(p + '.json').isFile()) {
+      if (isFile(p + '.json')) {
         return p + '.json'
       }
 
       const pkg = path.join(p, 'package.json')
 
-      if (fs.statSync(pkg).isFile()) {
+      if (isFile(pkg)) {
         const json = Module.load(pkg)
 
         dirname = p
@@ -139,10 +138,7 @@ module.exports = class Module {
       }
 
       p = path.join(p, 'index.js')
-
-      if (fs.statSync(p).isFile()) {
-        return p
-      }
+      if (isFile(p)) return p
 
       break
     }
@@ -156,4 +152,20 @@ function splitModule (m) {
   if (i === -1) return [m, '.']
 
   return [m.slice(0, i), '.' + m.slice(i)]
+}
+
+function isFile(path) {
+  try {
+    return fs.statSync(path).isFile()
+  } catch {
+    return false
+  }
+}
+
+function isDirectory(path) {
+  try {
+    return fs.statSync(path).isDirectory()
+  } catch {
+    return false
+  }
 }
