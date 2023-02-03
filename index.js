@@ -1,6 +1,6 @@
-const path = require('@pearjs/path')
-const fs = require('@pearjs/fs')
 const events = require('@pearjs/events')
+const fs = require('@pearjs/fs')
+const path = require('@pearjs/path')
 const timers = require('@pearjs/timers')
 
 module.exports = class Module {
@@ -35,12 +35,12 @@ module.exports = class Module {
 
     function require (req) {
       if (req === 'module') return Module
-      if (req === 'path') return path
       if (req === 'events') return events
+      if (req === 'fs') return fs
+      if (req === 'path') return path
       if (req === 'timers') return timers
       if (req.endsWith('.node') || req.endsWith('.pear')) return process.addon(req)
-      const filename = resolve(req)
-      return Module.load(filename)
+      return Module.load(resolve(req))
     }
   }
 
