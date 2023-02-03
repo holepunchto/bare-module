@@ -76,7 +76,7 @@ module.exports = class Module {
 
   // TODO: align with 99% of https://nodejs.org/dist/latest-v18.x/docs/api/modules.html#all-together
 
-  static resolve (req, dirname) {
+  static resolve (req, dirname = process.cwd()) {
     if (req.length === 0) throw new Error('Could not resolve ' + req + ' from ' + dirname)
 
     let p = null
@@ -154,7 +154,7 @@ function splitModule (m) {
   return [m.slice(0, i), '.' + m.slice(i)]
 }
 
-function isFile(path) {
+function isFile (path) {
   try {
     return fs.statSync(path).isFile()
   } catch {
@@ -162,7 +162,7 @@ function isFile(path) {
   }
 }
 
-function isDirectory(path) {
+function isDirectory (path) {
   try {
     return fs.statSync(path).isDirectory()
   } catch {
