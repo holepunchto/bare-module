@@ -1,5 +1,4 @@
 const events = require('@pearjs/events')
-const fs = require('@pearjs/fs')
 const path = require('@pearjs/path')
 const timers = require('@pearjs/timers')
 
@@ -10,16 +9,33 @@ module.exports = class Module {
     this.exports = {}
   }
 
-  _readSource () {
-    return fs.readFileSync(this.filename)
+  static _exists = defaultExists
+  static _read = defaultRead
+
+  static configure (opts = {}) {
+    const {
+      exists,
+      read
+    } = opts
+
+    if (exists) this._exists = exists
+    if (read) this._read = read
   }
 
-  _loadJSON (source = this._readSource()) {
+  _exists (filename) {
+    return Module._exists(filename)
+  }
+
+  _read (filename) {
+    return Module._read(filename)
+  }
+
+  _loadJSON (source = this._read(this.filename)) {
     this.exports = JSON.parse(source)
     return this.exports
   }
 
-  _loadJS (source = this._readSource()) {
+  _loadJS (source = this._read(this.filename)) {
     const dirname = this.dirname
 
     require.cache = Module.cache
@@ -36,7 +52,6 @@ module.exports = class Module {
     function require (req) {
       if (req === 'module') return Module
       if (req === 'events') return events
-      if (req === 'fs') return fs
       if (req === 'path') return path
       if (req === 'timers') return timers
       if (req.endsWith('.node') || req.endsWith('.pear')) return process.addon(req)
@@ -91,7 +106,7 @@ module.exports = class Module {
       while (ticks-- > 0) {
         const nm = path.join(tmp, target)
 
-        if (!isFile(nm) && !isDirectory(nm)) {
+        if (!this._exists(nm)) {
           const parent = path.dirname(tmp)
           if (parent === tmp) ticks = -1
           else tmp = parent
@@ -107,29 +122,29 @@ module.exports = class Module {
     while (ticks-- > 0) {
       p = path.join(dirname, req)
 
-      if (/\.(js|mjs|cjs|json)$/i.test(req) && isFile(p)) {
+      if (/\.(js|mjs|cjs|json)$/i.test(req) && this._exists(p)) {
         return p
       }
 
-      if (isFile(p + '.js')) {
+      if (this._exists(p + '.js')) {
         return p + '.js'
       }
 
-      if (isFile(p + '.cjs')) {
+      if (this._exists(p + '.cjs')) {
         return p + '.cjs'
       }
 
-      if (isFile(p + '.mjs')) {
+      if (this._exists(p + '.mjs')) {
         return p + '.mjs'
       }
 
-      if (isFile(p + '.json')) {
+      if (this._exists(p + '.json')) {
         return p + '.json'
       }
 
       const pkg = path.join(p, 'package.json')
 
-      if (isFile(pkg)) {
+      if (this._exists(pkg)) {
         const json = Module.load(pkg)
 
         dirname = p
@@ -138,7 +153,7 @@ module.exports = class Module {
       }
 
       p = path.join(p, 'index.js')
-      if (isFile(p)) return p
+      if (this._exists(p)) return p
 
       break
     }
@@ -154,18 +169,10 @@ function splitModule (m) {
   return [m.slice(0, i), '.' + m.slice(i)]
 }
 
-function isFile (path) {
-  try {
-    return fs.statSync(path).isFile()
-  } catch {
-    return false
-  }
+function defaultExists (filename) {
+  return false
 }
 
-function isDirectory (path) {
-  try {
-    return fs.statSync(path).isDirectory()
-  } catch {
-    return false
-  }
+function defaultRead (filename) {
+  return null
 }

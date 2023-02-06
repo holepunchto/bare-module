@@ -21,7 +21,6 @@
   "homepage": "https://github.com/holepunchto/pearjs-module#readme",
   "dependencies": {
     "@pearjs/events": "^1.0.0",
-    "@pearjs/fs": "^1.0.0",
     "@pearjs/path": "^1.0.0",
     "@pearjs/timers": "^1.0.0"
   },
