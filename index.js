@@ -3,12 +3,25 @@ const path = require('@pearjs/path')
 const timers = require('@pearjs/timers')
 const binding = require('./binding')
 
-module.exports = class Module {
+const Module = module.exports = class Module {
   constructor (filename, dirname = path.dirname(filename)) {
     this.filename = filename
     this.dirname = dirname
     this.exports = {}
   }
+
+  _run (source, require) {
+    binding.runScript(this.filename, `(__dirname, __filename, module, exports, require) => {\n${source}\n}`, -1)(
+      this.dirname,
+      this.filename,
+      this,
+      this.exports,
+      require
+    )
+  }
+
+  static _extensions = Object.create(null)
+  static _cache = Object.create(null)
 
   static _exists = defaultExists
   static _read = defaultRead
@@ -23,64 +36,14 @@ module.exports = class Module {
     if (read) this._read = read
   }
 
-  _exists (filename) {
-    return Module._exists(filename)
-  }
-
-  _read (filename) {
-    return Module._read(filename)
-  }
-
-  _run (source, require) {
-    binding.runScript(this.filename, `(__dirname, __filename, module, exports, require) => {\n${source}\n}`, -1)(
-      this.dirname,
-      this.filename,
-      this,
-      this.exports,
-      require
-    )
-  }
-
-  _loadJSON (source = this._read(this.filename)) {
-    this.exports = JSON.parse(source)
-
-    return this.exports
-  }
-
-  _loadJS (source = this._read(this.filename)) {
-    const dirname = this.dirname
-
-    require.cache = Module.cache
-    require.resolve = resolve
-
-    this._run(source, require)
-
-    return this.exports
-
-    function resolve (req) {
-      return Module.resolve(req, dirname)
-    }
-
-    function require (req) {
-      if (req === 'module') return Module
-      if (req === 'events') return events
-      if (req === 'path') return path
-      if (req === 'timers') return timers
-      if (req.endsWith('.node') || req.endsWith('.pear')) return process.addon(req)
-      return Module.load(resolve(req))
-    }
-  }
-
-  static cache = Object.create(null)
-
   static load (filename, source) {
-    if (Module.cache[filename]) return Module.cache[filename].exports
+    if (this._cache[filename]) return this._cache[filename].exports
 
-    const mod = Module.cache[filename] = new Module(filename)
+    const module = this._cache[filename] = new this(filename)
 
-    return filename.endsWith('.json')
-      ? mod._loadJSON(source)
-      : mod._loadJS(source)
+    const extension = path.extname(filename)
+
+    return this._extensions[extension].call(this, module, filename, source)
   }
 
   // TODO: align with 99% of https://nodejs.org/dist/latest-v18.x/docs/api/modules.html#all-together
@@ -139,7 +102,7 @@ module.exports = class Module {
       const pkg = path.join(p, 'package.json')
 
       if (this._exists(pkg)) {
-        const json = Module.load(pkg)
+        const json = this.load(pkg)
 
         dirname = p
         req = json.main || 'index.js'
@@ -154,6 +117,36 @@ module.exports = class Module {
 
     throw new Error('Could not resolve ' + req + ' from ' + dirname)
   }
+}
+
+Module._extensions['.js'] = function (module, filename, source = this._read(filename)) {
+  const resolve = (req) => {
+    return this.resolve(req, dirname)
+  }
+
+  const require = (req) => {
+    if (req === 'module') return this
+    if (req === 'events') return events
+    if (req === 'path') return path
+    if (req === 'timers') return timers
+    if (req.endsWith('.node') || req.endsWith('.pear')) return process.addon(req)
+    return this.load(resolve(req))
+  }
+
+  const dirname = module.dirname
+
+  require.cache = this._cache
+  require.resolve = resolve
+
+  module._run(source, require)
+
+  return module.exports
+}
+
+Module._extensions['.json'] = function (module, filename, source = this._read(filename)) {
+  module.exports = JSON.parse(source)
+
+  return module.exports
 }
 
 function splitModule (m) {
