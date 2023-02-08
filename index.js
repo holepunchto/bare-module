@@ -81,7 +81,7 @@ module.exports = class Module {
   }
 
   static runScript (module, source, require) {
-    return binding.runScript(module.filename, `(__dirname, __filename, module, exports, require) => {\n${source}\n}`, -1)(
+    binding.runScript(module.filename, `(__dirname, __filename, module, exports, require) => {\n${source}\n}`, -1)(
       module.dirname,
       module.filename,
       module,
