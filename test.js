@@ -37,6 +37,23 @@ test('load', (t) => {
   t.is(Module.load(Module.resolve('foo')), 42)
 })
 
+test('load with source', (t) => {
+  Module.configure({
+    exists (filename) {
+      return (
+        filename === p('node_modules/foo') ||
+        filename === p('node_modules/foo/index.js')
+      )
+    },
+
+    read () {
+      t.fail()
+    }
+  })
+
+  t.is(Module.load(Module.resolve('foo'), 'module.exports = 42'), 42)
+})
+
 function p (f) {
   return path.join(process.cwd(), f)
 }

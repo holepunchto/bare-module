@@ -43,6 +43,7 @@ module.exports = class Module {
 
   _loadJSON (source = this._read(this.filename)) {
     this.exports = JSON.parse(source)
+
     return this.exports
   }
 
@@ -72,22 +73,14 @@ module.exports = class Module {
 
   static cache = Object.create(null)
 
-  static bootstrap (filename, source) {
-    const mod = Module.cache[filename] = new Module(filename)
-
-    filename.endsWith('.json')
-      ? mod._loadJSON(source)
-      : mod._loadJS(source)
-  }
-
-  static load (filename) {
+  static load (filename, source) {
     if (Module.cache[filename]) return Module.cache[filename].exports
 
     const mod = Module.cache[filename] = new Module(filename)
 
     return filename.endsWith('.json')
-      ? mod._loadJSON()
-      : mod._loadJS()
+      ? mod._loadJSON(source)
+      : mod._loadJS(source)
   }
 
   // TODO: align with 99% of https://nodejs.org/dist/latest-v18.x/docs/api/modules.html#all-together
