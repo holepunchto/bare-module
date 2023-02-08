@@ -31,6 +31,16 @@ module.exports = class Module {
     return Module._read(filename)
   }
 
+  _run (source, require) {
+    binding.runScript(this.filename, `(__dirname, __filename, module, exports, require) => {\n${source}\n}`, -1)(
+      this.dirname,
+      this.filename,
+      this,
+      this.exports,
+      require
+    )
+  }
+
   _loadJSON (source = this._read(this.filename)) {
     this.exports = JSON.parse(source)
     return this.exports
@@ -42,7 +52,7 @@ module.exports = class Module {
     require.cache = Module.cache
     require.resolve = resolve
 
-    Module.runScript(this, source, require)
+    this._run(source, require)
 
     return this.exports
 
@@ -78,16 +88,6 @@ module.exports = class Module {
     return filename.endsWith('.json')
       ? mod._loadJSON()
       : mod._loadJS()
-  }
-
-  static runScript (module, source, require) {
-    binding.runScript(module.filename, `(__dirname, __filename, module, exports, require) => {\n${source}\n}`, -1)(
-      module.dirname,
-      module.filename,
-      module,
-      module.exports,
-      require
-    )
   }
 
   // TODO: align with 99% of https://nodejs.org/dist/latest-v18.x/docs/api/modules.html#all-together
