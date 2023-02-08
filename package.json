@@ -4,7 +4,11 @@
   "description": "Module support for JavaScript",
   "main": "index.js",
   "files": [
-    "index.js"
+    "index.js",
+    "binding.c",
+    "binding.js",
+    "CMakeLists.txt",
+    "prebuilds"
   ],
   "scripts": {
     "test": "standard && pear test.js",
