@@ -1,6 +1,7 @@
 const events = require('@pearjs/events')
 const path = require('@pearjs/path')
 const timers = require('@pearjs/timers')
+const binding = require('./binding')
 
 module.exports = class Module {
   constructor (filename, dirname = path.dirname(filename)) {
@@ -80,7 +81,7 @@ module.exports = class Module {
   }
 
   static runScript (module, source, require) {
-    new Function('__dirname', '__filename', 'module', 'exports', 'require', source + '\n//# sourceURL=' + module.filename)( // eslint-disable-line
+    return binding.runScript(module.filename, `(__dirname, __filename, module, exports, require) => {\n${source}\n}`, -1)(
       module.dirname,
       module.filename,
       module,
