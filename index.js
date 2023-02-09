@@ -122,7 +122,7 @@ Module._extensions['.cjs'] = function (module, filename, source = this._read(fil
   require.cache = this._cache
   require.resolve = resolve
 
-  binding.runScript(this.filename, `(function (require, module, exports, __filename, __dirname) {\n${source}\n})`, -1)(
+  binding.runScript(filename, `(function (require, module, exports, __filename, __dirname) {\n${source}\n})`, -1)(
     require,
     module,
     module.exports,
