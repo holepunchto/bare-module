@@ -3,14 +3,20 @@ const path = require('@pearjs/path')
 const timers = require('@pearjs/timers')
 const binding = require('./binding')
 
+const constants = exports.constants = {
+  CONTEXT_SCRIPT: 0,
+  CONTEXT_MODULE: 1
+}
+
 const Module = module.exports = class Module {
   constructor (filename, dirname = path.dirname(filename)) {
     this.filename = filename
     this.dirname = dirname
     this.exports = {}
+    this.definition = null
   }
 
-  static _context = binding.init(this._onimport.bind(this))
+  static _context = binding.init(this._onimport.bind(this), this._onevaluate.bind(this))
 
   static {
     process.once('exit', () => binding.destroy(Module._context))
@@ -24,9 +30,29 @@ const Module = module.exports = class Module {
   static _read = defaultRead
 
   static _onimport (specifier, assertions, referrer) {
-    const filename = this.resolve(specifier, path.dirname(referrer))
+    const module = this.load(this.resolve(specifier, path.dirname(referrer)), {
+      context: constants.CONTEXT_MODULE
+    })
 
-    return binding.createModule(filename, this._read(filename), 0, this._context)
+    if (module.definition === null) {
+      const names = new Set(Object.keys(module.exports))
+
+      names.add('default')
+
+      module.definition = binding.createSyntheticModule(module.filename, Array.from(names), this._context)
+    }
+
+    return module.definition
+  }
+
+  static _onevaluate (filename) {
+    const module = this._cache[filename]
+
+    binding.setExport(module.definition, 'default', module.exports)
+
+    for (const [key, value] of Object.entries(module.exports)) {
+      binding.setExport(module.definition, key, value)
+    }
   }
 
   static configure (opts = {}) {
@@ -39,15 +65,26 @@ const Module = module.exports = class Module {
     if (read) this._read = read
   }
 
-  static load (filename, source) {
-    if (this._cache[filename]) return this._cache[filename].exports
+  static load (filename, source = null, opts = {}) {
+    if (this._cache[filename]) return this._cache[filename]
+
+    if (typeof source !== 'string' && source !== null) {
+      opts = source
+      source = null
+    }
+
+    const {
+      context = constants.CONTEXT_SCRIPT
+    } = opts
 
     const module = this._cache[filename] = new this(filename)
 
     let extension = path.extname(filename)
     if (extension in this._extensions === false) extension = '.js'
 
-    return this._extensions[extension].call(this, module, filename, source)
+    this._extensions[extension].call(this, module, filename, source, context)
+
+    return module
   }
 
   // TODO: align with 99% of https://nodejs.org/dist/latest-v18.x/docs/api/modules.html#all-together
@@ -95,7 +132,7 @@ const Module = module.exports = class Module {
       const pkg = path.join(p, 'package.json')
 
       if (this._exists(pkg)) {
-        const json = this.load(pkg)
+        const json = this.load(pkg).exports
 
         dirname = p
         req = json.main || 'index.js'
@@ -122,13 +159,15 @@ Module._builtins.path = path
 Module._builtins.timers = timers
 
 Module._extensions['.js'] =
-Module._extensions['.cjs'] = function (module, filename, source = this._read(filename)) {
+Module._extensions['.cjs'] = function (module, filename, source, opts) {
+  if (source === null) source = this._read(filename)
+
   const resolve = (req) => {
     return this.resolve(req, module.dirname)
   }
 
   const require = (req) => {
-    return req in this._builtins ? this._builtins[req] : this.load(resolve(req))
+    return req in this._builtins ? this._builtins[req] : this.load(resolve(req)).exports
   }
 
   require.cache = this._cache
@@ -141,24 +180,27 @@ Module._extensions['.cjs'] = function (module, filename, source = this._read(fil
     module.filename,
     module.dirname
   )
-
-  return module.exports
 }
 
-Module._extensions['.mjs'] = function (module, filename, source = this._read(filename)) {
-  module.exports = binding.createModule(filename, source, 0, this._context)
-  binding.runModule(module.exports)
-  return module.exports
+Module._extensions['.mjs'] = function (module, filename, source, context) {
+  if (source === null) source = this._read(filename)
+
+  module.definition = binding.createModule(filename, source, 0, this._context)
+
+  if (context !== constants.CONTEXT_MODULE) {
+    binding.runModule(module.definition)
+  }
 }
 
-Module._extensions['.json'] = function (module, filename, source = this._read(filename)) {
+Module._extensions['.json'] = function (module, filename, source, context) {
+  if (source === null) source = this._read(filename)
+
   module.exports = JSON.parse(source)
-  return module.exports
 }
 
 Module._extensions['.pear'] =
-Module._extensions['.node'] = function (module, filename) {
-  return process.addon(filename)
+Module._extensions['.node'] = function (module, filename, source, context) {
+  module.exports = process.addon(filename)
 }
 
 function splitModule (m) {

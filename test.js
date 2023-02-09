@@ -44,7 +44,7 @@ test('load bare', (t) => {
     }
   })
 
-  t.is(Module.load(Module.resolve('foo')), 42)
+  t.is(Module.load(Module.resolve('foo')).exports, 42)
 })
 
 test('load bare with source', (t) => {
@@ -63,7 +63,7 @@ test('load bare with source', (t) => {
     }
   })
 
-  t.is(Module.load(Module.resolve('foo'), 'module.exports = 42'), 42)
+  t.is(Module.load(Module.resolve('foo'), 'module.exports = 42').exports, 42)
 })
 
 test('load .js', (t) => {
@@ -83,7 +83,7 @@ test('load .js', (t) => {
     }
   })
 
-  t.is(Module.load(p('index.js')), 42)
+  t.is(Module.load(p('index.js')).exports, 42)
 })
 
 test('load .cjs', (t) => {
@@ -103,7 +103,7 @@ test('load .cjs', (t) => {
     }
   })
 
-  t.is(Module.load(p('index.cjs')), 42)
+  t.is(Module.load(p('index.cjs')).exports, 42)
 })
 
 test('load .mjs', (t) => {
@@ -150,6 +150,30 @@ test('load .mjs with import', (t) => {
   Module.load(p('index.mjs'))
 })
 
+test('load .mjs with .cjs import', (t) => {
+  Module._cache = {}
+
+  Module.configure({
+    exists (filename) {
+      return filename === p('foo.cjs')
+    },
+
+    read (filename) {
+      if (filename === p('index.mjs')) {
+        return 'import foo from \'./foo.cjs\''
+      }
+
+      if (filename === p('foo.cjs')) {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load(p('index.mjs'))
+})
+
 test('load .json', (t) => {
   Module._cache = {}
 
@@ -167,7 +191,7 @@ test('load .json', (t) => {
     }
   })
 
-  t.is(Module.load(p('index.json')), 42)
+  t.is(Module.load(p('index.json')).exports, 42)
 })
 
 test('load .pear', (t) => {
@@ -235,7 +259,7 @@ test('load unknown extension', (t) => {
     }
   })
 
-  t.is(Module.load(p('index.foo')), 42)
+  t.is(Module.load(p('index.foo')).exports, 42)
 })
 
 test('require', (t) => {
@@ -264,7 +288,7 @@ test('require', (t) => {
     }
   })
 
-  t.is(Module.load(Module.resolve('foo')), 42)
+  t.is(Module.load(Module.resolve('foo')).exports, 42)
 })
 
 function p (f) {
