@@ -4,8 +4,9 @@ const timers = require('@pearjs/timers')
 const binding = require('./binding')
 
 const constants = exports.constants = {
-  CONTEXT_SCRIPT: 0,
-  CONTEXT_MODULE: 1
+  CONTEXT_NONE: 1,
+  CONTEXT_SCRIPT: 2,
+  CONTEXT_MODULE: 3
 }
 
 const Module = module.exports = class Module {
@@ -19,7 +20,7 @@ const Module = module.exports = class Module {
   static _context = binding.init(this._onimport.bind(this), this._onevaluate.bind(this))
 
   static {
-    process.once('exit', () => binding.destroy(Module._context))
+    process.once('exit', () => binding.destroy(this._context))
   }
 
   static _extensions = Object.create(null)
@@ -74,7 +75,7 @@ const Module = module.exports = class Module {
     }
 
     const {
-      context = constants.CONTEXT_SCRIPT
+      context = constants.CONTEXT_NONE
     } = opts
 
     const module = this._cache[specifier] = new this(specifier)
@@ -174,7 +175,7 @@ Module._extensions['.cjs'] = function (module, filename, source, opts) {
   }
 
   const require = (specifier) => {
-    return this.load(resolve(specifier)).exports
+    return this.load(resolve(specifier), { context: constants.CONTEXT_SCRIPT }).exports
   }
 
   require.cache = this._cache
