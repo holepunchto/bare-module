@@ -45,8 +45,8 @@ const Module = module.exports = class Module {
     return module.definition
   }
 
-  static _onevaluate (filename) {
-    const module = this._cache[filename]
+  static _onevaluate (specifier) {
+    const module = this._cache[specifier]
 
     binding.setExport(module.definition, 'default', module.exports)
 
@@ -65,8 +65,8 @@ const Module = module.exports = class Module {
     if (read) this._read = read
   }
 
-  static load (filename, source = null, opts = {}) {
-    if (this._cache[filename]) return this._cache[filename]
+  static load (specifier, source = null, opts = {}) {
+    if (this._cache[specifier]) return this._cache[specifier]
 
     if (typeof source !== 'string' && source !== null) {
       opts = source
@@ -77,26 +77,33 @@ const Module = module.exports = class Module {
       context = constants.CONTEXT_SCRIPT
     } = opts
 
-    const module = this._cache[filename] = new this(filename)
+    const module = this._cache[specifier] = new this(specifier)
 
-    let extension = path.extname(filename)
-    if (extension in this._extensions === false) extension = '.js'
+    if (specifier in this._builtins) {
+      module.exports = this._builtins[specifier]
+    } else {
+      let extension = path.extname(specifier)
 
-    this._extensions[extension].call(this, module, filename, source, context)
+      if (extension in this._extensions === false) extension = '.js'
+
+      this._extensions[extension].call(this, module, specifier, source, context)
+    }
 
     return module
   }
 
   // TODO: align with 99% of https://nodejs.org/dist/latest-v18.x/docs/api/modules.html#all-together
 
-  static resolve (req, dirname = process.cwd()) {
-    if (req.length === 0) throw new Error('Could not resolve ' + req + ' from ' + dirname)
+  static resolve (specifier, dirname = process.cwd()) {
+    if (specifier in this._builtins) return specifier
+
+    if (specifier.length === 0) throw new Error('Could not resolve ' + specifier + ' from ' + dirname)
 
     let p = null
     let ticks = 16386 // tons of allowed ticks, just so loops break if a user makes one...
 
-    if (req[0] !== '.' && req[0] !== '/') {
-      const [name, rest] = splitModule(req)
+    if (specifier[0] !== '.' && specifier[0] !== '/') {
+      const [name, rest] = splitModule(specifier)
       const target = 'node_modules/' + name
 
       let tmp = dirname
@@ -112,15 +119,15 @@ const Module = module.exports = class Module {
         }
 
         dirname = nm
-        req = rest
+        specifier = rest
         break
       }
     }
 
     while (ticks-- > 0) {
-      p = path.join(dirname, req)
+      p = path.join(dirname, specifier)
 
-      if (/\.(js|mjs|cjs|json|node|pear)$/i.test(req) && this._exists(p)) {
+      if (/\.(js|mjs|cjs|json|node|pear)$/i.test(specifier) && this._exists(p)) {
         return p
       }
 
@@ -135,7 +142,7 @@ const Module = module.exports = class Module {
         const json = this.load(pkg).exports
 
         dirname = p
-        req = json.main || 'index.js'
+        specifier = json.main || 'index.js'
         continue
       }
 
@@ -145,7 +152,7 @@ const Module = module.exports = class Module {
       break
     }
 
-    throw new Error('Could not resolve ' + req + ' from ' + dirname)
+    throw new Error('Could not resolve ' + specifier + ' from ' + dirname)
   }
 
   static isBuiltin (name) {
@@ -162,12 +169,12 @@ Module._extensions['.js'] =
 Module._extensions['.cjs'] = function (module, filename, source, opts) {
   if (source === null) source = this._read(filename)
 
-  const resolve = (req) => {
-    return this.resolve(req, module.dirname)
+  const resolve = (specifier) => {
+    return this.resolve(specifier, module.dirname)
   }
 
-  const require = (req) => {
-    return req in this._builtins ? this._builtins[req] : this.load(resolve(req)).exports
+  const require = (specifier) => {
+    return this.load(resolve(specifier)).exports
   }
 
   require.cache = this._cache

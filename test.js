@@ -174,6 +174,26 @@ test('load .mjs with .cjs import', (t) => {
   Module.load(p('index.mjs'))
 })
 
+test('load .mjs with builtin import', (t) => {
+  Module._cache = {}
+
+  Module.configure({
+    exists (filename) {
+      t.fail()
+    },
+
+    read (filename) {
+      if (filename === p('index.mjs')) {
+        return 'import Module from \'module\''
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load(p('index.mjs'))
+})
+
 test('load .json', (t) => {
   Module._cache = {}
 
