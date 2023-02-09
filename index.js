@@ -10,12 +10,24 @@ const Module = module.exports = class Module {
     this.exports = {}
   }
 
+  static _context = binding.init(this._onimport.bind(this))
+
+  static {
+    process.once('exit', () => binding.destroy(Module._context))
+  }
+
   static _extensions = Object.create(null)
   static _builtins = Object.create(null)
   static _cache = Object.create(null)
 
   static _exists = defaultExists
   static _read = defaultRead
+
+  static _onimport (specifier, assertions, referrer) {
+    const filename = this.resolve(specifier, path.dirname(referrer))
+
+    return binding.createModule(filename, this._read(filename), 0, this._context)
+  }
 
   static configure (opts = {}) {
     const {
@@ -133,8 +145,15 @@ Module._extensions['.cjs'] = function (module, filename, source = this._read(fil
   return module.exports
 }
 
+Module._extensions['.mjs'] = function (module, filename, source = this._read(filename)) {
+  module.exports = binding.createModule(filename, source, 0, this._context)
+  binding.runModule(module.exports)
+  return module.exports
+}
+
 Module._extensions['.json'] = function (module, filename, source = this._read(filename)) {
-  return (module.exports = JSON.parse(source))
+  module.exports = JSON.parse(source)
+  return module.exports
 }
 
 Module._extensions['.pear'] =

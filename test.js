@@ -106,7 +106,7 @@ test('load .cjs', (t) => {
   t.is(Module.load(p('index.cjs')), 42)
 })
 
-test.skip('load .mjs', (t) => {
+test('load .mjs', (t) => {
   Module._cache = {}
 
   Module.configure({
@@ -116,6 +116,30 @@ test.skip('load .mjs', (t) => {
 
     read (filename) {
       if (filename === p('index.mjs')) {
+        return 'export default 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load(p('index.mjs'))
+})
+
+test('load .mjs with import', (t) => {
+  Module._cache = {}
+
+  Module.configure({
+    exists (filename) {
+      return filename === p('foo.mjs')
+    },
+
+    read (filename) {
+      if (filename === p('index.mjs')) {
+        return 'import foo from \'./foo.mjs\''
+      }
+
+      if (filename === p('foo.mjs')) {
         return 'export default 42'
       }
 
