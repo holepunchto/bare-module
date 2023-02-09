@@ -11,6 +11,10 @@ test('resolve', (t) => {
         filename === p('node_modules/foo') ||
         filename === p('node_modules/foo/index.js')
       )
+    },
+
+    read () {
+      t.fail()
     }
   })
 
@@ -20,7 +24,7 @@ test('resolve', (t) => {
   )
 })
 
-test('load', (t) => {
+test('load bare', (t) => {
   Module._cache = {}
 
   Module.configure({
@@ -32,16 +36,18 @@ test('load', (t) => {
     },
 
     read (filename) {
-      t.is(filename, p('node_modules/foo/index.js'))
+      if (filename === p('node_modules/foo/index.js')) {
+        return 'module.exports = 42'
+      }
 
-      return 'module.exports = 42'
+      t.fail()
     }
   })
 
   t.is(Module.load(Module.resolve('foo')), 42)
 })
 
-test('load with source', (t) => {
+test('load bare with source', (t) => {
   Module._cache = {}
 
   Module.configure({
@@ -58,6 +64,154 @@ test('load with source', (t) => {
   })
 
   t.is(Module.load(Module.resolve('foo'), 'module.exports = 42'), 42)
+})
+
+test('load .js', (t) => {
+  Module._cache = {}
+
+  Module.configure({
+    exists () {
+      t.fail()
+    },
+
+    read (filename) {
+      if (filename === p('index.js')) {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load(p('index.js')), 42)
+})
+
+test('load .cjs', (t) => {
+  Module._cache = {}
+
+  Module.configure({
+    exists () {
+      t.fail()
+    },
+
+    read (filename) {
+      if (filename === p('index.cjs')) {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load(p('index.cjs')), 42)
+})
+
+test.skip('load .mjs', (t) => {
+  Module._cache = {}
+
+  Module.configure({
+    exists () {
+      t.fail()
+    },
+
+    read (filename) {
+      if (filename === p('index.mjs')) {
+        return 'export default 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load(p('index.mjs'))
+})
+
+test('load .json', (t) => {
+  Module._cache = {}
+
+  Module.configure({
+    exists () {
+      t.fail()
+    },
+
+    read (filename) {
+      if (filename === p('index.json')) {
+        return '42'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load(p('index.json')), 42)
+})
+
+test('load .pear', (t) => {
+  Module._cache = {}
+
+  Module.configure({
+    exists (filename) {
+      return (
+        filename === p('node_modules/native') ||
+        filename === p('node_modules/native/index.js') ||
+        filename === p('node_modules/native/native.pear')
+      )
+    },
+
+    read (filename) {
+      if (filename === p('node_modules/native/index.js')) {
+        return 'require(\'./native.pear\')'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.exception(() => Module.load(Module.resolve('native')), /dlopen\(.*node_modules\/native\/native\.pear.+\)/)
+})
+
+test('load .node', (t) => {
+  Module._cache = {}
+
+  Module.configure({
+    exists (filename) {
+      return (
+        filename === p('node_modules/native') ||
+        filename === p('node_modules/native/index.js') ||
+        filename === p('node_modules/native/native.node')
+      )
+    },
+
+    read (filename) {
+      if (filename === p('node_modules/native/index.js')) {
+        return 'require(\'./native.node\')'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.exception(() => Module.load(Module.resolve('native')), /dlopen\(.*node_modules\/native\/native\.node.+\)/)
+})
+
+test('load unknown extension', (t) => {
+  Module._cache = {}
+
+  Module.configure({
+    exists () {
+      t.fail()
+    },
+
+    read (filename) {
+      if (filename === p('index.foo')) {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load(p('index.foo')), 42)
 })
 
 test('require', (t) => {

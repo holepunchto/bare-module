@@ -10,17 +10,8 @@ const Module = module.exports = class Module {
     this.exports = {}
   }
 
-  _run (source, require) {
-    binding.runScript(this.filename, `(__dirname, __filename, module, exports, require) => {\n${source}\n}`, -1)(
-      this.dirname,
-      this.filename,
-      this,
-      this.exports,
-      require
-    )
-  }
-
   static _extensions = Object.create(null)
+  static _builtins = Object.create(null)
   static _cache = Object.create(null)
 
   static _exists = defaultExists
@@ -41,7 +32,8 @@ const Module = module.exports = class Module {
 
     const module = this._cache[filename] = new this(filename)
 
-    const extension = path.extname(filename)
+    let extension = path.extname(filename)
+    if (extension in this._extensions === false) extension = '.js'
 
     return this._extensions[extension].call(this, module, filename, source)
   }
@@ -79,25 +71,14 @@ const Module = module.exports = class Module {
     while (ticks-- > 0) {
       p = path.join(dirname, req)
 
-      if (/\.(js|mjs|cjs|json)$/i.test(req) && this._exists(p)) {
+      if (/\.(js|mjs|cjs|json|node|pear)$/i.test(req) && this._exists(p)) {
         return p
       }
 
-      if (this._exists(p + '.js')) {
-        return p + '.js'
-      }
-
-      if (this._exists(p + '.cjs')) {
-        return p + '.cjs'
-      }
-
-      if (this._exists(p + '.mjs')) {
-        return p + '.mjs'
-      }
-
-      if (this._exists(p + '.json')) {
-        return p + '.json'
-      }
+      if (this._exists(p + '.js')) return p + '.js'
+      if (this._exists(p + '.cjs')) return p + '.cjs'
+      if (this._exists(p + '.mjs')) return p + '.mjs'
+      if (this._exists(p + '.json')) return p + '.json'
 
       const pkg = path.join(p, 'package.json')
 
@@ -117,36 +98,48 @@ const Module = module.exports = class Module {
 
     throw new Error('Could not resolve ' + req + ' from ' + dirname)
   }
+
+  static isBuiltin (name) {
+    return name in this._builtins
+  }
 }
 
-Module._extensions['.js'] = function (module, filename, source = this._read(filename)) {
+Module._builtins.module = Module
+Module._builtins.events = events
+Module._builtins.path = path
+Module._builtins.timers = timers
+
+Module._extensions['.js'] =
+Module._extensions['.cjs'] = function (module, filename, source = this._read(filename)) {
   const resolve = (req) => {
-    return this.resolve(req, dirname)
+    return this.resolve(req, module.dirname)
   }
 
   const require = (req) => {
-    if (req === 'module') return this
-    if (req === 'events') return events
-    if (req === 'path') return path
-    if (req === 'timers') return timers
-    if (req.endsWith('.node') || req.endsWith('.pear')) return process.addon(req)
-    return this.load(resolve(req))
+    return req in this._builtins ? this._builtins[req] : this.load(resolve(req))
   }
-
-  const dirname = module.dirname
 
   require.cache = this._cache
   require.resolve = resolve
 
-  module._run(source, require)
+  binding.runScript(this.filename, `(function (require, module, exports, __filename, __dirname) {\n${source}\n})`, -1)(
+    require,
+    module,
+    module.exports,
+    module.filename,
+    module.dirname
+  )
 
   return module.exports
 }
 
 Module._extensions['.json'] = function (module, filename, source = this._read(filename)) {
-  module.exports = JSON.parse(source)
+  return (module.exports = JSON.parse(source))
+}
 
-  return module.exports
+Module._extensions['.pear'] =
+Module._extensions['.node'] = function (module, filename) {
+  return process.addon(filename)
 }
 
 function splitModule (m) {
