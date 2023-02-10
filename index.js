@@ -3,18 +3,14 @@ const path = require('@pearjs/path')
 const timers = require('@pearjs/timers')
 const binding = require('./binding')
 
-const constants = exports.constants = {
-  CONTEXT_NONE: 1,
-  CONTEXT_SCRIPT: 2,
-  CONTEXT_MODULE: 3
-}
-
 const Module = module.exports = class Module {
   constructor (filename, dirname = path.dirname(filename)) {
+    this.type = null
     this.filename = filename
     this.dirname = dirname
     this.exports = {}
     this.definition = null
+    this.protocol = null
   }
 
   static _context = binding.init(this._onimport.bind(this), this._onevaluate.bind(this))
@@ -24,16 +20,18 @@ const Module = module.exports = class Module {
   }
 
   static _extensions = Object.create(null)
+  static _protocols = Object.create(null)
   static _builtins = Object.create(null)
   static _cache = Object.create(null)
 
-  static _exists = defaultExists
-  static _read = defaultRead
+  static _onimport (specifier, assertions, referrerFilename) {
+    const referrer = this._cache[referrerFilename]
 
-  static _onimport (specifier, assertions, referrer) {
-    const module = this.load(this.resolve(specifier, path.dirname(referrer)), {
-      context: constants.CONTEXT_MODULE
-    })
+    const protocol = referrer.protocol
+
+    specifier = this.resolve(specifier, referrer.dirname, { protocol })
+
+    const module = this.load(specifier, { protocol, referrer })
 
     if (module.definition === null) {
       const names = new Set(Object.keys(module.exports))
@@ -56,16 +54,6 @@ const Module = module.exports = class Module {
     }
   }
 
-  static configure (opts = {}) {
-    const {
-      exists,
-      read
-    } = opts
-
-    if (exists) this._exists = exists
-    if (read) this._read = read
-  }
-
   static load (specifier, source = null, opts = {}) {
     if (this._cache[specifier]) return this._cache[specifier]
 
@@ -74,9 +62,16 @@ const Module = module.exports = class Module {
       source = null
     }
 
-    const {
-      context = constants.CONTEXT_NONE
+    let {
+      referrer = null,
+      protocol = null
     } = opts
+
+    let proto = specifier.slice(0, specifier.indexOf(':') + 1)
+
+    if (protocol === null && !proto) proto = 'file:'
+
+    if (proto in this._protocols) protocol = this._protocols[proto]
 
     const module = this._cache[specifier] = new this(specifier)
 
@@ -87,7 +82,7 @@ const Module = module.exports = class Module {
 
       if (extension in this._extensions === false) extension = '.js'
 
-      this._extensions[extension].call(this, module, specifier, source, context)
+      this._extensions[extension].call(this, module, specifier, source, referrer, protocol)
     }
 
     return module
@@ -95,7 +90,22 @@ const Module = module.exports = class Module {
 
   // TODO: align with 99% of https://nodejs.org/dist/latest-v18.x/docs/api/modules.html#all-together
 
-  static resolve (specifier, dirname = process.cwd()) {
+  static resolve (specifier, dirname = process.cwd(), opts = {}) {
+    if (typeof dirname !== 'string') {
+      opts = dirname
+      dirname = process.cwd()
+    }
+
+    let {
+      protocol = null
+    } = opts
+
+    let proto = specifier.slice(0, specifier.indexOf(':') + 1)
+
+    if (protocol === null && !proto) proto = 'file:'
+
+    if (proto in this._protocols) protocol = this._protocols[proto]
+
     if (specifier in this._builtins) return specifier
 
     if (specifier.length === 0) throw new Error('Could not resolve ' + specifier + ' from ' + dirname)
@@ -112,7 +122,7 @@ const Module = module.exports = class Module {
       while (ticks-- > 0) {
         const nm = path.join(tmp, target)
 
-        if (!this._exists(nm)) {
+        if (!protocol.exists(nm)) {
           const parent = path.dirname(tmp)
           if (parent === tmp) ticks = -1
           else tmp = parent
@@ -128,18 +138,18 @@ const Module = module.exports = class Module {
     while (ticks-- > 0) {
       p = path.join(dirname, specifier)
 
-      if (/\.(js|mjs|cjs|json|node|pear)$/i.test(specifier) && this._exists(p)) {
+      if (/\.(js|mjs|cjs|json|node|pear)$/i.test(specifier) && protocol.exists(p)) {
         return p
       }
 
-      if (this._exists(p + '.js')) return p + '.js'
-      if (this._exists(p + '.cjs')) return p + '.cjs'
-      if (this._exists(p + '.mjs')) return p + '.mjs'
-      if (this._exists(p + '.json')) return p + '.json'
+      if (protocol.exists(p + '.js')) return p + '.js'
+      if (protocol.exists(p + '.cjs')) return p + '.cjs'
+      if (protocol.exists(p + '.mjs')) return p + '.mjs'
+      if (protocol.exists(p + '.json')) return p + '.json'
 
       const pkg = path.join(p, 'package.json')
 
-      if (this._exists(pkg)) {
+      if (protocol.exists(pkg)) {
         const json = this.load(pkg).exports
 
         dirname = p
@@ -148,7 +158,7 @@ const Module = module.exports = class Module {
       }
 
       p = path.join(p, 'index.js')
-      if (this._exists(p)) return p
+      if (protocol.exists(p)) return p
 
       break
     }
@@ -166,17 +176,23 @@ Module._builtins.events = events
 Module._builtins.path = path
 Module._builtins.timers = timers
 
-Module._extensions['.js'] =
-Module._extensions['.cjs'] = function (module, filename, source, opts) {
-  if (source === null) source = this._read(filename)
+Module._extensions['.js'] = function (module, filename, source, referrer, protocol) {
+  return this._extensions['.cjs'].call(this, module, filename, source, referrer, protocol)
+}
+
+Module._extensions['.cjs'] = function (module, filename, source, context, protocol) {
+  if (source === null) source = protocol.read(filename)
 
   const resolve = (specifier) => {
-    return this.resolve(specifier, module.dirname)
+    return this.resolve(specifier, module.dirname, { protocol })
   }
 
   const require = (specifier) => {
-    return this.load(resolve(specifier), { context: constants.CONTEXT_SCRIPT }).exports
+    return this.load(resolve(specifier), { protocol, referrer: module }).exports
   }
+
+  module.type = 'cjs'
+  module.protocol = protocol
 
   require.cache = this._cache
   require.resolve = resolve
@@ -190,25 +206,54 @@ Module._extensions['.cjs'] = function (module, filename, source, opts) {
   )
 }
 
-Module._extensions['.mjs'] = function (module, filename, source, context) {
-  if (source === null) source = this._read(filename)
+Module._extensions['.mjs'] = function (module, filename, source, referrer, protocol) {
+  if (source === null) source = protocol.read(filename)
+
+  module.type = 'esm'
+  module.protocol = protocol
 
   module.definition = binding.createModule(filename, source, 0, this._context)
 
-  if (context !== constants.CONTEXT_MODULE) {
+  if (referrer === null || referrer.type !== 'esm') {
     binding.runModule(module.definition)
   }
 }
 
-Module._extensions['.json'] = function (module, filename, source, context) {
-  if (source === null) source = this._read(filename)
+Module._extensions['.json'] = function (module, filename, source, referrer, protocol) {
+  if (source === null) source = protocol.read(filename)
+
+  module.type = 'json'
+  module.protocol = protocol
 
   module.exports = JSON.parse(source)
 }
 
 Module._extensions['.pear'] =
-Module._extensions['.node'] = function (module, filename, source, context) {
+Module._extensions['.node'] = function (module, filename, source, referrer, protocol) {
+  module.type = 'addon'
+
   module.exports = process.addon(filename)
+}
+
+Module._extensions['.bundle'] = function (module, filename, source, referrer, protocol) {
+  if (source === null) source = protocol.read(filename)
+
+  const bundle = JSON.parse(source)
+
+  module.protocol = protocol = {
+    exists (filename) {
+      return filename in bundle.files
+    },
+
+    read (filename) {
+      return bundle.files[filename].source
+    }
+  }
+
+  const entry = Module.load(bundle.entry, bundle.files[bundle.entry].source, { protocol })
+
+  module.type = entry.type
+  module.exports = entry.exports
 }
 
 function splitModule (m) {
@@ -216,12 +261,4 @@ function splitModule (m) {
   if (i === -1) return [m, '.']
 
   return [m.slice(0, i), '.' + m.slice(i)]
-}
-
-function defaultExists (filename) {
-  return false
-}
-
-function defaultRead (filename) {
-  return null
 }

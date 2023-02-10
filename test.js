@@ -5,7 +5,7 @@ const Module = require('.')
 test('resolve', (t) => {
   Module._cache = {}
 
-  Module.configure({
+  Module._protocols['file:'] = {
     exists (filename) {
       return (
         filename === p('node_modules/foo') ||
@@ -16,7 +16,7 @@ test('resolve', (t) => {
     read () {
       t.fail()
     }
-  })
+  }
 
   t.is(
     Module.resolve('foo'),
@@ -27,7 +27,7 @@ test('resolve', (t) => {
 test('load bare', (t) => {
   Module._cache = {}
 
-  Module.configure({
+  Module._protocols['file:'] = {
     exists (filename) {
       return (
         filename === p('node_modules/foo') ||
@@ -42,7 +42,7 @@ test('load bare', (t) => {
 
       t.fail()
     }
-  })
+  }
 
   t.is(Module.load(Module.resolve('foo')).exports, 42)
 })
@@ -50,7 +50,7 @@ test('load bare', (t) => {
 test('load bare with source', (t) => {
   Module._cache = {}
 
-  Module.configure({
+  Module._protocols['file:'] = {
     exists (filename) {
       return (
         filename === p('node_modules/foo') ||
@@ -61,7 +61,7 @@ test('load bare with source', (t) => {
     read () {
       t.fail()
     }
-  })
+  }
 
   t.is(Module.load(Module.resolve('foo'), 'module.exports = 42').exports, 42)
 })
@@ -69,7 +69,7 @@ test('load bare with source', (t) => {
 test('load .js', (t) => {
   Module._cache = {}
 
-  Module.configure({
+  Module._protocols['file:'] = {
     exists () {
       t.fail()
     },
@@ -81,7 +81,7 @@ test('load .js', (t) => {
 
       t.fail()
     }
-  })
+  }
 
   t.is(Module.load(p('index.js')).exports, 42)
 })
@@ -89,7 +89,7 @@ test('load .js', (t) => {
 test('load .cjs', (t) => {
   Module._cache = {}
 
-  Module.configure({
+  Module._protocols['file:'] = {
     exists () {
       t.fail()
     },
@@ -101,7 +101,7 @@ test('load .cjs', (t) => {
 
       t.fail()
     }
-  })
+  }
 
   t.is(Module.load(p('index.cjs')).exports, 42)
 })
@@ -109,7 +109,7 @@ test('load .cjs', (t) => {
 test('load .mjs', (t) => {
   Module._cache = {}
 
-  Module.configure({
+  Module._protocols['file:'] = {
     exists () {
       t.fail()
     },
@@ -121,7 +121,7 @@ test('load .mjs', (t) => {
 
       t.fail()
     }
-  })
+  }
 
   Module.load(p('index.mjs'))
 })
@@ -129,7 +129,7 @@ test('load .mjs', (t) => {
 test('load .mjs with import', (t) => {
   Module._cache = {}
 
-  Module.configure({
+  Module._protocols['file:'] = {
     exists (filename) {
       return filename === p('foo.mjs')
     },
@@ -145,7 +145,7 @@ test('load .mjs with import', (t) => {
 
       t.fail()
     }
-  })
+  }
 
   Module.load(p('index.mjs'))
 })
@@ -153,7 +153,7 @@ test('load .mjs with import', (t) => {
 test('load .mjs with .cjs import', (t) => {
   Module._cache = {}
 
-  Module.configure({
+  Module._protocols['file:'] = {
     exists (filename) {
       return filename === p('foo.cjs')
     },
@@ -169,7 +169,7 @@ test('load .mjs with .cjs import', (t) => {
 
       t.fail()
     }
-  })
+  }
 
   Module.load(p('index.mjs'))
 })
@@ -177,8 +177,8 @@ test('load .mjs with .cjs import', (t) => {
 test('load .mjs with builtin import', (t) => {
   Module._cache = {}
 
-  Module.configure({
-    exists (filename) {
+  Module._protocols['file:'] = {
+    exists () {
       t.fail()
     },
 
@@ -189,7 +189,7 @@ test('load .mjs with builtin import', (t) => {
 
       t.fail()
     }
-  })
+  }
 
   Module.load(p('index.mjs'))
 })
@@ -197,7 +197,7 @@ test('load .mjs with builtin import', (t) => {
 test('load .json', (t) => {
   Module._cache = {}
 
-  Module.configure({
+  Module._protocols['file:'] = {
     exists () {
       t.fail()
     },
@@ -209,7 +209,7 @@ test('load .json', (t) => {
 
       t.fail()
     }
-  })
+  }
 
   t.is(Module.load(p('index.json')).exports, 42)
 })
@@ -217,7 +217,7 @@ test('load .json', (t) => {
 test('load .pear', (t) => {
   Module._cache = {}
 
-  Module.configure({
+  Module._protocols['file:'] = {
     exists (filename) {
       return (
         filename === p('node_modules/native') ||
@@ -233,7 +233,7 @@ test('load .pear', (t) => {
 
       t.fail()
     }
-  })
+  }
 
   t.exception(() => Module.load(Module.resolve('native')), /dlopen\(.*node_modules\/native\/native\.pear.+\)/)
 })
@@ -241,7 +241,7 @@ test('load .pear', (t) => {
 test('load .node', (t) => {
   Module._cache = {}
 
-  Module.configure({
+  Module._protocols['file:'] = {
     exists (filename) {
       return (
         filename === p('node_modules/native') ||
@@ -257,15 +257,79 @@ test('load .node', (t) => {
 
       t.fail()
     }
-  })
+  }
 
   t.exception(() => Module.load(Module.resolve('native')), /dlopen\(.*node_modules\/native\/native\.node.+\)/)
+})
+
+test('load .bundle', (t) => {
+  Module._cache = {}
+
+  const bundle = JSON.stringify({
+    entry: p('foo.js'),
+    files: {
+      [p('foo.js')]: {
+        source: 'module.exports = require(\'./bar\')'
+      },
+      [p('bar.js')]: {
+        source: 'module.exports = 42'
+      }
+    }
+  })
+
+  Module._protocols['file:'] = {
+    exists (filename) {
+      return filename === p('app.bundle')
+    },
+
+    read (filename) {
+      if (filename === p('app.bundle')) {
+        return bundle
+      }
+
+      t.fail()
+    }
+  }
+
+  Module.load(p('app.bundle'), bundle)
+})
+
+test('load .bundle with .mjs', (t) => {
+  Module._cache = {}
+
+  const bundle = JSON.stringify({
+    entry: p('foo.mjs'),
+    files: {
+      [p('foo.mjs')]: {
+        source: 'export { default } from \'./bar\''
+      },
+      [p('bar.mjs')]: {
+        source: 'export default 42'
+      }
+    }
+  })
+
+  Module._protocols['file:'] = {
+    exists (filename) {
+      return filename === p('app.bundle')
+    },
+
+    read (filename) {
+      if (filename === p('app.bundle')) {
+        return bundle
+      }
+
+      t.fail()
+    }
+  }
+
+  Module.load(p('app.bundle'), bundle)
 })
 
 test('load unknown extension', (t) => {
   Module._cache = {}
 
-  Module.configure({
+  Module._protocols['file:'] = {
     exists () {
       t.fail()
     },
@@ -277,7 +341,7 @@ test('load unknown extension', (t) => {
 
       t.fail()
     }
-  })
+  }
 
   t.is(Module.load(p('index.foo')).exports, 42)
 })
@@ -285,7 +349,7 @@ test('load unknown extension', (t) => {
 test('require', (t) => {
   Module._cache = {}
 
-  Module.configure({
+  Module._protocols['file:'] = {
     exists (filename) {
       return (
         filename === p('node_modules/foo') ||
@@ -306,7 +370,7 @@ test('require', (t) => {
 
       t.fail()
     }
-  })
+  }
 
   t.is(Module.load(Module.resolve('foo')).exports, 42)
 })
