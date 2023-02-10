@@ -1,6 +1,6 @@
 {
   "name": "@pearjs/module",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Module support for JavaScript",
   "main": "index.js",
   "files": [
