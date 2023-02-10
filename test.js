@@ -278,8 +278,8 @@ test('load .bundle', (t) => {
   })
 
   Module._protocols['file:'] = {
-    exists (filename) {
-      return filename === p('app.bundle')
+    exists () {
+      t.fail()
     },
 
     read (filename) {
@@ -310,8 +310,8 @@ test('load .bundle with .mjs', (t) => {
   })
 
   Module._protocols['file:'] = {
-    exists (filename) {
-      return filename === p('app.bundle')
+    exists () {
+      t.fail()
     },
 
     read (filename) {
