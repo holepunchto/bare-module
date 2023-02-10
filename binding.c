@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <js.h>
 #include <pear.h>
 #include <stdint.h>
@@ -12,24 +13,32 @@ static js_module_t *
 on_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions, js_module_t *referrer, void *data) {
   pear_module_context_t *context = (pear_module_context_t *) data;
 
+  int err;
+
   js_value_t *on_import;
-  js_get_reference_value(env, context->on_import, &on_import);
+  err = js_get_reference_value(env, context->on_import, &on_import);
+  assert(err == 0);
 
   js_value_t *global;
-  js_get_global(env, &global);
+  err = js_get_global(env, &global);
+  assert(err == 0);
 
   const char *name;
-  js_get_module_name(env, referrer, &name);
+  err = js_get_module_name(env, referrer, &name);
+  assert(err == 0);
 
   js_value_t *args[3] = {specifier, assertions};
 
-  js_create_string_utf8(env, name, -1, &args[2]);
+  err = js_create_string_utf8(env, name, -1, &args[2]);
+  if (err < 0) return NULL;
 
   js_value_t *result;
-  js_call_function(env, global, on_import, 3, args, &result);
+  err = js_call_function(env, global, on_import, 3, args, &result);
+  if (err < 0) return NULL;
 
   js_module_t *module;
-  js_get_value_external(env, result, (void **) &module);
+  err = js_get_value_external(env, result, (void **) &module);
+  if (err < 0) return NULL;
 
   return module;
 }
@@ -38,21 +47,28 @@ static void
 on_evaluate (js_env_t *env, js_module_t *module, void *data) {
   pear_module_context_t *context = (pear_module_context_t *) data;
 
+  int err;
+
   js_value_t *on_evaluate;
-  js_get_reference_value(env, context->on_evaluate, &on_evaluate);
+  err = js_get_reference_value(env, context->on_evaluate, &on_evaluate);
+  assert(err == 0);
 
   js_value_t *global;
-  js_get_global(env, &global);
+  err = js_get_global(env, &global);
+  assert(err == 0);
 
   const char *name;
-  js_get_module_name(env, module, &name);
+  err = js_get_module_name(env, module, &name);
+  assert(err == 0);
 
   js_value_t *args[1];
 
-  js_create_string_utf8(env, name, -1, &args[0]);
+  err = js_create_string_utf8(env, name, -1, &args[0]);
+  if (err < 0) return;
 
   js_value_t *result;
-  js_call_function(env, global, on_evaluate, 1, args, &result);
+  err = js_call_function(env, global, on_evaluate, 1, args, &result);
+  if (err < 0) return;
 }
 
 static js_value_t *

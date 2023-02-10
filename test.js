@@ -194,6 +194,26 @@ test('load .mjs with builtin import', (t) => {
   Module.load(p('index.mjs'))
 })
 
+test('load .mjs with missing import', (t) => {
+  Module._cache = {}
+
+  Module._protocols['file:'] = {
+    exists () {
+      return false
+    },
+
+    read (filename) {
+      if (filename === p('index.mjs')) {
+        return 'import foo from \'./foo\''
+      }
+
+      t.fail()
+    }
+  }
+
+  t.exception(() => Module.load(p('index.mjs')), /could not resolve \.\/foo/i)
+})
+
 test('load .json', (t) => {
   Module._cache = {}
 
