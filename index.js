@@ -7,6 +7,7 @@ const binding = require('./binding')
 const Module = module.exports = class Module {
   constructor (filename, dirname = path.dirname(filename)) {
     this.type = null
+    this.info = null
     this.filename = filename
     this.dirname = dirname
     this.exports = {}
@@ -77,6 +78,19 @@ const Module = module.exports = class Module {
     if (proto in this._protocols) protocol = this._protocols[proto]
 
     const module = this._cache[specifier] = new this(specifier)
+
+    let dirname = module.dirname
+
+    while (dirname) {
+      const pkg = path.join(dirname, 'package.json')
+
+      if (protocol.exists(pkg)) {
+        try { module.info = Module.load(pkg).exports } catch {}
+        break
+      }
+
+      dirname = path.dirname(dirname)
+    }
 
     if (specifier in this._builtins) {
       module.exports = this._builtins[specifier]
@@ -180,7 +194,13 @@ Module._builtins.path = path
 Module._builtins.timers = timers
 
 Module._extensions['.js'] = function (module, filename, source, referrer, protocol) {
-  return this._extensions['.cjs'].call(this, module, filename, source, referrer, protocol)
+  const loader = this._extensions[
+    module.info && module.info.type === 'module'
+      ? '.mjs'
+      : '.cjs'
+  ]
+
+  return loader.call(this, module, filename, source, referrer, protocol)
 }
 
 Module._extensions['.cjs'] = function (module, filename, source, context, protocol) {
