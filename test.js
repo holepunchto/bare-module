@@ -71,7 +71,7 @@ test('load .js', (t) => {
 
   Module._protocols['file:'] = {
     exists () {
-      t.fail()
+      return false
     },
 
     read (filename) {
@@ -86,12 +86,36 @@ test('load .js', (t) => {
   t.is(Module.load(p('index.js')).exports, 42)
 })
 
+test('load .js with pkg.type module', (t) => {
+  Module._cache = {}
+
+  Module._protocols['file:'] = {
+    exists (filename) {
+      return filename === p('package.json')
+    },
+
+    read (filename) {
+      if (filename === p('index.js')) {
+        return 'export default 42'
+      }
+
+      if (filename === p('package.json')) {
+        return '{ "type": "module" }'
+      }
+
+      t.fail()
+    }
+  }
+
+  Module.load(p('index.js'))
+})
+
 test('load .cjs', (t) => {
   Module._cache = {}
 
   Module._protocols['file:'] = {
     exists () {
-      t.fail()
+      return false
     },
 
     read (filename) {
@@ -111,7 +135,7 @@ test('load .mjs', (t) => {
 
   Module._protocols['file:'] = {
     exists () {
-      t.fail()
+      return false
     },
 
     read (filename) {
@@ -179,7 +203,7 @@ test('load .mjs with builtin import', (t) => {
 
   Module._protocols['file:'] = {
     exists () {
-      t.fail()
+      return false
     },
 
     read (filename) {
@@ -214,36 +238,12 @@ test('load .mjs with missing import', (t) => {
   t.exception(() => Module.load(p('index.mjs')), /could not resolve \.\/foo/i)
 })
 
-test.solo('load .js with pkg.type module', (t) => {
-  Module._cache = {}
-
-  Module._protocols['file:'] = {
-    exists (filename) {
-      return filename === p('package.json')
-    },
-
-    read (filename) {
-      if (filename === p('index.js')) {
-        return 'export default 42'
-      }
-
-      if (filename === p('package.json')) {
-        return '{ "type": "module" }'
-      }
-
-      t.fail()
-    }
-  }
-
-  Module.load(p('index.js'))
-})
-
 test('load .json', (t) => {
   Module._cache = {}
 
   Module._protocols['file:'] = {
     exists () {
-      t.fail()
+      return false
     },
 
     read (filename) {
@@ -315,8 +315,8 @@ test('load .bundle', (t) => {
     .toBuffer()
 
   Module._protocols['file:'] = {
-    exists (filename) {
-      t.fail()
+    exists () {
+      return false
     },
 
     read (filename) {
@@ -341,7 +341,7 @@ test('load .bundle with .mjs', (t) => {
 
   Module._protocols['file:'] = {
     exists () {
-      t.fail()
+      return false
     },
 
     read (filename) {
@@ -361,7 +361,7 @@ test('load unknown extension', (t) => {
 
   Module._protocols['file:'] = {
     exists () {
-      t.fail()
+      return false
     },
 
     read (filename) {
