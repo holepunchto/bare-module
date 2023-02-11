@@ -1,6 +1,7 @@
 const events = require('@pearjs/events')
 const path = require('@pearjs/path')
 const timers = require('@pearjs/timers')
+const Bundle = require('@pearjs/bundle')
 const binding = require('./binding')
 
 const Module = module.exports = class Module {
@@ -54,10 +55,12 @@ const Module = module.exports = class Module {
     }
   }
 
+  static Bundle = Bundle
+
   static load (specifier, source = null, opts = {}) {
     if (this._cache[specifier]) return this._cache[specifier]
 
-    if (typeof source !== 'string' && source !== null) {
+    if (!ArrayBuffer.isView(source) && typeof source !== 'string' && source !== null) {
       opts = source
       source = null
     }
@@ -183,6 +186,8 @@ Module._extensions['.js'] = function (module, filename, source, referrer, protoc
 Module._extensions['.cjs'] = function (module, filename, source, context, protocol) {
   if (source === null) source = protocol.read(filename)
 
+  if (typeof source !== 'string') source = source.toString()
+
   const resolve = (specifier) => {
     return this.resolve(specifier, module.dirname, { protocol })
   }
@@ -209,6 +214,8 @@ Module._extensions['.cjs'] = function (module, filename, source, context, protoc
 Module._extensions['.mjs'] = function (module, filename, source, referrer, protocol) {
   if (source === null) source = protocol.read(filename)
 
+  if (typeof source !== 'string') source = source.toString()
+
   module.type = 'esm'
   module.protocol = protocol
 
@@ -221,6 +228,8 @@ Module._extensions['.mjs'] = function (module, filename, source, referrer, proto
 
 Module._extensions['.json'] = function (module, filename, source, referrer, protocol) {
   if (source === null) source = protocol.read(filename)
+
+  if (typeof source !== 'string') source = source.toString()
 
   module.type = 'json'
   module.protocol = protocol
@@ -238,19 +247,21 @@ Module._extensions['.node'] = function (module, filename, source, referrer, prot
 Module._extensions['.bundle'] = function (module, filename, source, referrer, protocol) {
   if (source === null) source = protocol.read(filename)
 
-  const bundle = JSON.parse(source)
+  if (typeof source === 'string') source = Buffer.from(source)
+
+  const bundle = Bundle.from(source)
 
   module.protocol = protocol = {
     exists (filename) {
-      return filename in bundle.files
+      return bundle.exists(filename)
     },
 
     read (filename) {
-      return bundle.files[filename].source
+      return bundle.read(filename)
     }
   }
 
-  const entry = Module.load(bundle.entry, bundle.files[bundle.entry].source, { protocol })
+  const entry = Module.load(bundle.main, bundle.read(bundle.main), { protocol })
 
   module.type = entry.type
   module.exports = entry.exports

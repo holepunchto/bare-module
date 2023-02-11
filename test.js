@@ -285,20 +285,13 @@ test('load .node', (t) => {
 test('load .bundle', (t) => {
   Module._cache = {}
 
-  const bundle = JSON.stringify({
-    entry: p('foo.js'),
-    files: {
-      [p('foo.js')]: {
-        source: 'module.exports = require(\'./bar\')'
-      },
-      [p('bar.js')]: {
-        source: 'module.exports = 42'
-      }
-    }
-  })
+  const bundle = new Module.Bundle()
+    .write(p('foo.js'), 'module.exports = require(\'./bar\')', { main: true })
+    .write(p('bar.js'), 'module.exports = 42')
+    .toBuffer()
 
   Module._protocols['file:'] = {
-    exists () {
+    exists (filename) {
       t.fail()
     },
 
@@ -317,17 +310,10 @@ test('load .bundle', (t) => {
 test('load .bundle with .mjs', (t) => {
   Module._cache = {}
 
-  const bundle = JSON.stringify({
-    entry: p('foo.mjs'),
-    files: {
-      [p('foo.mjs')]: {
-        source: 'export { default } from \'./bar\''
-      },
-      [p('bar.mjs')]: {
-        source: 'export default 42'
-      }
-    }
-  })
+  const bundle = new Module.Bundle()
+    .write(p('foo.mjs'), 'export { default } from \'./bar\'', { main: true })
+    .write(p('bar.mjs'), 'export default 42')
+    .toBuffer()
 
   Module._protocols['file:'] = {
     exists () {
