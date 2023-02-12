@@ -1,6 +1,4 @@
-const events = require('@pearjs/events')
 const path = require('@pearjs/path')
-const timers = require('@pearjs/timers')
 const Bundle = require('@pearjs/bundle')
 const binding = require('./binding')
 
@@ -188,11 +186,6 @@ const Module = module.exports = class Module {
   }
 }
 
-Module._builtins.module = Module
-Module._builtins.events = events
-Module._builtins.path = path
-Module._builtins.timers = timers
-
 Module._extensions['.js'] = function (module, filename, source, referrer, protocol) {
   const loader = this._extensions[
     module.info && module.info.type === 'module'
@@ -257,7 +250,12 @@ Module._extensions['.json'] = function (module, filename, source, referrer, prot
   module.exports = JSON.parse(source)
 }
 
-Module._extensions['.pear'] =
+Module._extensions['.pear'] = function (module, filename, source, referrer, protocol) {
+  module.type = 'addon'
+
+  module.exports = process.addon(filename)
+}
+
 Module._extensions['.node'] = function (module, filename, source, referrer, protocol) {
   module.type = 'addon'
 

@@ -130,6 +130,28 @@ test('load .cjs', (t) => {
   t.is(Module.load(p('index.cjs')).exports, 42)
 })
 
+test('load .cjs with builtin require', (t) => {
+  Module._cache = {}
+
+  Module._builtins.foo = 42
+
+  Module._protocols['file:'] = {
+    exists () {
+      return false
+    },
+
+    read (filename) {
+      if (filename === p('index.cjs')) {
+        return 'const foo = require(\'foo\')'
+      }
+
+      t.fail()
+    }
+  }
+
+  Module.load(p('index.cjs'))
+})
+
 test('load .mjs', (t) => {
   Module._cache = {}
 
@@ -201,6 +223,8 @@ test('load .mjs with .cjs import', (t) => {
 test('load .mjs with builtin import', (t) => {
   Module._cache = {}
 
+  Module._builtins.foo = 42
+
   Module._protocols['file:'] = {
     exists () {
       return false
@@ -208,7 +232,7 @@ test('load .mjs with builtin import', (t) => {
 
     read (filename) {
       if (filename === p('index.mjs')) {
-        return 'import Module from \'module\''
+        return 'import foo from \'foo\''
       }
 
       t.fail()
