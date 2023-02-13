@@ -6,10 +6,7 @@ test('resolve', (t) => {
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
-      return (
-        filename === '/node_modules/foo' ||
-        filename === '/node_modules/foo/index.js'
-      )
+      return filename === '/node_modules/foo/index.js'
     },
 
     read () {
@@ -17,7 +14,7 @@ test('resolve', (t) => {
     }
   })
 
-  t.is(Module.resolve('foo'), '/node_modules/foo/index.js')
+  t.is(Module.resolve('foo', '/'), '/node_modules/foo/index.js')
 })
 
 test('load bare specifier', (t) => {
@@ -25,10 +22,7 @@ test('load bare specifier', (t) => {
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
-      return (
-        filename === '/node_modules/foo' ||
-        filename === '/node_modules/foo/index.js'
-      )
+      return filename === '/node_modules/foo/index.js'
     },
 
     read (filename) {
@@ -40,7 +34,7 @@ test('load bare specifier', (t) => {
     }
   })
 
-  t.is(Module.load(Module.resolve('foo')).exports, 42)
+  t.is(Module.load(Module.resolve('foo', '/')).exports, 42)
 })
 
 test('load bare specifier with source', (t) => {
@@ -48,10 +42,7 @@ test('load bare specifier with source', (t) => {
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
-      return (
-        filename === '/node_modules/foo' ||
-        filename === '/node_modules/foo/index.js'
-      )
+      return filename === '/node_modules/foo/index.js'
     },
 
     read () {
@@ -59,7 +50,7 @@ test('load bare specifier with source', (t) => {
     }
   })
 
-  t.is(Module.load(Module.resolve('foo'), 'module.exports = 42').exports, 42)
+  t.is(Module.load(Module.resolve('foo', '/'), 'module.exports = 42').exports, 42)
 })
 
 test('load .js', (t) => {
@@ -131,10 +122,7 @@ test('load .cjs with bare specifier', (t) => {
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
-      return (
-        filename === '/node_modules/foo' ||
-        filename === '/node_modules/foo/index.js'
-      )
+      return filename === '/node_modules/foo/index.js'
     },
 
     read (filename) {
@@ -311,7 +299,6 @@ test('load .pear', (t) => {
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
       return (
-        filename === '/node_modules/native' ||
         filename === '/node_modules/native/index.js' ||
         filename === '/node_modules/native/native.pear'
       )
@@ -326,7 +313,7 @@ test('load .pear', (t) => {
     }
   })
 
-  t.exception(() => Module.load(Module.resolve('native')), /dlopen\(.*node_modules\/native\/native\.pear.+\)/)
+  t.exception(() => Module.load(Module.resolve('native', '/')), /dlopen\(.*node_modules\/native\/native\.pear.+\)/)
 })
 
 test('load .node', (t) => {
@@ -335,7 +322,6 @@ test('load .node', (t) => {
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
       return (
-        filename === '/node_modules/native' ||
         filename === '/node_modules/native/index.js' ||
         filename === '/node_modules/native/native.node'
       )
@@ -350,7 +336,7 @@ test('load .node', (t) => {
     }
   })
 
-  t.exception(() => Module.load(Module.resolve('native')), /dlopen\(.*node_modules\/native\/native\.node.+\)/)
+  t.exception(() => Module.load(Module.resolve('native', '/')), /dlopen\(.*node_modules\/native\/native\.node.+\)/)
 })
 
 test('load .bundle', (t) => {
@@ -505,9 +491,7 @@ test('require', (t) => {
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
       return (
-        filename === '/node_modules/foo' ||
         filename === '/node_modules/foo/index.js' ||
-        filename === '/node_modules/bar' ||
         filename === '/node_modules/bar/index.js'
       )
     },
@@ -525,5 +509,5 @@ test('require', (t) => {
     }
   })
 
-  t.is(Module.load(Module.resolve('foo')).exports, 42)
+  t.is(Module.load(Module.resolve('foo', '/')).exports, 42)
 })
