@@ -20,7 +20,7 @@ test('resolve', (t) => {
   t.is(Module.resolve('foo'), '/node_modules/foo/index.js')
 })
 
-test('load bare', (t) => {
+test('load bare specifier', (t) => {
   Module._cache = {}
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -43,7 +43,7 @@ test('load bare', (t) => {
   t.is(Module.load(Module.resolve('foo')).exports, 42)
 })
 
-test('load bare with source', (t) => {
+test('load bare specifier with source', (t) => {
   Module._cache = {}
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -116,6 +116,33 @@ test('load .cjs', (t) => {
 
     read (filename) {
       if (filename === '/index.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load('/index.cjs').exports, 42)
+})
+
+test('load .cjs with bare specifier', (t) => {
+  Module._cache = {}
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return (
+        filename === '/node_modules/foo' ||
+        filename === '/node_modules/foo/index.js'
+      )
+    },
+
+    read (filename) {
+      if (filename === '/index.cjs') {
+        return 'module.exports = require(\'foo\')'
+      }
+
+      if (filename === '/node_modules/foo/index.js') {
         return 'module.exports = 42'
       }
 
@@ -376,12 +403,37 @@ test('load .bundle with .mjs', (t) => {
   Module.load('/app.bundle', bundle)
 })
 
+test('load .bundle with bare specifier', (t) => {
+  Module._cache = {}
+
+  const bundle = new Module.Bundle()
+    .write('/foo.js', 'module.exports = require(\'bar\')', { main: true })
+    .write('/node_modules/bar/index.js', 'module.exports = 42')
+    .toBuffer()
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists () {
+      return false
+    },
+
+    read (filename) {
+      if (filename === '/app.bundle') {
+        return bundle
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/app.bundle', bundle)
+})
+
 test('load .bundle with bare specifier and import map', (t) => {
   Module._cache = {}
 
   const bundle = new Module.Bundle()
-    .write('/foo.mjs', 'export { default } from \'bar\'', { main: true })
-    .write('/bar.mjs', 'export default 42', { alias: 'bar' })
+    .write('/foo.js', 'module.exports = require(\'bar\')', { main: true })
+    .write('/bar.js', 'module.exports = 42', { alias: 'bar' })
     .toBuffer()
 
   Module._protocols['file:'] = new Module.Protocol({

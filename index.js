@@ -107,8 +107,6 @@ const Module = module.exports = class Module {
     return module
   }
 
-  // TODO: align with 99% of https://nodejs.org/dist/latest-v18.x/docs/api/modules.html#all-together
-
   static resolve (specifier, dirname = process.cwd(), opts = {}) {
     if (typeof dirname !== 'string') {
       opts = dirname
@@ -120,71 +118,87 @@ const Module = module.exports = class Module {
     } = opts
 
     let proto = specifier.slice(0, specifier.indexOf(':') + 1)
-
     if (protocol === null && !proto) proto = 'file:'
-
     if (proto in this._protocols) protocol = this._protocols[proto]
 
-    specifier = protocol.map(specifier)
+    const [resolved = null] = resolve(protocol.map(specifier))
 
-    if (specifier in this._builtins) return specifier
+    if (resolved === null) {
+      throw new Error('Could not resolve ' + specifier + ' from ' + dirname)
+    }
 
-    if (specifier.length === 0) throw new Error('Could not resolve ' + specifier + ' from ' + dirname)
+    return resolved
 
-    let p = null
-    let ticks = 16386 // tons of allowed ticks, just so loops break if a user makes one...
+    function * resolve (specifier) {
+      if (Module.isBuiltin(specifier)) {
+        yield specifier
+        return
+      }
 
-    if (specifier[0] !== '.' && specifier[0] !== '/') {
-      const [name, rest] = splitModule(specifier)
-      const target = 'node_modules/' + name
+      if (/\.{0,2}\//.test(specifier)) {
+        yield * resolveFile(path.join(dirname, specifier))
+        yield * resolveDirectory(dirname)
+        return
+      }
 
-      let tmp = dirname
+      yield * resolveNodeModules(specifier, dirname)
+    }
 
-      while (ticks-- > 0) {
-        const nm = path.join(tmp, target)
+    function * resolveFile (filename) {
+      const f = filename
 
-        if (!protocol.exists(nm)) {
-          const parent = path.dirname(tmp)
-          if (parent === tmp) ticks = -1
-          else tmp = parent
-          continue
-        }
-
-        dirname = nm
-        specifier = rest
-        break
+      if (/\.(js|cjs|mjs|json|node|pear)$/i.test(f)) {
+        if (protocol.exists(f)) yield f
+      } else {
+        if (protocol.exists(f + '.js')) yield f + '.js'
+        if (protocol.exists(f + '.cjs')) yield f + '.cjs'
+        if (protocol.exists(f + '.mjs')) yield f + '.mjs'
+        if (protocol.exists(f + '.json')) yield f + '.json'
+        if (protocol.exists(f + '.node')) yield f + '.node'
+        if (protocol.exists(f + '.pear')) yield f + '.pear'
       }
     }
 
-    while (ticks-- > 0) {
-      p = path.join(dirname, specifier)
+    function * resolveIndex (dirname) {
+      yield * resolveFile(path.join(dirname, 'index'))
+    }
 
-      if (/\.(js|mjs|cjs|json|node|pear)$/i.test(specifier) && protocol.exists(p)) {
-        return p
-      }
-
-      if (protocol.exists(p + '.js')) return p + '.js'
-      if (protocol.exists(p + '.cjs')) return p + '.cjs'
-      if (protocol.exists(p + '.mjs')) return p + '.mjs'
-      if (protocol.exists(p + '.json')) return p + '.json'
-
-      const pkg = path.join(p, 'package.json')
+    function * resolveDirectory (dirname) {
+      const pkg = path.join(dirname, 'package.json')
 
       if (protocol.exists(pkg)) {
-        const json = this.load(pkg).exports
+        const info = this.load(pkg, { protocol }).exports
 
-        dirname = p
-        specifier = json.main || 'index.js'
-        continue
+        if (info.main) {
+          const main = path.join(dirname, info.main)
+
+          yield * resolveFile(main)
+          yield * resolveIndex(main)
+          return
+        }
       }
 
-      p = path.join(p, 'index.js')
-      if (protocol.exists(p)) return p
-
-      break
+      yield * resolveIndex(dirname)
     }
 
-    throw new Error('Could not resolve ' + specifier + ' from ' + dirname)
+    function * resolveNodeModules (specifier, dirname) {
+      for (const nodeModules of resolvePaths(dirname)) {
+        const filename = path.join(nodeModules, specifier)
+
+        yield * resolveFile(filename)
+        yield * resolveDirectory(filename)
+      }
+    }
+
+    function * resolvePaths (start) {
+      const parts = start.split(path.sep)
+
+      for (let i = parts.length - 1; i >= 0; i--) {
+        if (parts[i] !== 'node_modules') {
+          yield path.join(...parts.slice(0, i), 'node_modules')
+        }
+      }
+    }
   }
 
   static isBuiltin (name) {
@@ -294,11 +308,4 @@ Module._extensions['.bundle'] = function (module, filename, source, referrer, pr
 
   module.type = entry.type
   module.exports = entry.exports
-}
-
-function splitModule (m) {
-  const i = m.indexOf('/')
-  if (i === -1) return [m, '.']
-
-  return [m.slice(0, i), '.' + m.slice(i)]
 }
