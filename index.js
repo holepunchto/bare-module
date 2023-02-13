@@ -195,7 +195,7 @@ const Module = module.exports = class Module {
     const parts = start.split(path.sep)
 
     for (let i = parts.length - 1; i >= 0; i--) {
-      if (parts[i] !== 'node_modules') {
+      if (parts[i] && parts[i] !== 'node_modules') {
         yield path.join(parts.slice(0, i + 1).join(path.sep), 'node_modules')
       }
     }
