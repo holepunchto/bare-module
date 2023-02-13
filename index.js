@@ -16,10 +16,6 @@ const Module = module.exports = class Module {
 
   static _context = binding.init(this._onimport.bind(this), this._onevaluate.bind(this))
 
-  static {
-    process.once('exit', () => binding.destroy(this._context))
-  }
-
   static _extensions = Object.create(null)
   static _protocols = Object.create(null)
   static _builtins = Object.create(null)
@@ -313,3 +309,5 @@ Module._extensions['.bundle'] = function (module, filename, source, referrer, pr
   module.type = entry.type
   module.exports = entry.exports
 }
+
+process.once('exit', () => binding.destroy(Module._context))
