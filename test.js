@@ -428,7 +428,7 @@ test('load .bundle with bare specifier', (t) => {
   Module.load('/app.bundle', bundle)
 })
 
-test.solo('load .bundle with bare specifier, nested', (t) => {
+test('load .bundle with bare specifier, nested', (t) => {
   Module._cache = {}
 
   const bundle = new Module.Bundle()
