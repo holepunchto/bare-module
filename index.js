@@ -121,7 +121,7 @@ const Module = module.exports = class Module {
     if (protocol === null && !proto) proto = 'file:'
     if (proto in this._protocols) protocol = this._protocols[proto]
 
-    const [resolved = null] = this._resolve(protocol.map(specifier), dirname, protocol)
+    const [resolved = null] = this._resolve(protocol.map(specifier, dirname), dirname, protocol)
 
     if (resolved === null) {
       throw new Error('Could not resolve ' + specifier + ' from ' + dirname)
@@ -136,8 +136,10 @@ const Module = module.exports = class Module {
       return
     }
 
+    if (/\.{1,2}\//.test(specifier)) specifier = path.join(dirname, specifier)
+
     if (/\.{0,2}\//.test(specifier)) {
-      yield * this._resolveFile(path.join(dirname, specifier), protocol)
+      yield * this._resolveFile(specifier, protocol)
       yield * this._resolveDirectory(dirname, protocol)
       return
     }
@@ -289,7 +291,7 @@ Module._extensions['.bundle'] = function (module, filename, source, referrer, pr
 
   if (typeof source === 'string') source = Buffer.from(source)
 
-  const bundle = Bundle.from(source)
+  const bundle = Bundle.from(source).mount(filename)
 
   module.protocol = protocol = new Protocol({
     map (specifier) {
