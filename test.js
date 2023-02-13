@@ -428,6 +428,32 @@ test('load .bundle with bare specifier', (t) => {
   Module.load('/app.bundle', bundle)
 })
 
+test.solo('load .bundle with bare specifier, nested', (t) => {
+  Module._cache = {}
+
+  const bundle = new Module.Bundle()
+    .write('/foo.js', 'module.exports = require(\'bar\')', { main: true })
+    .write('/node_modules/bar/index.js', 'module.exports = require(\'baz\')')
+    .write('/node_modules/baz/index.js', 'module.exports = 42')
+    .toBuffer()
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists () {
+      return false
+    },
+
+    read (filename) {
+      if (filename === '/app.bundle') {
+        return bundle
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/app.bundle', bundle)
+})
+
 test('load .bundle with bare specifier and import map', (t) => {
   Module._cache = {}
 
