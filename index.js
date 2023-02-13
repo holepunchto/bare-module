@@ -1,5 +1,6 @@
 const path = require('@pearjs/path')
 const Bundle = require('@pearjs/bundle')
+const Protocol = require('./lib/protocol')
 const binding = require('./binding')
 
 const Module = module.exports = class Module {
@@ -54,6 +55,7 @@ const Module = module.exports = class Module {
     }
   }
 
+  static Protocol = Protocol
   static Bundle = Bundle
 
   static load (specifier, source = null, opts = {}) {
@@ -79,13 +81,15 @@ const Module = module.exports = class Module {
 
     let dirname = module.dirname
 
-    while (dirname) {
+    while (true) {
       const pkg = path.join(dirname, 'package.json')
 
       if (protocol.exists(pkg)) {
         try { module.info = Module.load(pkg).exports } catch {}
         break
       }
+
+      if (dirname === '/' || dirname === '.') break
 
       dirname = path.dirname(dirname)
     }
@@ -120,6 +124,8 @@ const Module = module.exports = class Module {
     if (protocol === null && !proto) proto = 'file:'
 
     if (proto in this._protocols) protocol = this._protocols[proto]
+
+    specifier = protocol.map(specifier)
 
     if (specifier in this._builtins) return specifier
 
@@ -269,7 +275,12 @@ Module._extensions['.bundle'] = function (module, filename, source, referrer, pr
 
   const bundle = Bundle.from(source)
 
-  module.protocol = protocol = {
+  module.protocol = protocol = new Protocol({
+    map (specifier) {
+      if (specifier in bundle.imports) specifier = bundle.imports[specifier]
+      return specifier
+    },
+
     exists (filename) {
       return bundle.exists(filename)
     },
@@ -277,7 +288,7 @@ Module._extensions['.bundle'] = function (module, filename, source, referrer, pr
     read (filename) {
       return bundle.read(filename)
     }
-  }
+  })
 
   const entry = Module.load(bundle.main, bundle.read(bundle.main), { protocol })
 

@@ -8,6 +8,7 @@
     "binding.c",
     "binding.js",
     "CMakeLists.txt",
+    "lib",
     "prebuilds"
   ],
   "scripts": {
@@ -26,8 +27,8 @@
   },
   "homepage": "https://github.com/holepunchto/pearjs-module#readme",
   "dependencies": {
-    "@pearjs/bundle": "^0.0.4",
-    "@pearjs/path": "^1.0.0"
+    "@pearjs/bundle": "^0.0.6",
+    "@pearjs/path": "^1.0.4"
   },
   "devDependencies": {
     "brittle": "^3.1.1",
