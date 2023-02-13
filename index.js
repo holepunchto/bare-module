@@ -294,15 +294,18 @@ Module._extensions['.bundle'] = function (module, filename, source, referrer, pr
   module.protocol = protocol = new Protocol({
     map (specifier) {
       if (specifier in bundle.imports) specifier = bundle.imports[specifier]
+
+      if (/\.{0,2}\//.test(specifier)) specifier = path.join(module.filename, specifier)
+
       return specifier
     },
 
     exists (filename) {
-      return bundle.exists(filename)
+      return bundle.exists(filename.replace(module.filename, ''))
     },
 
     read (filename) {
-      return bundle.read(filename)
+      return bundle.read(filename.replace(module.filename, ''))
     }
   })
 
