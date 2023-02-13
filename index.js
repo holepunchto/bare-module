@@ -121,82 +121,82 @@ const Module = module.exports = class Module {
     if (protocol === null && !proto) proto = 'file:'
     if (proto in this._protocols) protocol = this._protocols[proto]
 
-    const [resolved = null] = resolve(protocol.map(specifier))
+    const [resolved = null] = this._resolve(protocol.map(specifier), dirname, protocol)
 
     if (resolved === null) {
       throw new Error('Could not resolve ' + specifier + ' from ' + dirname)
     }
 
     return resolved
+  }
 
-    function * resolve (specifier) {
-      if (Module.isBuiltin(specifier)) {
-        yield specifier
+  static * _resolve (specifier, dirname, protocol) {
+    if (this.isBuiltin(specifier)) {
+      yield specifier
+      return
+    }
+
+    if (/\.{0,2}\//.test(specifier)) {
+      yield * this._resolveFile(path.join(dirname, specifier), protocol)
+      yield * this._resolveDirectory(dirname, protocol)
+      return
+    }
+
+    yield * this._resolveNodeModules(specifier, dirname, protocol)
+  }
+
+  static * _resolveFile (filename, protocol) {
+    const f = filename
+
+    if (/\.(js|cjs|mjs|json|node|pear)$/i.test(f)) {
+      if (protocol.exists(f)) yield f
+    } else {
+      if (protocol.exists(f + '.js')) yield f + '.js'
+      if (protocol.exists(f + '.cjs')) yield f + '.cjs'
+      if (protocol.exists(f + '.mjs')) yield f + '.mjs'
+      if (protocol.exists(f + '.json')) yield f + '.json'
+      if (protocol.exists(f + '.node')) yield f + '.node'
+      if (protocol.exists(f + '.pear')) yield f + '.pear'
+    }
+  }
+
+  static * _resolveIndex (dirname, protocol) {
+    yield * this._resolveFile(path.join(dirname, 'index'), protocol)
+  }
+
+  static * _resolveDirectory (dirname, protocol) {
+    const pkg = path.join(dirname, 'package.json')
+
+    if (protocol.exists(pkg)) {
+      const info = this.load(pkg, { protocol }).exports
+
+      if (info.main) {
+        const main = path.join(dirname, info.main)
+
+        yield * this._resolveFile(main, protocol)
+        yield * this._resolveIndex(main, protocol)
         return
       }
-
-      if (/\.{0,2}\//.test(specifier)) {
-        yield * resolveFile(path.join(dirname, specifier))
-        yield * resolveDirectory(dirname)
-        return
-      }
-
-      yield * resolveNodeModules(specifier, dirname)
     }
 
-    function * resolveFile (filename) {
-      const f = filename
+    yield * this._resolveIndex(dirname, protocol)
+  }
 
-      if (/\.(js|cjs|mjs|json|node|pear)$/i.test(f)) {
-        if (protocol.exists(f)) yield f
-      } else {
-        if (protocol.exists(f + '.js')) yield f + '.js'
-        if (protocol.exists(f + '.cjs')) yield f + '.cjs'
-        if (protocol.exists(f + '.mjs')) yield f + '.mjs'
-        if (protocol.exists(f + '.json')) yield f + '.json'
-        if (protocol.exists(f + '.node')) yield f + '.node'
-        if (protocol.exists(f + '.pear')) yield f + '.pear'
-      }
+  static * _resolveNodeModules (specifier, dirname, protocol) {
+    for (const nodeModules of this._resolvePaths(dirname)) {
+      const filename = path.join(nodeModules, specifier)
+
+      yield * this._resolveFile(filename, protocol)
+      yield * this._resolveDirectory(filename, protocol)
     }
+  }
 
-    function * resolveIndex (dirname) {
-      yield * resolveFile(path.join(dirname, 'index'))
-    }
+  static * _resolvePaths (start) {
+    const parts = start.split(path.sep)
 
-    function * resolveDirectory (dirname) {
-      const pkg = path.join(dirname, 'package.json')
-
-      if (protocol.exists(pkg)) {
-        const info = this.load(pkg, { protocol }).exports
-
-        if (info.main) {
-          const main = path.join(dirname, info.main)
-
-          yield * resolveFile(main)
-          yield * resolveIndex(main)
-          return
-        }
-      }
-
-      yield * resolveIndex(dirname)
-    }
-
-    function * resolveNodeModules (specifier, dirname) {
-      for (const nodeModules of resolvePaths(dirname)) {
-        const filename = path.join(nodeModules, specifier)
-
-        yield * resolveFile(filename)
-        yield * resolveDirectory(filename)
-      }
-    }
-
-    function * resolvePaths (start) {
-      const parts = start.split(path.sep)
-
-      for (let i = parts.length - 1; i >= 0; i--) {
-        if (parts[i] !== 'node_modules') {
-          yield path.join(...parts.slice(0, i), 'node_modules')
-        }
+    for (let i = parts.length - 1; i >= 0; i--) {
+      if (parts[i] !== 'node_modules') {
+        yield path.join(...parts.slice(0, i), 'node_modules')
       }
     }
   }
