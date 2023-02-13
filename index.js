@@ -1,5 +1,6 @@
 const path = require('@pearjs/path')
 const Bundle = require('@pearjs/bundle')
+const b4a = require('b4a')
 const Protocol = require('./lib/protocol')
 const binding = require('./binding')
 
@@ -219,7 +220,7 @@ Module._extensions['.js'] = function (module, filename, source, referrer, protoc
 Module._extensions['.cjs'] = function (module, filename, source, context, protocol) {
   if (source === null) source = protocol.read(filename)
 
-  if (typeof source !== 'string') source = source.toString()
+  if (typeof source !== 'string') source = b4a.toString(source)
 
   const resolve = (specifier) => {
     return this.resolve(specifier, module.dirname, { protocol })
@@ -247,7 +248,7 @@ Module._extensions['.cjs'] = function (module, filename, source, context, protoc
 Module._extensions['.mjs'] = function (module, filename, source, referrer, protocol) {
   if (source === null) source = protocol.read(filename)
 
-  if (typeof source !== 'string') source = source.toString()
+  if (typeof source !== 'string') source = b4a.toString(source)
 
   module.type = 'esm'
   module.protocol = protocol
@@ -262,7 +263,7 @@ Module._extensions['.mjs'] = function (module, filename, source, referrer, proto
 Module._extensions['.json'] = function (module, filename, source, referrer, protocol) {
   if (source === null) source = protocol.read(filename)
 
-  if (typeof source !== 'string') source = source.toString()
+  if (typeof source !== 'string') source = b4a.toString(source)
 
   module.type = 'json'
   module.protocol = protocol
@@ -285,7 +286,7 @@ Module._extensions['.node'] = function (module, filename, source, referrer, prot
 Module._extensions['.bundle'] = function (module, filename, source, referrer, protocol) {
   if (source === null) source = protocol.read(filename)
 
-  if (typeof source === 'string') source = Buffer.from(source)
+  if (typeof source === 'string') source = b4a.from(source)
 
   const bundle = Bundle.from(source).mount(filename)
 
