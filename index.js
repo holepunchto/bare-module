@@ -253,7 +253,9 @@ Module._extensions['.mjs'] = function (module, filename, source, referrer, proto
   module.type = 'esm'
   module.protocol = protocol
 
-  module.definition = binding.createModule(filename, source, 0, this._context)
+  module.definition = binding.createModule(filename, source, 0)
+
+  binding.instantiateModule(module.definition, this._context)
 
   if (referrer === null || referrer.type !== 'esm') {
     binding.runModule(module.definition)
