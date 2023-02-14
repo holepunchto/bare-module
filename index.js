@@ -133,11 +133,11 @@ const Module = module.exports = class Module {
       return
     }
 
-    if (/^\.{0,2}\//.test(specifier)) {
+    if (/^(\/|\.{1,2}\/?)/.test(specifier)) {
       if (specifier[0] === '.') specifier = path.join(dirname, specifier)
 
       yield * this._resolveFile(specifier, protocol)
-      yield * this._resolveDirectory(dirname, protocol)
+      yield * this._resolveDirectory(specifier, protocol)
       return
     }
 
