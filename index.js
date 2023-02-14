@@ -133,9 +133,9 @@ const Module = module.exports = class Module {
       return
     }
 
-    if (/\.{1,2}\//.test(specifier)) specifier = path.join(dirname, specifier)
+    if (/^\.{1,2}\//.test(specifier)) specifier = path.join(dirname, specifier)
 
-    if (/\.{0,2}\//.test(specifier)) {
+    if (/^\.{0,2}\//.test(specifier)) {
       yield * this._resolveFile(specifier, protocol)
       yield * this._resolveDirectory(dirname, protocol)
       return
