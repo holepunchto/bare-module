@@ -254,9 +254,7 @@ Module._extensions['.mjs'] = function (module, filename, source, referrer, proto
   module.definition = binding.createModule(filename, source, 0)
 
   if (referrer === null || referrer.type !== 'esm') {
-    binding.instantiateModule(module.definition, this._context)
-
-    binding.runModule(module.definition)
+    binding.runModule(module.definition, this._context)
   }
 }
 
