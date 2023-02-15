@@ -273,6 +273,58 @@ test('load .mjs with missing import', (t) => {
   t.exception(() => Module.load('/index.mjs'), /could not resolve \.\/foo/i)
 })
 
+test('load .mjs with nested import', (t) => {
+  Module._cache = {}
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/foo.mjs' || filename === '/bar.mjs' || filename === '/baz.mjs'
+    },
+
+    read (filename) {
+      if (filename === '/foo.mjs') {
+        return 'import bar from \'./bar\'; export default 1'
+      }
+
+      if (filename === '/bar.mjs') {
+        return 'import baz from \'./baz\'; export default 2'
+      }
+
+      if (filename === '/baz.mjs') {
+        return 'export default 3'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/foo.mjs')
+})
+
+test('load .mjs with cyclic import', (t) => {
+  Module._cache = {}
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/foo.mjs' || filename === '/bar.mjs'
+    },
+
+    read (filename) {
+      if (filename === '/foo.mjs') {
+        return 'import bar from \'./bar\'; export default 1'
+      }
+
+      if (filename === '/bar.mjs') {
+        return 'import foo from \'./foo\'; export default 2'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/foo.mjs')
+})
+
 test('load .json', (t) => {
   Module._cache = {}
 

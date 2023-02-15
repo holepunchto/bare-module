@@ -32,9 +32,7 @@ const Module = module.exports = class Module {
     const module = this.load(specifier, { protocol, referrer })
 
     if (module.definition === null) {
-      const names = new Set(Object.keys(module.exports))
-
-      names.add('default')
+      const names = new Set(['default', ...Object.keys(module.exports)])
 
       module.definition = binding.createSyntheticModule(module.filename, Array.from(names), this._context)
     }
@@ -255,9 +253,9 @@ Module._extensions['.mjs'] = function (module, filename, source, referrer, proto
 
   module.definition = binding.createModule(filename, source, 0)
 
-  binding.instantiateModule(module.definition, this._context)
-
   if (referrer === null || referrer.type !== 'esm') {
+    binding.instantiateModule(module.definition, this._context)
+
     binding.runModule(module.definition)
   }
 }
