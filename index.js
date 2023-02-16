@@ -145,16 +145,13 @@ const Module = module.exports = class Module {
   static * _resolveFile (filename, protocol) {
     const f = filename
 
-    if (/\.(js|cjs|mjs|json|node|pear)$/i.test(f)) {
-      if (protocol.exists(f)) yield f
-    } else {
-      if (protocol.exists(f + '.js')) yield f + '.js'
-      if (protocol.exists(f + '.cjs')) yield f + '.cjs'
-      if (protocol.exists(f + '.mjs')) yield f + '.mjs'
-      if (protocol.exists(f + '.json')) yield f + '.json'
-      if (protocol.exists(f + '.node')) yield f + '.node'
-      if (protocol.exists(f + '.pear')) yield f + '.pear'
-    }
+    if (protocol.exists(f)) yield f
+    if (protocol.exists(f + '.js')) yield f + '.js'
+    if (protocol.exists(f + '.cjs')) yield f + '.cjs'
+    if (protocol.exists(f + '.mjs')) yield f + '.mjs'
+    if (protocol.exists(f + '.json')) yield f + '.json'
+    if (protocol.exists(f + '.node')) yield f + '.node'
+    if (protocol.exists(f + '.pear')) yield f + '.pear'
   }
 
   static * _resolveIndex (dirname, protocol) {
