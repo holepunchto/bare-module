@@ -163,6 +163,30 @@ test('load .cjs with builtin require', (t) => {
   Module.load('/index.cjs')
 })
 
+test('load .cjs with .mjs require', (t) => {
+  Module._cache = {}
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/bar.mjs'
+    },
+
+    read (filename) {
+      if (filename === '/foo.cjs') {
+        return 'const bar = require(\'./bar\')'
+      }
+
+      if (filename === '/bar.mjs') {
+        return 'export default 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.exception(() => Module.load('/foo.cjs'), /require\(\) of es module/i)
+})
+
 test('load .mjs', (t) => {
   Module._cache = {}
 

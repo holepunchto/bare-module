@@ -244,6 +244,10 @@ Module._extensions['.cjs'] = function (module, filename, source, context, protoc
 }
 
 Module._extensions['.mjs'] = function (module, filename, source, referrer, protocol) {
+  if (referrer && referrer.type === 'cjs') {
+    throw new Error(`require() of ES module ${module.filename} not supported, use import() instead`)
+  }
+
   if (source === null) source = protocol.read(filename)
 
   if (typeof source !== 'string') source = b4a.toString(source)
