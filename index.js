@@ -231,7 +231,7 @@ Module._extensions['.cjs'] = function (module, filename, source, context, protoc
   require.cache = this._cache
   require.resolve = resolve
 
-  binding.runScript(filename, `(function (require, module, exports, __filename, __dirname) {\n${source}\n})`, -1)(
+  binding.createFunction(filename, ['require', 'module', 'exports', '__filename', '__dirname'], source, 0)(
     require,
     module,
     module.exports,

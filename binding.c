@@ -124,33 +124,51 @@ pear_module_destroy (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-pear_module_run_script (js_env_t *env, js_callback_info_t *info) {
+pear_module_create_function (js_env_t *env, js_callback_info_t *info) {
   int err;
 
-  size_t argc = 3;
-  js_value_t *argv[3];
+  size_t argc = 4;
+  js_value_t *argv[4];
 
   err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
   assert(err == 0);
 
-  assert(argc == 3);
+  assert(argc == 4);
 
   size_t file_len;
   char file[1024];
   err = js_get_value_string_utf8(env, argv[0], file, 1024, &file_len);
   if (err < 0) return NULL;
 
-  js_value_t *source = argv[1];
+  uint32_t args_len;
+  err = js_get_array_length(env, argv[1], &args_len);
+  if (err < 0) return NULL;
+
+  js_value_t **args = malloc(sizeof(js_value_t *) * args_len);
+
+  for (int i = 0; i < args_len; i++) {
+    err = js_get_element(env, argv[1], i, &args[i]);
+    if (err < 0) goto err;
+  }
+
+  js_value_t *source = argv[2];
 
   int32_t offset;
-  err = js_get_value_int32(env, argv[2], &offset);
-  if (err < 0) return NULL;
+  err = js_get_value_int32(env, argv[3], &offset);
+  if (err < 0) goto err;
 
   js_value_t *result;
-  err = js_run_script(env, file, file_len, offset, source, &result);
-  if (err < 0) return NULL;
+  err = js_create_function_with_source(env, NULL, 0, file, file_len, args, args_len, 0, source, &result);
+  if (err < 0) goto err;
+
+  free(args);
 
   return result;
+
+err:
+  free(args);
+
+  return NULL;
 }
 
 static js_value_t *
@@ -304,8 +322,8 @@ init (js_env_t *env, js_value_t *exports) {
 
   {
     js_value_t *fn;
-    js_create_function(env, "runScript", -1, pear_module_run_script, NULL, &fn);
-    js_set_named_property(env, exports, "runScript", fn);
+    js_create_function(env, "createFunction", -1, pear_module_create_function, NULL, &fn);
+    js_set_named_property(env, exports, "createFunction", fn);
   }
 
   {

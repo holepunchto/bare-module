@@ -561,29 +561,34 @@ test('load unknown extension', (t) => {
   t.is(Module.load('/index.foo').exports, 42)
 })
 
-test('require', (t) => {
+test('load .cjs with hashbang', (t) => {
   Module._cache = {}
 
   Module._protocols['file:'] = new Module.Protocol({
-    exists (filename) {
-      return (
-        filename === '/node_modules/foo/index.js' ||
-        filename === '/node_modules/bar/index.js'
-      )
+    exists () {
+      return false
     },
 
-    read (filename) {
-      if (filename === '/node_modules/foo/index.js') {
-        return 'module.exports = require(\'bar\')'
-      }
-
-      if (filename === '/node_modules/bar/index.js') {
-        return 'module.exports = 42'
-      }
-
+    read () {
       t.fail()
     }
   })
 
-  t.is(Module.load(Module.resolve('foo', '/')).exports, 42)
+  t.execution(() => Module.load('/index.cjs', '#!node'))
+})
+
+test('load .mjs with hashbang', (t) => {
+  Module._cache = {}
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists () {
+      return false
+    },
+
+    read () {
+      t.fail()
+    }
+  })
+
+  t.execution(() => Module.load('/index.mjs', '#!node'))
 })
