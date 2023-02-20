@@ -6,11 +6,12 @@ const binding = require('./binding')
 
 const Module = module.exports = class Module {
   constructor (filename, dirname = path.dirname(filename)) {
-    this.type = null
-    this.info = null
     this.filename = filename
     this.dirname = dirname
-    this.exports = {}
+
+    this.type = null
+    this.info = null
+    this.exports = null
     this.definition = null
     this.protocol = null
   }
@@ -37,15 +38,7 @@ const Module = module.exports = class Module {
       specifier = this.resolve(specifier, referrer.dirname, { protocol })
     }
 
-    const module = this.load(specifier, { protocol, referrer })
-
-    if (module.definition === null) {
-      const names = new Set(['default', ...Object.keys(module.exports)])
-
-      module.definition = binding.createSyntheticModule(module.filename, Array.from(names), this._context)
-    }
-
-    return module.definition
+    return this.load(specifier, { protocol, referrer }).definition
   }
 
   static _ondynamicimport (specifier, assertions, referrerFilename) {
@@ -70,8 +63,6 @@ const Module = module.exports = class Module {
   static Bundle = Bundle
 
   static load (specifier, source = null, opts = {}) {
-    if (this._cache[specifier]) return this._cache[specifier]
-
     if (!ArrayBuffer.isView(source) && typeof source !== 'string' && source !== null) {
       opts = source
       source = null
@@ -81,6 +72,8 @@ const Module = module.exports = class Module {
       referrer = null,
       protocol = null
     } = opts
+
+    if (this._cache[specifier]) return this._synthesize(this._cache[specifier], referrer)
 
     let proto = specifier.slice(0, specifier.indexOf(':') + 1)
 
@@ -115,7 +108,7 @@ const Module = module.exports = class Module {
       this._extensions[extension].call(this, module, specifier, source, referrer, protocol)
     }
 
-    return module
+    return this._synthesize(module, referrer)
   }
 
   static resolve (specifier, dirname = process.cwd(), opts = {}) {
@@ -213,6 +206,22 @@ const Module = module.exports = class Module {
     }
   }
 
+  static _synthesize (module, referrer = null) {
+    if (referrer === null) return module
+
+    if (referrer.type === 'esm' && module.type !== 'esm' && module.definition === null) {
+      const names = new Set(['default', ...Object.keys(module.exports)])
+
+      module.definition = binding.createSyntheticModule(module.filename, Array.from(names), this._context)
+    }
+
+    if (referrer.type === 'cjs' && module.type === 'esm' && module.exports === null) {
+      module.exports = binding.getModuleNamespace(module.definition)
+    }
+
+    return module
+  }
+
   static isBuiltin (name) {
     return name in this._builtins
   }
@@ -243,6 +252,7 @@ Module._extensions['.cjs'] = function (module, filename, source, context, protoc
 
   module.type = 'cjs'
   module.protocol = protocol
+  module.exports = {}
 
   require.cache = this._cache
   require.resolve = resolve
@@ -263,6 +273,7 @@ Module._extensions['.mjs'] = function (module, filename, source, referrer, proto
 
   module.type = 'esm'
   module.protocol = protocol
+  module.exports = null
 
   module.definition = binding.createModule(filename, source, 0)
 
@@ -271,10 +282,6 @@ Module._extensions['.mjs'] = function (module, filename, source, referrer, proto
 
     binding.runModule(module.definition)
   }
-
-  module.exports = Promise
-    .resolve()
-    .then(() => import(module.filename))
 }
 
 Module._extensions['.json'] = function (module, filename, source, referrer, protocol) {

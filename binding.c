@@ -359,6 +359,27 @@ pear_module_run_module (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
+pear_get_module_namespace (js_env_t *env, js_callback_info_t *info) {
+  int err;
+
+  size_t argc = 1;
+  js_value_t *argv[1];
+
+  err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
+  assert(err == 0);
+
+  js_module_t *module;
+  err = js_get_value_external(env, argv[0], (void **) &module);
+  if (err < 0) return NULL;
+
+  js_value_t *result;
+  err = js_get_module_namespace(env, module, &result);
+  if (err < 0) return NULL;
+
+  return result;
+}
+
+static js_value_t *
 init (js_env_t *env, js_value_t *exports) {
   {
     js_value_t *fn;
@@ -406,6 +427,12 @@ init (js_env_t *env, js_value_t *exports) {
     js_value_t *fn;
     js_create_function(env, "runModule", -1, pear_module_run_module, NULL, &fn);
     js_set_named_property(env, exports, "runModule", fn);
+  }
+
+  {
+    js_value_t *fn;
+    js_create_function(env, "getModuleNamespace", -1, pear_get_module_namespace, NULL, &fn);
+    js_set_named_property(env, exports, "getModuleNamespace", fn);
   }
 
   return exports;
