@@ -187,6 +187,30 @@ test('load .cjs with .mjs require', (t) => {
   Module.load('/foo.cjs')
 })
 
+test('load .cjs with top-level await .mjs require', (t) => {
+  Module._cache = {}
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/bar.mjs'
+    },
+
+    read (filename) {
+      if (filename === '/foo.cjs') {
+        return 'const bar = require(\'./bar\'); bar.default'
+      }
+
+      if (filename === '/bar.mjs') {
+        return 'export default await 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.exception.all(() => Module.load('/foo.cjs'), /cannot access 'default' before initialization/i)
+})
+
 test('load .mjs', (t) => {
   Module._cache = {}
 
