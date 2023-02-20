@@ -277,7 +277,7 @@ pear_module_set_export (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-pear_module_run_module (js_env_t *env, js_callback_info_t *info) {
+pear_module_instantiate_module (js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 2;
@@ -296,7 +296,25 @@ pear_module_run_module (js_env_t *env, js_callback_info_t *info) {
   err = js_get_arraybuffer_info(env, argv[1], (void **) &context, NULL);
   if (err < 0) return NULL;
 
+  js_value_t *result;
   err = js_instantiate_module(env, module, on_import, (void *) context);
+  if (err < 0) return NULL;
+
+  return result;
+}
+
+static js_value_t *
+pear_module_run_module (js_env_t *env, js_callback_info_t *info) {
+  int err;
+
+  size_t argc = 1;
+  js_value_t *argv[1];
+
+  err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
+  assert(err == 0);
+
+  js_module_t *module;
+  err = js_get_value_external(env, argv[0], (void **) &module);
   if (err < 0) return NULL;
 
   js_value_t *result;
@@ -342,6 +360,12 @@ init (js_env_t *env, js_value_t *exports) {
     js_value_t *fn;
     js_create_function(env, "setExport", -1, pear_module_set_export, NULL, &fn);
     js_set_named_property(env, exports, "setExport", fn);
+  }
+
+  {
+    js_value_t *fn;
+    js_create_function(env, "instantiateModule", -1, pear_module_instantiate_module, NULL, &fn);
+    js_set_named_property(env, exports, "instantiateModule", fn);
   }
 
   {
