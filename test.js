@@ -627,7 +627,7 @@ test('load .mjs with dynamic import', (t) => {
 
     read (filename) {
       if (filename === '/foo.mjs') {
-        return 'const bar = await import(\'./bar\')'
+        return 'const { default: bar } = await import(\'./bar\')'
       }
 
       if (filename === '/bar.mjs') {

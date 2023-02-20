@@ -46,6 +46,8 @@ const Module = module.exports = class Module {
 
     binding.instantiateModule(definition, this._context)
 
+    binding.runModule(definition)
+
     return definition
   }
 
