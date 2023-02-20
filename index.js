@@ -48,6 +48,8 @@ const Module = module.exports = class Module {
 
     binding.runModule(definition)
 
+    module.exports = binding.getModuleNamespace(definition)
+
     return definition
   }
 
@@ -283,6 +285,8 @@ Module._extensions['.mjs'] = function (module, filename, source, referrer, proto
     binding.instantiateModule(module.definition, this._context)
 
     binding.runModule(module.definition)
+
+    module.exports = binding.getModuleNamespace(module.definition)
   }
 }
 
