@@ -15,19 +15,27 @@ const Module = module.exports = class Module {
     this.protocol = null
   }
 
-  static _context = binding.init(this._onimport.bind(this), this._onevaluate.bind(this))
+  static _context = binding.init(
+    this._onstaticimport.bind(this),
+    this._ondynamicimport.bind(this),
+    this._onevaluate.bind(this)
+  )
 
   static _extensions = Object.create(null)
   static _protocols = Object.create(null)
   static _builtins = Object.create(null)
   static _cache = Object.create(null)
 
-  static _onimport (specifier, assertions, referrerFilename) {
+  static _onstaticimport (specifier, assertions, referrerFilename) {
     const referrer = this._cache[referrerFilename]
 
-    const protocol = referrer.protocol
+    let protocol
 
-    specifier = this.resolve(specifier, referrer.dirname, { protocol })
+    if (referrer) {
+      protocol = referrer.protocol
+
+      specifier = this.resolve(specifier, referrer.dirname, { protocol })
+    }
 
     const module = this.load(specifier, { protocol, referrer })
 
@@ -38,6 +46,14 @@ const Module = module.exports = class Module {
     }
 
     return module.definition
+  }
+
+  static _ondynamicimport (specifier, assertions, referrerFilename) {
+    const definition = this._onstaticimport(specifier, assertions, referrerFilename)
+
+    binding.instantiateModule(definition, this._context)
+
+    return definition
   }
 
   static _onevaluate (specifier) {
@@ -241,10 +257,6 @@ Module._extensions['.cjs'] = function (module, filename, source, context, protoc
 }
 
 Module._extensions['.mjs'] = function (module, filename, source, referrer, protocol) {
-  if (referrer && referrer.type === 'cjs') {
-    throw new Error(`require() of ES module ${module.filename} not supported, use import() instead`)
-  }
-
   if (source === null) source = protocol.read(filename)
 
   if (typeof source !== 'string') source = b4a.toString(source)
@@ -259,6 +271,10 @@ Module._extensions['.mjs'] = function (module, filename, source, referrer, proto
 
     binding.runModule(module.definition)
   }
+
+  module.exports = Promise
+    .resolve()
+    .then(() => import(module.filename))
 }
 
 Module._extensions['.json'] = function (module, filename, source, referrer, protocol) {

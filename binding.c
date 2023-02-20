@@ -5,18 +5,19 @@
 #include <stdlib.h>
 
 typedef struct {
-  js_ref_t *on_import;
+  js_ref_t *on_static_import;
+  js_ref_t *on_dynamic_import;
   js_ref_t *on_evaluate;
 } pear_module_context_t;
 
 static js_module_t *
-on_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions, js_module_t *referrer, void *data) {
+on_static_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions, js_module_t *referrer, void *data) {
   pear_module_context_t *context = (pear_module_context_t *) data;
 
   int err;
 
-  js_value_t *on_import;
-  err = js_get_reference_value(env, context->on_import, &on_import);
+  js_value_t *on_static_import;
+  err = js_get_reference_value(env, context->on_static_import, &on_static_import);
   assert(err == 0);
 
   js_value_t *global;
@@ -33,7 +34,34 @@ on_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions, js_modu
   if (err < 0) return NULL;
 
   js_value_t *result;
-  err = js_call_function(env, global, on_import, 3, args, &result);
+  err = js_call_function(env, global, on_static_import, 3, args, &result);
+  if (err < 0) return NULL;
+
+  js_module_t *module;
+  err = js_get_value_external(env, result, (void **) &module);
+  if (err < 0) return NULL;
+
+  return module;
+}
+
+static js_module_t *
+on_dynamic_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions, js_value_t *referrer, void *data) {
+  pear_module_context_t *context = (pear_module_context_t *) data;
+
+  int err;
+
+  js_value_t *on_dynamic_import;
+  err = js_get_reference_value(env, context->on_dynamic_import, &on_dynamic_import);
+  assert(err == 0);
+
+  js_value_t *global;
+  err = js_get_global(env, &global);
+  assert(err == 0);
+
+  js_value_t *args[3] = {specifier, assertions, referrer};
+
+  js_value_t *result;
+  err = js_call_function(env, global, on_dynamic_import, 3, args, &result);
   if (err < 0) return NULL;
 
   js_module_t *module;
@@ -75,13 +103,13 @@ static js_value_t *
 pear_module_init (js_env_t *env, js_callback_info_t *info) {
   int err;
 
-  size_t argc = 2;
-  js_value_t *argv[2];
+  size_t argc = 3;
+  js_value_t *argv[3];
 
   err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
   assert(err == 0);
 
-  assert(argc == 2);
+  assert(argc == 3);
 
   pear_module_context_t *context;
 
@@ -89,10 +117,16 @@ pear_module_init (js_env_t *env, js_callback_info_t *info) {
   err = js_create_unsafe_arraybuffer(env, sizeof(pear_module_context_t), (void **) &context, &result);
   if (err < 0) return NULL;
 
-  err = js_create_reference(env, argv[0], 1, &context->on_import);
+  err = js_create_reference(env, argv[0], 1, &context->on_static_import);
   assert(err == 0);
 
-  err = js_create_reference(env, argv[1], 1, &context->on_evaluate);
+  err = js_create_reference(env, argv[1], 1, &context->on_dynamic_import);
+  assert(err == 0);
+
+  err = js_create_reference(env, argv[2], 1, &context->on_evaluate);
+  assert(err == 0);
+
+  err = js_on_dynamic_import(env, on_dynamic_import, (void *) context);
   assert(err == 0);
 
   return result;
@@ -114,7 +148,7 @@ pear_module_destroy (js_env_t *env, js_callback_info_t *info) {
   err = js_get_arraybuffer_info(env, argv[0], (void **) &context, NULL);
   if (err < 0) return NULL;
 
-  err = js_delete_reference(env, context->on_import);
+  err = js_delete_reference(env, context->on_static_import);
   assert(err == 0);
 
   err = js_delete_reference(env, context->on_evaluate);
@@ -297,7 +331,7 @@ pear_module_instantiate_module (js_env_t *env, js_callback_info_t *info) {
   if (err < 0) return NULL;
 
   js_value_t *result;
-  err = js_instantiate_module(env, module, on_import, (void *) context);
+  err = js_instantiate_module(env, module, on_static_import, (void *) context);
   if (err < 0) return NULL;
 
   return result;
