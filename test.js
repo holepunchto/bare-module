@@ -373,6 +373,30 @@ test('load .mjs with cyclic import', (t) => {
   Module.load('/foo.mjs')
 })
 
+test('load .mjs with top-level await .mjs import', (t) => {
+  Module._cache = {}
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/bar.mjs'
+    },
+
+    read (filename) {
+      if (filename === '/foo.mjs') {
+        return 'import bar from \'./bar\''
+      }
+
+      if (filename === '/bar.mjs') {
+        return 'export default await 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/foo.mjs')
+})
+
 test('load .json', (t) => {
   Module._cache = {}
 
