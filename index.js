@@ -73,24 +73,17 @@ const Module = module.exports = class Module {
       source = null
     }
 
-    let {
+    const {
       referrer = null,
-      protocol = null
+      protocol = this._protocols['file:'] || null
     } = opts
 
     if (this._cache[specifier]) return this._synthesize(this._cache[specifier], referrer)
 
-    let proto = specifier.slice(0, specifier.indexOf(':') + 1)
-
-    if (protocol === null && !proto) proto = 'file:'
-
-    if (proto in this._protocols) protocol = this._protocols[proto]
-
     const module = this._cache[specifier] = new this(specifier)
 
     let dirname = module.dirname
-
-    while (true) {
+    do {
       const pkg = path.join(dirname, 'package.json')
 
       if (protocol.exists(pkg)) {
@@ -98,10 +91,8 @@ const Module = module.exports = class Module {
         break
       }
 
-      if (dirname === '/' || dirname === '.') break
-
       dirname = path.dirname(dirname)
-    }
+    } while (dirname !== '/' && dirname !== '.')
 
     if (specifier in this._builtins) {
       module.exports = this._builtins[specifier]
