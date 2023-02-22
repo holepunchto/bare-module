@@ -32,9 +32,9 @@ const Module = module.exports = class Module {
     let protocol
 
     if (referrer) {
-      protocol = referrer._protocol
-
-      specifier = this.resolve(specifier, referrer.dirname, { protocol })
+      specifier = this.resolve(specifier, referrer.dirname, { protocol: protocol = referrer._protocol })
+    } else {
+      specifier = this.resolve(specifier)
     }
 
     const module = this.load(specifier, { protocol, referrer })
