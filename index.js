@@ -87,7 +87,9 @@ const Module = module.exports = class Module {
       const pkg = path.join(dirname, 'package.json')
 
       if (protocol.exists(pkg)) {
-        try { module.info = Module.load(pkg).exports } catch {}
+        try {
+          module.info = Module.load(pkg, { protocol }).exports
+        } catch {}
         break
       }
 
@@ -167,15 +169,17 @@ const Module = module.exports = class Module {
     const pkg = path.join(dirname, 'package.json')
 
     if (protocol.exists(pkg)) {
-      const info = this.load(pkg, { protocol }).exports
+      try {
+        const info = this.load(pkg, { protocol }).exports
 
-      if (info && info.main) {
-        const main = path.join(dirname, info.main)
+        if (info.main) {
+          const main = path.join(dirname, info.main)
 
-        yield * this._resolveFile(main, protocol)
-        yield * this._resolveIndex(main, protocol)
-        return
-      }
+          yield * this._resolveFile(main, protocol)
+          yield * this._resolveIndex(main, protocol)
+          return
+        }
+      } catch {}
     }
 
     yield * this._resolveIndex(dirname, protocol)
