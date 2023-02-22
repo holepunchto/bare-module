@@ -169,7 +169,7 @@ const Module = module.exports = class Module {
     if (protocol.exists(pkg)) {
       const info = this.load(pkg, { protocol }).exports
 
-      if (info.main) {
+      if (info && info.main) {
         const main = path.join(dirname, info.main)
 
         yield * this._resolveFile(main, protocol)
