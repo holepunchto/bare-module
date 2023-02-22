@@ -194,7 +194,7 @@ pear_module_create_function (js_env_t *env, js_callback_info_t *info) {
   if (err < 0) goto err;
 
   js_value_t *result;
-  err = js_create_function_with_source(env, "entry", -1, file, file_len, args, args_len, 0, source, &result);
+  err = js_create_function_with_source(env, NULL, 0, file, file_len, args, args_len, 0, source, &result);
   if (err < 0) goto err;
 
   free(args);
