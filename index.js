@@ -115,13 +115,9 @@ const Module = module.exports = class Module {
       dirname = process.cwd()
     }
 
-    let {
-      protocol = null
+    const {
+      protocol = this._protocols['file:'] || null
     } = opts
-
-    let proto = specifier.slice(0, specifier.indexOf(':') + 1)
-    if (protocol === null && !proto) proto = 'file:'
-    if (proto in this._protocols) protocol = this._protocols[proto]
 
     const [resolved = null] = this._resolve(protocol.map(specifier, dirname), dirname, protocol)
 
