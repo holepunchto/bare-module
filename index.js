@@ -42,7 +42,7 @@ const Module = module.exports = class Module {
     if (dynamic && (module._state & constants.STATE_EVALUATED) === 0) {
       binding.runModule(module._handle, this._context)
 
-      module.exports = binding.getModuleNamespace(module._handle)
+      module.exports = binding.getNamespace(module._handle)
 
       module._state |= constants.STATE_EVALUATED
     }
@@ -212,7 +212,7 @@ const Module = module.exports = class Module {
     }
 
     if (referrer.type === 'cjs' && module.type === 'esm' && module.exports === null) {
-      module.exports = binding.getModuleNamespace(module._handle)
+      module.exports = binding.getNamespace(module._handle)
     }
 
     return module
@@ -274,7 +274,7 @@ Module._extensions['.mjs'] = function (module, source, referrer, protocol) {
   if (referrer === null || referrer.type !== 'esm') {
     binding.runModule(module._handle, this._context)
 
-    module.exports = binding.getModuleNamespace(module._handle)
+    module.exports = binding.getNamespace(module._handle)
 
     module._state |= constants.STATE_EVALUATED
   }
@@ -334,5 +334,15 @@ Module._extensions['.bundle'] = function (module, source, referrer, protocol) {
   module.type = entry.type
   module.exports = entry.exports
 }
+
+Module._protocols['file:'] = new Protocol({
+  exists (filename) {
+    return binding.exists(filename)
+  },
+
+  read (filename) {
+    return b4a.from(binding.read(filename))
+  }
+})
 
 process.once('exit', () => binding.destroy(Module._context))

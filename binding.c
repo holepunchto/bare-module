@@ -1,8 +1,11 @@
 #include <assert.h>
 #include <js.h>
 #include <pear.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <uv.h>
 
 typedef struct {
   js_ref_t *on_import;
@@ -343,7 +346,7 @@ pear_module_run_module (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-pear_get_module_namespace (js_env_t *env, js_callback_info_t *info) {
+pear_module_get_namespace (js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 1;
@@ -361,6 +364,114 @@ pear_get_module_namespace (js_env_t *env, js_callback_info_t *info) {
   if (err < 0) return NULL;
 
   return result;
+}
+
+static js_value_t *
+pear_module_exists (js_env_t *env, js_callback_info_t *info) {
+  int err;
+
+  uv_loop_t *loop;
+  err = js_get_env_loop(env, &loop);
+  assert(err == 0);
+
+  js_value_t *argv[1];
+  size_t argc = 1;
+
+  err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
+  assert(err == 0);
+
+  assert(argc == 1);
+
+  char path[PATH_MAX];
+  err = js_get_value_string_utf8(env, argv[0], path, PATH_MAX, NULL);
+  assert(err == 0);
+
+  uv_fs_t req;
+  uv_fs_stat(loop, &req, path, NULL);
+
+  uv_stat_t *st = req.result < 0 ? NULL : req.ptr;
+
+  uv_fs_req_cleanup(&req);
+
+  js_value_t *result;
+  err = js_get_boolean(env, st && st->st_mode & S_IFREG, &result);
+  assert(err == 0);
+
+  return result;
+}
+
+static js_value_t *
+pear_module_read (js_env_t *env, js_callback_info_t *info) {
+  int err;
+
+  uv_loop_t *loop;
+  err = js_get_env_loop(env, &loop);
+  assert(err == 0);
+
+  js_value_t *argv[1];
+  size_t argc = 1;
+
+  err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
+  assert(err == 0);
+
+  assert(argc == 1);
+
+  char path[PATH_MAX];
+  err = js_get_value_string_utf8(env, argv[0], path, PATH_MAX, NULL);
+  assert(err == 0);
+
+  uv_fs_t req;
+  uv_fs_open(loop, &req, path, UV_FS_O_RDONLY, 0, NULL);
+
+  int fd = req.result;
+  uv_fs_req_cleanup(&req);
+
+  if (fd < 0) goto err;
+
+  uv_fs_fstat(loop, &req, fd, NULL);
+  uv_stat_t *st = req.ptr;
+
+  size_t len = st->st_size;
+  char *base;
+
+  js_value_t *result;
+  err = js_create_arraybuffer(env, len, (void **) &base, &result);
+  assert(err == 0);
+
+  uv_buf_t buffer = uv_buf_init(base, len);
+
+  uv_fs_req_cleanup(&req);
+
+  int64_t read = 0;
+
+  while (true) {
+    uv_fs_read(loop, &req, fd, &buffer, 1, read, NULL);
+
+    int res = req.result;
+    uv_fs_req_cleanup(&req);
+
+    if (res < 0) {
+      uv_fs_close(loop, &req, fd, NULL);
+      uv_fs_req_cleanup(&req);
+      goto err;
+    }
+
+    buffer.base += res;
+    buffer.len -= res;
+
+    read += res;
+    if (res == 0 || read == len) break;
+  }
+
+  uv_fs_close(loop, &req, fd, NULL);
+  uv_fs_req_cleanup(&req);
+
+  return result;
+
+err:
+  js_throw_error(env, uv_err_name(err), uv_strerror(err));
+
+  return NULL;
 }
 
 static js_value_t *
@@ -409,8 +520,20 @@ init (js_env_t *env, js_value_t *exports) {
 
   {
     js_value_t *fn;
-    js_create_function(env, "getModuleNamespace", -1, pear_get_module_namespace, NULL, &fn);
-    js_set_named_property(env, exports, "getModuleNamespace", fn);
+    js_create_function(env, "getNamespace", -1, pear_module_get_namespace, NULL, &fn);
+    js_set_named_property(env, exports, "getNamespace", fn);
+  }
+
+  {
+    js_value_t *fn;
+    js_create_function(env, "exists", -1, pear_module_exists, NULL, &fn);
+    js_set_named_property(env, exports, "exists", fn);
+  }
+
+  {
+    js_value_t *fn;
+    js_create_function(env, "read", -1, pear_module_read, NULL, &fn);
+    js_set_named_property(env, exports, "read", fn);
   }
 
   return exports;
