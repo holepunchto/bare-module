@@ -6,17 +6,19 @@ const constants = require('./lib/constants')
 const binding = require('./binding')
 
 const Module = module.exports = class Module {
-  constructor (filename, dirname = path.dirname(filename)) {
+  constructor (filename) {
     this.filename = filename
-    this.dirname = dirname
-
-    this.type = null
-    this.info = null
     this.exports = null
 
+    this._type = null
+    this._info = null
     this._state = 0
-    this._handle = null
     this._protocol = null
+    this._handle = null
+  }
+
+  get dirname () {
+    return path.dirname(this.filename)
   }
 
   static _context = binding.init(this._onimport.bind(this), this._onevaluate.bind(this))
@@ -37,17 +39,7 @@ const Module = module.exports = class Module {
       specifier = this.resolve(specifier)
     }
 
-    const module = this.load(specifier, { protocol, referrer })
-
-    if (dynamic && (module._state & constants.STATE_EVALUATED) === 0) {
-      binding.runModule(module._handle, this._context)
-
-      module.exports = binding.getNamespace(module._handle)
-
-      module._state |= constants.STATE_EVALUATED
-    }
-
-    return module._handle
+    return this.load(specifier, { protocol, referrer, dynamic })._handle
   }
 
   static _onevaluate (specifier) {
@@ -75,10 +67,11 @@ const Module = module.exports = class Module {
 
     const {
       referrer = null,
-      protocol = this._protocols['file:'] || null
+      protocol = this._protocols['file:'] || null,
+      dynamic = false
     } = opts
 
-    if (this._cache[specifier]) return this._synthesize(this._cache[specifier], referrer)
+    if (this._cache[specifier]) return this._transform(this._cache[specifier], referrer, dynamic)
 
     const module = this._cache[specifier] = new this(specifier)
 
@@ -88,7 +81,7 @@ const Module = module.exports = class Module {
 
       if (protocol.exists(pkg)) {
         try {
-          module.info = Module.load(pkg, { protocol }).exports
+          module._info = Module.load(pkg, { protocol }).exports
         } catch {}
         break
       }
@@ -106,7 +99,7 @@ const Module = module.exports = class Module {
       this._extensions[extension].call(this, module, source, referrer, protocol)
     }
 
-    return this._synthesize(module, referrer)
+    return this._transform(module, referrer, dynamic)
   }
 
   static resolve (specifier, dirname = process.cwd(), opts = {}) {
@@ -202,26 +195,56 @@ const Module = module.exports = class Module {
     }
   }
 
-  static _synthesize (module, referrer = null) {
-    if (referrer === null) return module
+  static _transform (module, referrer = null, dynamic = false) {
+    if (dynamic) {
+      if (module._type !== 'esm' && module._handle === null) {
+        this._synthesize(module)
+      }
 
-    if (referrer.type === 'esm' && module.type !== 'esm' && module._handle === null) {
-      const names = new Set(['default', ...Object.keys(module.exports)])
-
-      module._handle = binding.createSyntheticModule(module.filename, Array.from(names), this._context)
-    }
-
-    if (referrer.type === 'cjs' && module.type === 'esm' && module.exports === null) {
-      module.exports = binding.getNamespace(module._handle)
+      this._evaluate(module)
+    } else if (referrer) {
+      if (referrer._type === 'esm') {
+        if (module._type !== 'esm' && module._handle === null) {
+          this._synthesize(module)
+        }
+      } else if (module._type === 'esm') {
+        this._evaluate(module)
+      }
+    } else if (module._type === 'esm') {
+      this._evaluate(module)
     }
 
     return module
+  }
+
+  static _evaluate (module) {
+    if ((module._state & constants.STATE_EVALUATED) !== 0) return
+
+    binding.runModule(module._handle, this._context)
+
+    if (module._type === 'esm') {
+      module.exports = binding.getNamespace(module._handle)
+    }
+
+    module._state |= constants.STATE_EVALUATED
+  }
+
+  static _synthesize (module) {
+    const names = ['default']
+
+    for (const key of Object.keys(module.exports)) {
+      if (key !== 'default') names.push(key)
+    }
+
+    module._handle = binding.createSyntheticModule(module.filename, names, this._context)
+
+    module._state &= ~constants.STATE_EVALUATED
   }
 }
 
 Module._extensions['.js'] = function (module, source, referrer, protocol) {
   const loader = this._extensions[
-    module.info && module.info.type === 'module'
+    module._info && module._info.type === 'module'
       ? '.mjs'
       : '.cjs'
   ]
@@ -242,8 +265,9 @@ Module._extensions['.cjs'] = function (module, source, context, protocol) {
     return this.load(resolve(specifier), { protocol, referrer: module }).exports
   }
 
-  module.type = 'cjs'
+  module._type = 'cjs'
   module._protocol = protocol
+
   module.exports = {}
 
   require.cache = this._cache
@@ -256,8 +280,6 @@ Module._extensions['.cjs'] = function (module, source, context, protocol) {
     module.filename,
     module.dirname
   )
-
-  module._state |= constants.STATE_EVALUATED
 }
 
 Module._extensions['.mjs'] = function (module, source, referrer, protocol) {
@@ -265,19 +287,9 @@ Module._extensions['.mjs'] = function (module, source, referrer, protocol) {
 
   if (typeof source !== 'string') source = b4a.toString(source)
 
-  module.type = 'esm'
+  module._type = 'esm'
   module._protocol = protocol
-  module.exports = null
-
   module._handle = binding.createModule(module.filename, source, 0)
-
-  if (referrer === null || referrer.type !== 'esm') {
-    binding.runModule(module._handle, this._context)
-
-    module.exports = binding.getNamespace(module._handle)
-
-    module._state |= constants.STATE_EVALUATED
-  }
 }
 
 Module._extensions['.json'] = function (module, source, referrer, protocol) {
@@ -285,25 +297,24 @@ Module._extensions['.json'] = function (module, source, referrer, protocol) {
 
   if (typeof source !== 'string') source = b4a.toString(source)
 
-  module.type = 'json'
-  module.exports = JSON.parse(source)
-
-  module._state |= constants.STATE_EVALUATED
+  module._type = 'json'
   module._protocol = protocol
+
+  module.exports = JSON.parse(source)
 }
 
 Module._extensions['.pear'] = function (module, source, referrer, protocol) {
-  module.type = 'addon'
-  module.exports = process.addon(module.filename)
+  module._type = 'addon'
+  module._protocol = protocol
 
-  module._state |= constants.STATE_EVALUATED
+  module.exports = process.addon(module.filename)
 }
 
 Module._extensions['.node'] = function (module, source, referrer, protocol) {
-  module.type = 'addon'
-  module.exports = process.addon(module.filename)
+  module._type = 'addon'
+  module._protocol = protocol
 
-  module._state |= constants.STATE_EVALUATED
+  module.exports = process.addon(module.filename)
 }
 
 Module._extensions['.bundle'] = function (module, source, referrer, protocol) {
@@ -313,8 +324,10 @@ Module._extensions['.bundle'] = function (module, source, referrer, protocol) {
 
   const bundle = Bundle.from(source).mount(module.filename)
 
-  module._state |= constants.STATE_EVALUATED
-  module._protocol = protocol = new Protocol({
+  module._type = 'bundle'
+  module._protocol = protocol
+
+  protocol = new Protocol({
     map (specifier) {
       if (specifier in bundle.imports) specifier = bundle.imports[specifier]
       return specifier
@@ -329,10 +342,7 @@ Module._extensions['.bundle'] = function (module, source, referrer, protocol) {
     }
   })
 
-  const entry = Module.load(bundle.main, bundle.read(bundle.main), { protocol, referrer })
-
-  module.type = entry.type
-  module.exports = entry.exports
+  module.exports = Module.load(bundle.main, bundle.read(bundle.main), { protocol, referrer }).exports
 }
 
 Module._protocols['file:'] = new Protocol({

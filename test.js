@@ -641,7 +641,7 @@ test('load .mjs with hashbang', (t) => {
   t.execution(() => Module.load('/index.mjs', '#!node'))
 })
 
-test('load .cjs with dynamic import', (t) => {
+test('load .cjs with dynamic .mjs import', (t) => {
   Module._cache = {}
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -665,7 +665,31 @@ test('load .cjs with dynamic import', (t) => {
   Module.load('/foo.cjs')
 })
 
-test('load .mjs with dynamic import', (t) => {
+test('load .cjs with dynamic .cjs import', (t) => {
+  Module._cache = {}
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/bar.cjs'
+    },
+
+    read (filename) {
+      if (filename === '/foo.cjs') {
+        return 'const bar = import(\'./bar\')'
+      }
+
+      if (filename === '/bar.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/foo.cjs')
+})
+
+test('load .mjs with dynamic .mjs import', (t) => {
   Module._cache = {}
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -680,6 +704,30 @@ test('load .mjs with dynamic import', (t) => {
 
       if (filename === '/bar.mjs') {
         return 'export default 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/foo.mjs')
+})
+
+test('load .mjs with dynamic .cjs import', (t) => {
+  Module._cache = {}
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/bar.cjs'
+    },
+
+    read (filename) {
+      if (filename === '/foo.mjs') {
+        return 'const { default: bar } = await import(\'./bar\')'
+      }
+
+      if (filename === '/bar.cjs') {
+        return 'module.exports = 42'
       }
 
       t.fail()
