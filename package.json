@@ -27,9 +27,9 @@
   },
   "homepage": "https://github.com/holepunchto/pearjs-module#readme",
   "dependencies": {
+    "@pearjs/buffer": "^1.1.0",
     "@pearjs/bundle": "^0.0.15",
-    "@pearjs/path": "^1.0.4",
-    "b4a": "^1.6.1"
+    "@pearjs/path": "^1.0.4"
   },
   "devDependencies": {
     "brittle": "^3.1.1",

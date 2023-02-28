@@ -1,6 +1,6 @@
 const path = require('@pearjs/path')
 const Bundle = require('@pearjs/bundle')
-const b4a = require('b4a')
+const Buffer = require('@pearjs/buffer')
 const Protocol = require('./lib/protocol')
 const constants = require('./lib/constants')
 const binding = require('./binding')
@@ -255,7 +255,7 @@ Module._extensions['.js'] = function (module, source, referrer, protocol) {
 Module._extensions['.cjs'] = function (module, source, context, protocol) {
   if (source === null) source = protocol.read(module.filename)
 
-  if (typeof source !== 'string') source = b4a.toString(source)
+  if (typeof source !== 'string') source = Buffer.coerce(source).toString()
 
   const resolve = (specifier) => {
     return this.resolve(specifier, module.dirname, { protocol })
@@ -285,7 +285,7 @@ Module._extensions['.cjs'] = function (module, source, context, protocol) {
 Module._extensions['.mjs'] = function (module, source, referrer, protocol) {
   if (source === null) source = protocol.read(module.filename)
 
-  if (typeof source !== 'string') source = b4a.toString(source)
+  if (typeof source !== 'string') source = Buffer.coerce(source).toString()
 
   module._type = 'esm'
   module._protocol = protocol
@@ -295,7 +295,7 @@ Module._extensions['.mjs'] = function (module, source, referrer, protocol) {
 Module._extensions['.json'] = function (module, source, referrer, protocol) {
   if (source === null) source = protocol.read(module.filename)
 
-  if (typeof source !== 'string') source = b4a.toString(source)
+  if (typeof source !== 'string') source = Buffer.coerce(source).toString()
 
   module._type = 'json'
   module._protocol = protocol
@@ -320,7 +320,7 @@ Module._extensions['.node'] = function (module, source, referrer, protocol) {
 Module._extensions['.bundle'] = function (module, source, referrer, protocol) {
   if (source === null) source = protocol.read(module.filename)
 
-  if (typeof source === 'string') source = b4a.from(source)
+  if (typeof source === 'string') source = Buffer.coerce(source).from(source)
 
   const bundle = Bundle.from(source).mount(module.filename)
 
@@ -351,7 +351,7 @@ Module._protocols['file:'] = new Protocol({
   },
 
   read (filename) {
-    return b4a.from(binding.read(filename))
+    return Buffer.from(binding.read(filename))
   }
 })
 
