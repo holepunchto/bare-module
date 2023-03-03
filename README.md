@@ -8,4 +8,4 @@ npm i @pearjs/module
 
 ## License
 
-MIT
+Apache-2.0
