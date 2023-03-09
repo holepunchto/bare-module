@@ -792,3 +792,63 @@ test('load .mjs with bare specifier and import map', (t) => {
 
   Module.load('/foo.mjs')
 })
+
+test('load .cjs with explicit file: protocol', (t) => {
+  Module._cache = {}
+
+  Module._protocols['file:'] = new Module.Protocol({
+    map (specifier) {
+      return specifier.replace(/^file:/, '')
+    },
+
+    exists (filename) {
+      return filename === '/bar.cjs'
+    },
+
+    read (filename) {
+      if (filename === '/foo.cjs') {
+        return 'const bar = require(\'file:/bar\')'
+      }
+
+      if (filename === '/bar.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/foo.cjs')
+})
+
+test('load .mjs with explicit file: protocol', (t) => {
+  Module._cache = {}
+
+  Module._protocols['file:'] = new Module.Protocol({
+    imports: {
+      bar: '/bar.mjs'
+    },
+
+    map (specifier) {
+      return specifier.replace(/^file:/, '')
+    },
+
+    exists (filename) {
+      return filename === '/bar.mjs'
+    },
+
+    read (filename) {
+      if (filename === '/foo.mjs') {
+        return 'import bar from \'file:/bar\''
+      }
+
+      if (filename === '/bar.mjs') {
+        return 'export default 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/foo.mjs')
+})

@@ -68,7 +68,7 @@ const Module = module.exports = class Module {
 
     const {
       referrer = null,
-      protocol = this._protocols['file:'] || null,
+      protocol = this._protocolFor(specifier),
       dynamic = false
     } = opts
 
@@ -110,8 +110,10 @@ const Module = module.exports = class Module {
     }
 
     const {
-      protocol = this._protocols['file:'] || null
+      protocol = this._protocolFor(specifier)
     } = opts
+
+    if (specifier in protocol.imports) specifier = protocol.imports[specifier]
 
     const [resolved = null] = this._resolve(protocol.map(specifier, dirname), dirname, protocol)
 
@@ -194,6 +196,20 @@ const Module = module.exports = class Module {
         yield path.join(parts.slice(0, i + 1).join(path.sep), 'node_modules')
       }
     }
+  }
+
+  static _protocolFor (specifier) {
+    let protocol = 'file:'
+
+    const i = specifier.indexOf(':')
+
+    if (i >= 0) {
+      protocol = specifier.slice(0, i + 1)
+    }
+
+    if (!this._protocols[protocol]) throw new Error(`Unsupported protocol ${protocol}`)
+
+    return this._protocols[protocol]
   }
 
   static _transform (module, referrer = null, dynamic = false) {
@@ -345,6 +361,10 @@ Module._extensions['.bundle'] = function (module, source, referrer, protocol) {
 
 Module._protocols['file:'] = new Protocol({
   imports: Module._imports,
+
+  map (specifier) {
+    return specifier.replace(/^file:/, '')
+  },
 
   exists (filename) {
     return binding.exists(filename)
