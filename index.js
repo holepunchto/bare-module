@@ -26,6 +26,7 @@ const Module = module.exports = class Module {
   static _extensions = Object.create(null)
   static _protocols = Object.create(null)
   static _builtins = Object.create(null)
+  static _imports = Object.create(null)
   static _cache = Object.create(null)
 
   static _onimport (specifier, assertions, referrerFilename, dynamic) {
@@ -328,10 +329,7 @@ Module._extensions['.bundle'] = function (module, source, referrer, protocol) {
   module._protocol = protocol
 
   protocol = new Protocol({
-    map (specifier) {
-      if (specifier in bundle.imports) specifier = bundle.imports[specifier]
-      return specifier
-    },
+    imports: bundle.imports,
 
     exists (filename) {
       return bundle.exists(filename)
@@ -346,6 +344,8 @@ Module._extensions['.bundle'] = function (module, source, referrer, protocol) {
 }
 
 Module._protocols['file:'] = new Protocol({
+  imports: Module._imports,
+
   exists (filename) {
     return binding.exists(filename)
   },
