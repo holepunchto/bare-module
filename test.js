@@ -741,10 +741,6 @@ test('load .cjs with bare specifier and import map', (t) => {
   Module._cache = {}
 
   Module._protocols['file:'] = new Module.Protocol({
-    imports: {
-      bar: '/bar.cjs'
-    },
-
     exists (filename) {
       return filename === '/bar.cjs'
     },
@@ -762,17 +758,17 @@ test('load .cjs with bare specifier and import map', (t) => {
     }
   })
 
-  Module.load('/foo.cjs')
+  Module.load('/foo.cjs', {
+    imports: {
+      bar: '/bar.cjs'
+    }
+  })
 })
 
 test('load .mjs with bare specifier and import map', (t) => {
   Module._cache = {}
 
   Module._protocols['file:'] = new Module.Protocol({
-    imports: {
-      bar: '/bar.mjs'
-    },
-
     exists (filename) {
       return filename === '/bar.mjs'
     },
@@ -790,7 +786,11 @@ test('load .mjs with bare specifier and import map', (t) => {
     }
   })
 
-  Module.load('/foo.mjs')
+  Module.load('/foo.mjs', {
+    imports: {
+      bar: '/bar.mjs'
+    }
+  })
 })
 
 test('load .cjs with explicit file: protocol', (t) => {
