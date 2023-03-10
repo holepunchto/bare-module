@@ -349,7 +349,7 @@ Module._extensions['.node'] = function (module, source, referrer, protocol, impo
 Module._extensions['.bundle'] = function (module, source, referrer, protocol, imports) {
   if (source === null) source = protocol.read(module.filename)
 
-  if (typeof source === 'string') source = Buffer.coerce(source).from(source)
+  if (typeof source === 'string') source = Buffer.from(source)
 
   const bundle = Bundle.from(source).mount(module.filename)
 
