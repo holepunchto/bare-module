@@ -1,6 +1,5 @@
-const path = require('@pearjs/path')
+const path = require('path')
 const Bundle = require('@pearjs/bundle')
-const Buffer = require('@pearjs/buffer')
 const Protocol = require('./lib/protocol')
 const constants = require('./lib/constants')
 const binding = require('./binding')
