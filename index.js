@@ -132,7 +132,6 @@ const Module = module.exports = class Module {
 
     if (this.isBuiltin(specifier)) {
       yield specifier
-      return
     }
 
     if (/^(\/|\.{1,2}\/?)/.test(specifier)) {
@@ -140,7 +139,6 @@ const Module = module.exports = class Module {
 
       yield * this._resolveFile(specifier, protocol)
       yield * this._resolveDirectory(specifier, protocol)
-      return
     }
 
     yield * this._resolveNodeModules(specifier, dirname, protocol)
