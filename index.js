@@ -164,17 +164,19 @@ const Module = module.exports = class Module {
     const pkg = path.join(dirname, 'package.json')
 
     if (protocol.exists(pkg)) {
+      let info
       try {
-        const info = this.load(pkg, { protocol }).exports
+        info = this.load(pkg, { protocol }).exports
+      } catch {
+        info = null
+      }
 
-        if (info.main) {
-          const main = path.join(dirname, info.main)
+      if (info && info.main) {
+        const main = path.join(dirname, info.main)
 
-          yield * this._resolveFile(main, protocol)
-          yield * this._resolveIndex(main, protocol)
-          return
-        }
-      } catch {}
+        yield * this._resolveFile(main, protocol)
+        yield * this._resolveIndex(main, protocol)
+      }
     }
 
     yield * this._resolveIndex(dirname, protocol)
