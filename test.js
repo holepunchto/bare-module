@@ -852,3 +852,39 @@ test('load .mjs with explicit file: protocol', (t) => {
 
   Module.load('/foo.mjs')
 })
+
+test('load .cjs with node: require', (t) => {
+  Module._cache = {}
+
+  Module._builtins.foo = 42
+
+  Module._protocols['file:'] = new Module.Protocol({
+    read (filename) {
+      if (filename === '/foo.cjs') {
+        return 'const foo = require(\'node:foo\')'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/foo.cjs')
+})
+
+test('load .mjs with node: import', (t) => {
+  Module._cache = {}
+
+  Module._builtins.foo = 42
+
+  Module._protocols['file:'] = new Module.Protocol({
+    read (filename) {
+      if (filename === '/foo.mjs') {
+        return 'import foo from \'node:foo\''
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/foo.mjs')
+})

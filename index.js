@@ -72,13 +72,14 @@ const Module = module.exports = class Module {
     }
 
     const {
-      protocol = this._protocolFor(specifier),
       imports = this._imports,
       referrer = null,
       dynamic = false
     } = opts
 
     if (this._cache[specifier]) return this._transform(this._cache[specifier], referrer, dynamic)
+
+    const protocol = this._protocolFor(specifier, opts.protocol)
 
     const module = this._cache[specifier] = new this(specifier)
 
@@ -116,10 +117,11 @@ const Module = module.exports = class Module {
     }
 
     const {
-      protocol = this._protocolFor(specifier),
       imports = this._imports,
       referrer = null
     } = opts
+
+    const protocol = this._protocolFor(specifier, opts.protocol)
 
     const [resolved = null] = this._resolve(protocol.map(specifier, dirname), dirname, protocol, imports)
 
@@ -210,14 +212,12 @@ const Module = module.exports = class Module {
     }
   }
 
-  static _protocolFor (specifier) {
-    let protocol = 'file:'
-
+  static _protocolFor (specifier, fallback = this._protocols['file:']) {
     const i = specifier.indexOf(':')
 
-    if (i >= 0) {
-      protocol = specifier.slice(0, i + 1)
-    }
+    if (i === -1) return fallback
+
+    const protocol = specifier.slice(0, i + 1)
 
     if (!this._protocols[protocol]) {
       throw errors.UNKNOWN_PROTOCOL(`Unknown protocol '${protocol}' in specifier '${specifier}'`)
@@ -393,6 +393,12 @@ Module._protocols['file:'] = new Protocol({
 
   read (filename) {
     return Buffer.from(binding.read(filename))
+  }
+})
+
+Module._protocols['node:'] = new Protocol({
+  map (specifier) {
+    return specifier.replace(/^node:/, '')
   }
 })
 
