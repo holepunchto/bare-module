@@ -2,6 +2,7 @@ const path = require('path')
 const Bundle = require('@pearjs/bundle')
 const Protocol = require('./lib/protocol')
 const constants = require('./lib/constants')
+const errors = require('./lib/errors')
 const binding = require('./binding')
 
 const Module = module.exports = class Module {
@@ -37,7 +38,8 @@ const Module = module.exports = class Module {
     if (referrer) {
       specifier = this.resolve(specifier, referrer.dirname, {
         protocol: protocol = referrer._protocol,
-        imports: imports = referrer._imports
+        imports: imports = referrer._imports,
+        referrer
       })
     } else {
       specifier = this.resolve(specifier)
@@ -115,13 +117,18 @@ const Module = module.exports = class Module {
 
     const {
       protocol = this._protocolFor(specifier),
-      imports = this._imports
+      imports = this._imports,
+      referrer = null
     } = opts
 
     const [resolved = null] = this._resolve(protocol.map(specifier, dirname), dirname, protocol, imports)
 
     if (resolved === null) {
-      throw new Error('Could not resolve ' + specifier + ' from ' + dirname)
+      let msg = `Cannot find module '${specifier}'`
+
+      if (referrer) msg += ` imported from '${referrer.filename}'`
+
+      throw errors.NOT_FOUND(msg)
     }
 
     return resolved
@@ -212,7 +219,9 @@ const Module = module.exports = class Module {
       protocol = specifier.slice(0, i + 1)
     }
 
-    if (!this._protocols[protocol]) throw new Error(`Unsupported protocol ${protocol}`)
+    if (!this._protocols[protocol]) {
+      throw errors.UNKNOWN_PROTOCOL(`Unknown protocol '${protocol}' in specifier '${specifier}'`)
+    }
 
     return this._protocols[protocol]
   }
@@ -279,12 +288,14 @@ Module._extensions['.cjs'] = function (module, source, referrer, protocol, impor
 
   if (typeof source !== 'string') source = Buffer.coerce(source).toString()
 
+  referrer = module
+
   const resolve = (specifier) => {
-    return this.resolve(specifier, module.dirname, { protocol, imports })
+    return this.resolve(specifier, module.dirname, { protocol, imports, referrer })
   }
 
   const require = (specifier) => {
-    return this.load(resolve(specifier), { protocol, imports, referrer: module }).exports
+    return this.load(resolve(specifier), { protocol, imports, referrer }).exports
   }
 
   module._type = 'cjs'

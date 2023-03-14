@@ -318,7 +318,7 @@ test('load .mjs with missing import', (t) => {
     }
   })
 
-  t.exception(() => Module.load('/index.mjs'), /could not resolve \.\/foo/i)
+  t.exception(() => Module.load('/index.mjs'), /cannot find module '\.\/foo'/i)
 })
 
 test('load .mjs with nested import', (t) => {
