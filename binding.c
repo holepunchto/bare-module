@@ -382,8 +382,8 @@ pear_module_exists (js_env_t *env, js_callback_info_t *info) {
 
   assert(argc == 1);
 
-  char path[PATH_MAX];
-  err = js_get_value_string_utf8(env, argv[0], path, PATH_MAX, NULL);
+  char path[4096];
+  err = js_get_value_string_utf8(env, argv[0], path, 4096, NULL);
   assert(err == 0);
 
   uv_fs_t req;
@@ -416,8 +416,8 @@ pear_module_read (js_env_t *env, js_callback_info_t *info) {
 
   assert(argc == 1);
 
-  char path[PATH_MAX];
-  err = js_get_value_string_utf8(env, argv[0], path, PATH_MAX, NULL);
+  char path[4096];
+  err = js_get_value_string_utf8(env, argv[0], path, 4096, NULL);
   assert(err == 0);
 
   uv_fs_t req;
