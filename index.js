@@ -143,7 +143,7 @@ const Module = module.exports = class Module {
       yield specifier
     }
 
-    if (/^(\/|\.{1,2}\/?)/.test(specifier)) {
+    if (/^([a-z]:)?([\/\\]|\.{1,2}[\/\\]?)/i.test(specifier)) {
       if (specifier[0] === '.') specifier = path.join(dirname, specifier)
 
       yield * this._resolveFile(specifier, protocol)
@@ -215,7 +215,7 @@ const Module = module.exports = class Module {
   static _protocolFor (specifier, fallback = this._protocols['file:']) {
     const i = specifier.indexOf(':')
 
-    if (i === -1) return fallback
+    if (i < 2) return fallback // Allow drive letters in Windows paths
 
     const protocol = specifier.slice(0, i + 1)
 
