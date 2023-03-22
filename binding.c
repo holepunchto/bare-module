@@ -539,4 +539,4 @@ init (js_env_t *env, js_value_t *exports) {
   return exports;
 }
 
-PEAR_MODULE(init)
+PEAR_MODULE(pear_module, init)
