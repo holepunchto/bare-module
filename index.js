@@ -203,7 +203,7 @@ const Module = module.exports = class Module {
   static * _resolvePaths (start) {
     if (start === path.sep) return yield path.join(start, 'node_modules')
 
-    const parts = start.split('/')
+    const parts = start.split(path.sep)
 
     for (let i = parts.length - 1; i >= 0; i--) {
       if (parts[i] !== 'node_modules') {
