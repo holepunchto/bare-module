@@ -219,11 +219,11 @@ const Module = module.exports = class Module {
 
     const protocol = specifier.slice(0, i + 1)
 
-    if (!this._protocols[protocol]) {
+    if (!this._protocols[protocol] && !fallback) {
       throw errors.UNKNOWN_PROTOCOL(`Unknown protocol '${protocol}' in specifier '${specifier}'`)
     }
 
-    return this._protocols[protocol]
+    return this._protocols[protocol] || fallback
   }
 
   static _transform (module, referrer = null, dynamic = false) {
