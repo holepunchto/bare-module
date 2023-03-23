@@ -143,7 +143,7 @@ const Module = module.exports = class Module {
       yield specifier
     }
 
-    if (/^([a-z]:)?([\/\\]|\.{1,2}[\/\\]?)/i.test(specifier)) {
+    if (/^([a-z]:)?([/\\]|\.{1,2}[/\\]?)/i.test(specifier)) {
       if (specifier[0] === '.') specifier = path.join(dirname, specifier)
 
       yield * this._resolveFile(specifier, protocol)
