@@ -825,10 +825,6 @@ test('load .mjs with explicit file: protocol', (t) => {
   Module._cache = {}
 
   Module._protocols['file:'] = new Module.Protocol({
-    imports: {
-      bar: '/bar.mjs'
-    },
-
     map (specifier) {
       return specifier.replace(/^file:/, '')
     },
@@ -887,4 +883,32 @@ test('load .mjs with node: import', (t) => {
   })
 
   Module.load('/foo.mjs')
+})
+
+test('import map with protocol', (t) => {
+  Module._cache = {}
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/bar.mjs'
+    },
+
+    read (filename) {
+      if (filename === '/foo.mjs') {
+        return 'import bar from \'proto:bar\''
+      }
+
+      if (filename === '/bar.mjs') {
+        return 'export default 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/foo.mjs', {
+    imports: {
+      'proto:bar': '/bar.mjs'
+    }
+  })
 })

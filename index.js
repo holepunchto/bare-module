@@ -73,13 +73,12 @@ const Module = module.exports = class Module {
 
     const {
       imports = this._imports,
+      protocol = this._protocolFor(specifier, this._protocols['file:']),
       referrer = null,
       dynamic = false
     } = opts
 
     if (this._cache[specifier]) return this._transform(this._cache[specifier], referrer, dynamic)
-
-    const protocol = this._protocolFor(specifier, opts.protocol)
 
     const module = this._cache[specifier] = new this(specifier)
 
@@ -118,12 +117,11 @@ const Module = module.exports = class Module {
 
     const {
       imports = this._imports,
+      protocol = this._protocols['file:'],
       referrer = null
     } = opts
 
-    const protocol = this._protocolFor(specifier, opts.protocol)
-
-    const [resolved = null] = this._resolve(protocol.map(specifier, dirname), dirname, protocol, imports)
+    const [resolved = null] = this._resolve(specifier, dirname, protocol, imports)
 
     if (resolved === null) {
       let msg = `Cannot find module '${specifier}'`
@@ -138,6 +136,10 @@ const Module = module.exports = class Module {
 
   static * _resolve (specifier, dirname, protocol, imports) {
     if (specifier in imports) specifier = imports[specifier]
+
+    protocol = this._protocolFor(specifier, protocol)
+
+    specifier = protocol.map(specifier, dirname)
 
     if (this.isBuiltin(specifier)) {
       yield specifier
@@ -212,18 +214,18 @@ const Module = module.exports = class Module {
     }
   }
 
-  static _protocolFor (specifier, fallback = this._protocols['file:']) {
+  static _protocolFor (specifier, fallback) {
     const i = specifier.indexOf(':')
 
     if (i < 2) return fallback // Allow drive letters in Windows paths
 
     const protocol = specifier.slice(0, i + 1)
 
-    if (!this._protocols[protocol] && !fallback) {
+    if (!this._protocols[protocol]) {
       throw errors.UNKNOWN_PROTOCOL(`Unknown protocol '${protocol}' in specifier '${specifier}'`)
     }
 
-    return this._protocols[protocol] || fallback
+    return this._protocols[protocol]
   }
 
   static _transform (module, referrer = null, dynamic = false) {
