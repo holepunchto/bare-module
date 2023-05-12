@@ -1,5 +1,5 @@
 const path = require('path')
-const Bundle = require('@pearjs/bundle')
+const Bundle = require('bare-bundle')
 const Protocol = require('./lib/protocol')
 const constants = require('./lib/constants')
 const errors = require('./lib/errors')
@@ -164,7 +164,7 @@ const Module = module.exports = class Module {
     if (protocol.exists(f + '.mjs')) yield f + '.mjs'
     if (protocol.exists(f + '.json')) yield f + '.json'
     if (protocol.exists(f + '.node')) yield f + '.node'
-    if (protocol.exists(f + '.pear')) yield f + '.pear'
+    if (protocol.exists(f + '.bare')) yield f + '.bare'
   }
 
   static * _resolveIndex (dirname, protocol) {
@@ -342,7 +342,7 @@ Module._extensions['.json'] = function (module, source, referrer, protocol, impo
   module.exports = JSON.parse(source)
 }
 
-Module._extensions['.pear'] = function (module, source, referrer, protocol, imports) {
+Module._extensions['.bare'] = function (module, source, referrer, protocol, imports) {
   module._type = 'addon'
   module._protocol = protocol
   module._imports = imports

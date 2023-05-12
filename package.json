@@ -1,5 +1,5 @@
 {
-  "name": "@pearjs/module",
+  "name": "bare-module",
   "version": "1.8.4",
   "description": "Module support for JavaScript",
   "main": "index.js",
@@ -12,22 +12,22 @@
     "prebuilds"
   ],
   "scripts": {
-    "test": "standard && pear test.js",
-    "install": "pear-dev rebuild",
-    "prebuild": "pear-dev prebuild"
+    "test": "standard && bare test.js",
+    "install": "bare-dev rebuild",
+    "prebuild": "bare-dev prebuild"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/holepunchto/pearjs-module.git"
+    "url": "https://github.com/holepunchto/bare-module.git"
   },
   "author": "Holepunch",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/holepunchto/pearjs-module/issues"
+    "url": "https://github.com/holepunchto/bare-module/issues"
   },
-  "homepage": "https://github.com/holepunchto/pearjs-module#readme",
+  "homepage": "https://github.com/holepunchto/bare-module#readme",
   "dependencies": {
-    "@pearjs/bundle": "^0.1.1"
+    "bare-bundle": "^0.1.1"
   },
   "devDependencies": {
     "brittle": "^3.1.1",

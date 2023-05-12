@@ -1,6 +1,6 @@
 #include <assert.h>
+#include <bare.h>
 #include <js.h>
-#include <pear.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -10,11 +10,11 @@
 typedef struct {
   js_ref_t *on_import;
   js_ref_t *on_evaluate;
-} pear_module_context_t;
+} bare_module_context_t;
 
 static js_module_t *
 on_static_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions, js_module_t *referrer, void *data) {
-  pear_module_context_t *context = (pear_module_context_t *) data;
+  bare_module_context_t *context = (bare_module_context_t *) data;
 
   int err;
 
@@ -51,7 +51,7 @@ on_static_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions, 
 
 static js_module_t *
 on_dynamic_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions, js_value_t *referrer, void *data) {
-  pear_module_context_t *context = (pear_module_context_t *) data;
+  bare_module_context_t *context = (bare_module_context_t *) data;
 
   int err;
 
@@ -81,7 +81,7 @@ on_dynamic_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions,
 
 static void
 on_evaluate (js_env_t *env, js_module_t *module, void *data) {
-  pear_module_context_t *context = (pear_module_context_t *) data;
+  bare_module_context_t *context = (bare_module_context_t *) data;
 
   int err;
 
@@ -108,7 +108,7 @@ on_evaluate (js_env_t *env, js_module_t *module, void *data) {
 }
 
 static js_value_t *
-pear_module_init (js_env_t *env, js_callback_info_t *info) {
+bare_module_init (js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 2;
@@ -119,10 +119,10 @@ pear_module_init (js_env_t *env, js_callback_info_t *info) {
 
   assert(argc == 2);
 
-  pear_module_context_t *context;
+  bare_module_context_t *context;
 
   js_value_t *result;
-  err = js_create_unsafe_arraybuffer(env, sizeof(pear_module_context_t), (void **) &context, &result);
+  err = js_create_unsafe_arraybuffer(env, sizeof(bare_module_context_t), (void **) &context, &result);
   if (err < 0) return NULL;
 
   err = js_create_reference(env, argv[0], 1, &context->on_import);
@@ -138,7 +138,7 @@ pear_module_init (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-pear_module_destroy (js_env_t *env, js_callback_info_t *info) {
+bare_module_destroy (js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 1;
@@ -149,7 +149,7 @@ pear_module_destroy (js_env_t *env, js_callback_info_t *info) {
 
   assert(argc == 1);
 
-  pear_module_context_t *context;
+  bare_module_context_t *context;
   err = js_get_arraybuffer_info(env, argv[0], (void **) &context, NULL);
   if (err < 0) return NULL;
 
@@ -163,7 +163,7 @@ pear_module_destroy (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-pear_module_create_function (js_env_t *env, js_callback_info_t *info) {
+bare_module_create_function (js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 4;
@@ -211,7 +211,7 @@ err:
 }
 
 static js_value_t *
-pear_module_create_module (js_env_t *env, js_callback_info_t *info) {
+bare_module_create_module (js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 3;
@@ -245,7 +245,7 @@ pear_module_create_module (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-pear_module_create_synthetic_module (js_env_t *env, js_callback_info_t *info) {
+bare_module_create_synthetic_module (js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 3;
@@ -272,7 +272,7 @@ pear_module_create_synthetic_module (js_env_t *env, js_callback_info_t *info) {
     if (err < 0) goto err;
   }
 
-  pear_module_context_t *context;
+  bare_module_context_t *context;
   err = js_get_arraybuffer_info(env, argv[2], (void **) &context, NULL);
   if (err < 0) goto err;
 
@@ -295,7 +295,7 @@ err:
 }
 
 static js_value_t *
-pear_module_set_export (js_env_t *env, js_callback_info_t *info) {
+bare_module_set_export (js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 3;
@@ -316,7 +316,7 @@ pear_module_set_export (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-pear_module_run_module (js_env_t *env, js_callback_info_t *info) {
+bare_module_run_module (js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 2;
@@ -331,7 +331,7 @@ pear_module_run_module (js_env_t *env, js_callback_info_t *info) {
   err = js_get_value_external(env, argv[0], (void **) &module);
   if (err < 0) return NULL;
 
-  pear_module_context_t *context;
+  bare_module_context_t *context;
   err = js_get_arraybuffer_info(env, argv[1], (void **) &context, NULL);
   if (err < 0) return NULL;
 
@@ -346,7 +346,7 @@ pear_module_run_module (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-pear_module_get_namespace (js_env_t *env, js_callback_info_t *info) {
+bare_module_get_namespace (js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 1;
@@ -367,7 +367,7 @@ pear_module_get_namespace (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-pear_module_exists (js_env_t *env, js_callback_info_t *info) {
+bare_module_exists (js_env_t *env, js_callback_info_t *info) {
   int err;
 
   uv_loop_t *loop;
@@ -401,7 +401,7 @@ pear_module_exists (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-pear_module_read (js_env_t *env, js_callback_info_t *info) {
+bare_module_read (js_env_t *env, js_callback_info_t *info) {
   int err;
 
   uv_loop_t *loop;
@@ -478,65 +478,65 @@ static js_value_t *
 init (js_env_t *env, js_value_t *exports) {
   {
     js_value_t *fn;
-    js_create_function(env, "init", -1, pear_module_init, NULL, &fn);
+    js_create_function(env, "init", -1, bare_module_init, NULL, &fn);
     js_set_named_property(env, exports, "init", fn);
   }
 
   {
     js_value_t *fn;
-    js_create_function(env, "destroy", -1, pear_module_destroy, NULL, &fn);
+    js_create_function(env, "destroy", -1, bare_module_destroy, NULL, &fn);
     js_set_named_property(env, exports, "destroy", fn);
   }
 
   {
     js_value_t *fn;
-    js_create_function(env, "createFunction", -1, pear_module_create_function, NULL, &fn);
+    js_create_function(env, "createFunction", -1, bare_module_create_function, NULL, &fn);
     js_set_named_property(env, exports, "createFunction", fn);
   }
 
   {
     js_value_t *fn;
-    js_create_function(env, "createModule", -1, pear_module_create_module, NULL, &fn);
+    js_create_function(env, "createModule", -1, bare_module_create_module, NULL, &fn);
     js_set_named_property(env, exports, "createModule", fn);
   }
 
   {
     js_value_t *fn;
-    js_create_function(env, "createSyntheticModule", -1, pear_module_create_synthetic_module, NULL, &fn);
+    js_create_function(env, "createSyntheticModule", -1, bare_module_create_synthetic_module, NULL, &fn);
     js_set_named_property(env, exports, "createSyntheticModule", fn);
   }
 
   {
     js_value_t *fn;
-    js_create_function(env, "setExport", -1, pear_module_set_export, NULL, &fn);
+    js_create_function(env, "setExport", -1, bare_module_set_export, NULL, &fn);
     js_set_named_property(env, exports, "setExport", fn);
   }
 
   {
     js_value_t *fn;
-    js_create_function(env, "runModule", -1, pear_module_run_module, NULL, &fn);
+    js_create_function(env, "runModule", -1, bare_module_run_module, NULL, &fn);
     js_set_named_property(env, exports, "runModule", fn);
   }
 
   {
     js_value_t *fn;
-    js_create_function(env, "getNamespace", -1, pear_module_get_namespace, NULL, &fn);
+    js_create_function(env, "getNamespace", -1, bare_module_get_namespace, NULL, &fn);
     js_set_named_property(env, exports, "getNamespace", fn);
   }
 
   {
     js_value_t *fn;
-    js_create_function(env, "exists", -1, pear_module_exists, NULL, &fn);
+    js_create_function(env, "exists", -1, bare_module_exists, NULL, &fn);
     js_set_named_property(env, exports, "exists", fn);
   }
 
   {
     js_value_t *fn;
-    js_create_function(env, "read", -1, pear_module_read, NULL, &fn);
+    js_create_function(env, "read", -1, bare_module_read, NULL, &fn);
     js_set_named_property(env, exports, "read", fn);
   }
 
   return exports;
 }
 
-PEAR_MODULE(pear_module, init)
+BARE_MODULE(bare_module, init)

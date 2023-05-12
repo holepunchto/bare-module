@@ -1,9 +1,9 @@
-# @pearjs/module
+# bare-module
 
 Module support for JavaScript.
 
 ```
-npm i @pearjs/module
+npm i bare-module
 ```
 
 ## License

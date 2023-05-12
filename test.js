@@ -417,27 +417,27 @@ test('load .json', (t) => {
   t.is(Module.load('/index.json').exports, 42)
 })
 
-test('load .pear', (t) => {
+test('load .bare', (t) => {
   Module._cache = {}
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
       return (
         filename === '/node_modules/native/index.js' ||
-        filename === '/node_modules/native/native.pear'
+        filename === '/node_modules/native/native.bare'
       )
     },
 
     read (filename) {
       if (filename === '/node_modules/native/index.js') {
-        return 'require(\'./native.pear\')'
+        return 'require(\'./native.bare\')'
       }
 
       t.fail()
     }
   })
 
-  t.exception(() => Module.load(Module.resolve('native', '/')), /dlopen\(.*node_modules\/native\/native\.pear.+\)/)
+  t.exception(() => Module.load(Module.resolve('native', '/')), /dlopen\(.*node_modules\/native\/native\.bare.+\)/)
 })
 
 test('load .node', (t) => {
