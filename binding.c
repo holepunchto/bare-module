@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <utf.h>
 #include <uv.h>
 
 typedef struct {
@@ -32,7 +33,7 @@ on_static_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions, 
 
   js_value_t *args[4] = {specifier, assertions};
 
-  err = js_create_string_utf8(env, name, -1, &args[2]);
+  err = js_create_string_utf8(env, (utf8_t *) name, -1, &args[2]);
   if (err < 0) return NULL;
 
   err = js_get_boolean(env, false, &args[3]);
@@ -99,7 +100,7 @@ on_evaluate (js_env_t *env, js_module_t *module, void *data) {
 
   js_value_t *args[1];
 
-  err = js_create_string_utf8(env, name, -1, &args[0]);
+  err = js_create_string_utf8(env, (utf8_t *) name, -1, &args[0]);
   if (err < 0) return;
 
   js_value_t *result;
@@ -175,7 +176,7 @@ bare_module_create_function (js_env_t *env, js_callback_info_t *info) {
   assert(argc == 4);
 
   size_t file_len;
-  char file[1024];
+  utf8_t file[1024];
   err = js_get_value_string_utf8(env, argv[0], file, 1024, &file_len);
   if (err < 0) return NULL;
 
@@ -197,7 +198,7 @@ bare_module_create_function (js_env_t *env, js_callback_info_t *info) {
   if (err < 0) goto err;
 
   js_value_t *result;
-  err = js_create_function_with_source(env, NULL, 0, file, file_len, args, args_len, 0, source, &result);
+  err = js_create_function_with_source(env, NULL, 0, (char *) file, file_len, args, args_len, 0, source, &result);
   if (err < 0) goto err;
 
   free(args);
@@ -223,7 +224,7 @@ bare_module_create_module (js_env_t *env, js_callback_info_t *info) {
   assert(argc == 3);
 
   size_t file_len;
-  char file[1024];
+  utf8_t file[1024];
   err = js_get_value_string_utf8(env, argv[0], file, 1024, &file_len);
   if (err < 0) return NULL;
 
@@ -234,7 +235,7 @@ bare_module_create_module (js_env_t *env, js_callback_info_t *info) {
   if (err < 0) return NULL;
 
   js_module_t *module;
-  err = js_create_module(env, file, file_len, offset, source, &module);
+  err = js_create_module(env, (char *) file, file_len, offset, source, &module);
   if (err < 0) return NULL;
 
   js_value_t *result;
@@ -257,7 +258,7 @@ bare_module_create_synthetic_module (js_env_t *env, js_callback_info_t *info) {
   assert(argc == 3);
 
   size_t file_len;
-  char file[1024];
+  utf8_t file[1024];
   err = js_get_value_string_utf8(env, argv[0], file, 1024, &file_len);
   if (err < 0) return NULL;
 
@@ -277,7 +278,7 @@ bare_module_create_synthetic_module (js_env_t *env, js_callback_info_t *info) {
   if (err < 0) goto err;
 
   js_module_t *module;
-  err = js_create_synthetic_module(env, file, file_len, export_names, names_len, on_evaluate, (void *) context, &module);
+  err = js_create_synthetic_module(env, (char *) file, file_len, export_names, names_len, on_evaluate, (void *) context, &module);
   if (err < 0) goto err;
 
   js_value_t *result;
@@ -382,12 +383,12 @@ bare_module_exists (js_env_t *env, js_callback_info_t *info) {
 
   assert(argc == 1);
 
-  char path[4096];
+  utf8_t path[4096];
   err = js_get_value_string_utf8(env, argv[0], path, 4096, NULL);
   assert(err == 0);
 
   uv_fs_t req;
-  uv_fs_stat(loop, &req, path, NULL);
+  uv_fs_stat(loop, &req, (char *) path, NULL);
 
   uv_stat_t *st = req.result < 0 ? NULL : req.ptr;
 
@@ -416,12 +417,12 @@ bare_module_read (js_env_t *env, js_callback_info_t *info) {
 
   assert(argc == 1);
 
-  char path[4096];
+  utf8_t path[4096];
   err = js_get_value_string_utf8(env, argv[0], path, 4096, NULL);
   assert(err == 0);
 
   uv_fs_t req;
-  uv_fs_open(loop, &req, path, UV_FS_O_RDONLY, 0, NULL);
+  uv_fs_open(loop, &req, (char *) path, UV_FS_O_RDONLY, 0, NULL);
 
   int fd = req.result;
   uv_fs_req_cleanup(&req);
@@ -481,55 +482,46 @@ init (js_env_t *env, js_value_t *exports) {
     js_create_function(env, "init", -1, bare_module_init, NULL, &fn);
     js_set_named_property(env, exports, "init", fn);
   }
-
   {
     js_value_t *fn;
     js_create_function(env, "destroy", -1, bare_module_destroy, NULL, &fn);
     js_set_named_property(env, exports, "destroy", fn);
   }
-
   {
     js_value_t *fn;
     js_create_function(env, "createFunction", -1, bare_module_create_function, NULL, &fn);
     js_set_named_property(env, exports, "createFunction", fn);
   }
-
   {
     js_value_t *fn;
     js_create_function(env, "createModule", -1, bare_module_create_module, NULL, &fn);
     js_set_named_property(env, exports, "createModule", fn);
   }
-
   {
     js_value_t *fn;
     js_create_function(env, "createSyntheticModule", -1, bare_module_create_synthetic_module, NULL, &fn);
     js_set_named_property(env, exports, "createSyntheticModule", fn);
   }
-
   {
     js_value_t *fn;
     js_create_function(env, "setExport", -1, bare_module_set_export, NULL, &fn);
     js_set_named_property(env, exports, "setExport", fn);
   }
-
   {
     js_value_t *fn;
     js_create_function(env, "runModule", -1, bare_module_run_module, NULL, &fn);
     js_set_named_property(env, exports, "runModule", fn);
   }
-
   {
     js_value_t *fn;
     js_create_function(env, "getNamespace", -1, bare_module_get_namespace, NULL, &fn);
     js_set_named_property(env, exports, "getNamespace", fn);
   }
-
   {
     js_value_t *fn;
     js_create_function(env, "exists", -1, bare_module_exists, NULL, &fn);
     js_set_named_property(env, exports, "exists", fn);
   }
-
   {
     js_value_t *fn;
     js_create_function(env, "read", -1, bare_module_read, NULL, &fn);
