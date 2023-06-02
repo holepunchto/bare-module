@@ -178,8 +178,8 @@ const Module = module.exports = class Module {
     if (protocol.exists(f + '.cjs')) yield f + '.cjs'
     if (protocol.exists(f + '.mjs')) yield f + '.mjs'
     if (protocol.exists(f + '.json')) yield f + '.json'
-    if (protocol.exists(f + '.node')) yield f + '.node'
     if (protocol.exists(f + '.bare')) yield f + '.bare'
+    if (protocol.exists(f + '.node')) yield f + '.node'
   }
 
   static * _resolveIndex (dirname, protocol) {
