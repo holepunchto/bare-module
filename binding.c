@@ -9,6 +9,7 @@
 #include <uv.h>
 
 typedef struct {
+  js_ref_t *ctx;
   js_ref_t *on_import;
   js_ref_t *on_evaluate;
 } bare_module_context_t;
@@ -19,12 +20,12 @@ on_static_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions, 
 
   int err;
 
-  js_value_t *on_import;
-  err = js_get_reference_value(env, context->on_import, &on_import);
+  js_value_t *ctx;
+  err = js_get_reference_value(env, context->ctx, &ctx);
   assert(err == 0);
 
-  js_value_t *global;
-  err = js_get_global(env, &global);
+  js_value_t *on_import;
+  err = js_get_reference_value(env, context->on_import, &on_import);
   assert(err == 0);
 
   const char *name;
@@ -40,7 +41,7 @@ on_static_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions, 
   assert(err == 0);
 
   js_value_t *result;
-  err = js_call_function(env, global, on_import, 4, args, &result);
+  err = js_call_function(env, ctx, on_import, 4, args, &result);
   if (err < 0) return NULL;
 
   js_module_t *module;
@@ -56,12 +57,12 @@ on_dynamic_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions,
 
   int err;
 
-  js_value_t *on_import;
-  err = js_get_reference_value(env, context->on_import, &on_import);
+  js_value_t *ctx;
+  err = js_get_reference_value(env, context->ctx, &ctx);
   assert(err == 0);
 
-  js_value_t *global;
-  err = js_get_global(env, &global);
+  js_value_t *on_import;
+  err = js_get_reference_value(env, context->on_import, &on_import);
   assert(err == 0);
 
   js_value_t *args[4] = {specifier, assertions, referrer};
@@ -70,7 +71,7 @@ on_dynamic_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions,
   assert(err == 0);
 
   js_value_t *result;
-  err = js_call_function(env, global, on_import, 4, args, &result);
+  err = js_call_function(env, ctx, on_import, 4, args, &result);
   if (err < 0) return NULL;
 
   js_module_t *module;
@@ -86,12 +87,12 @@ on_evaluate (js_env_t *env, js_module_t *module, void *data) {
 
   int err;
 
-  js_value_t *on_evaluate;
-  err = js_get_reference_value(env, context->on_evaluate, &on_evaluate);
+  js_value_t *ctx;
+  err = js_get_reference_value(env, context->ctx, &ctx);
   assert(err == 0);
 
-  js_value_t *global;
-  err = js_get_global(env, &global);
+  js_value_t *on_evaluate;
+  err = js_get_reference_value(env, context->on_evaluate, &on_evaluate);
   assert(err == 0);
 
   const char *name;
@@ -104,7 +105,7 @@ on_evaluate (js_env_t *env, js_module_t *module, void *data) {
   if (err < 0) return;
 
   js_value_t *result;
-  err = js_call_function(env, global, on_evaluate, 1, args, &result);
+  err = js_call_function(env, ctx, on_evaluate, 1, args, &result);
   if (err < 0) return;
 }
 
@@ -112,13 +113,13 @@ static js_value_t *
 bare_module_init (js_env_t *env, js_callback_info_t *info) {
   int err;
 
-  size_t argc = 2;
-  js_value_t *argv[2];
+  size_t argc = 3;
+  js_value_t *argv[3];
 
   err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
   assert(err == 0);
 
-  assert(argc == 2);
+  assert(argc == 3);
 
   bare_module_context_t *context;
 
@@ -126,10 +127,13 @@ bare_module_init (js_env_t *env, js_callback_info_t *info) {
   err = js_create_unsafe_arraybuffer(env, sizeof(bare_module_context_t), (void **) &context, &result);
   if (err < 0) return NULL;
 
-  err = js_create_reference(env, argv[0], 1, &context->on_import);
+  err = js_create_reference(env, argv[0], 1, &context->ctx);
   assert(err == 0);
 
-  err = js_create_reference(env, argv[1], 1, &context->on_evaluate);
+  err = js_create_reference(env, argv[1], 1, &context->on_import);
+  assert(err == 0);
+
+  err = js_create_reference(env, argv[2], 1, &context->on_evaluate);
   assert(err == 0);
 
   err = js_on_dynamic_import(env, on_dynamic_import, (void *) context);
@@ -158,6 +162,9 @@ bare_module_destroy (js_env_t *env, js_callback_info_t *info) {
   assert(err == 0);
 
   err = js_delete_reference(env, context->on_evaluate);
+  assert(err == 0);
+
+  err = js_delete_reference(env, context->ctx);
   assert(err == 0);
 
   return NULL;

@@ -22,7 +22,7 @@ const Module = module.exports = class Module {
     return path.dirname(this.filename)
   }
 
-  static _context = binding.init(this._onimport.bind(this), this._onevaluate.bind(this))
+  static _context = binding.init(this, this._onimport, this._onevaluate)
 
   static _extensions = Object.create(null)
   static _protocols = Object.create(null)
