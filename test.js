@@ -2,7 +2,7 @@ const test = require('brittle')
 const Module = require('.')
 
 test('resolve', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -18,7 +18,7 @@ test('resolve', (t) => {
 })
 
 test('load bare specifier', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -38,7 +38,7 @@ test('load bare specifier', (t) => {
 })
 
 test('load bare specifier with source', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -54,7 +54,7 @@ test('load bare specifier with source', (t) => {
 })
 
 test('load .js', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists () {
@@ -74,7 +74,7 @@ test('load .js', (t) => {
 })
 
 test('load .js with pkg.type module', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -98,7 +98,7 @@ test('load .js with pkg.type module', (t) => {
 })
 
 test('load .cjs', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists () {
@@ -118,7 +118,7 @@ test('load .cjs', (t) => {
 })
 
 test('load .cjs with bare specifier', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -142,7 +142,7 @@ test('load .cjs with bare specifier', (t) => {
 })
 
 test('load .cjs with builtin require', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._builtins.foo = 42
 
@@ -164,7 +164,7 @@ test('load .cjs with builtin require', (t) => {
 })
 
 test('load .cjs with .mjs require', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -188,7 +188,7 @@ test('load .cjs with .mjs require', (t) => {
 })
 
 test('load .cjs with top-level await .mjs require', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -212,7 +212,7 @@ test('load .cjs with top-level await .mjs require', (t) => {
 })
 
 test('load .mjs', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists () {
@@ -232,7 +232,7 @@ test('load .mjs', (t) => {
 })
 
 test('load .mjs with import', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -256,7 +256,7 @@ test('load .mjs with import', (t) => {
 })
 
 test('load .mjs with .cjs import', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -279,8 +279,32 @@ test('load .mjs with .cjs import', (t) => {
   Module.load('/index.mjs')
 })
 
+test('load .mjs with .js import', (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/foo.js'
+    },
+
+    read (filename) {
+      if (filename === '/index.mjs') {
+        return 'import foo from \'./foo.js\''
+      }
+
+      if (filename === '/foo.js') {
+        return 'export default 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/index.mjs')
+})
+
 test('load .mjs with builtin import', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._builtins.foo = 42
 
@@ -302,7 +326,7 @@ test('load .mjs with builtin import', (t) => {
 })
 
 test('load .mjs with missing import', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists () {
@@ -322,7 +346,7 @@ test('load .mjs with missing import', (t) => {
 })
 
 test('load .mjs with nested import', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -350,7 +374,7 @@ test('load .mjs with nested import', (t) => {
 })
 
 test('load .mjs with cyclic import', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -374,7 +398,7 @@ test('load .mjs with cyclic import', (t) => {
 })
 
 test('load .mjs with top-level await .mjs import', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -398,7 +422,7 @@ test('load .mjs with top-level await .mjs import', (t) => {
 })
 
 test('load .json', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists () {
@@ -418,7 +442,7 @@ test('load .json', (t) => {
 })
 
 test('load .bare', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -441,7 +465,7 @@ test('load .bare', (t) => {
 })
 
 test('load .node', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -464,7 +488,7 @@ test('load .node', (t) => {
 })
 
 test('load .bundle', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   const bundle = new Module.Bundle()
     .write('/foo.js', 'module.exports = require(\'./bar\')', { main: true })
@@ -489,7 +513,7 @@ test('load .bundle', (t) => {
 })
 
 test('load .bundle with .mjs', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   const bundle = new Module.Bundle()
     .write('/foo.mjs', 'export { default } from \'./bar\'', { main: true })
@@ -514,7 +538,7 @@ test('load .bundle with .mjs', (t) => {
 })
 
 test('load .bundle with bare specifier', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   const bundle = new Module.Bundle()
     .write('/foo.js', 'module.exports = require(\'bar\')', { main: true })
@@ -539,7 +563,7 @@ test('load .bundle with bare specifier', (t) => {
 })
 
 test('load .bundle with bare specifier, nested', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   const bundle = new Module.Bundle()
     .write('/foo.js', 'module.exports = require(\'bar\')', { main: true })
@@ -565,7 +589,7 @@ test('load .bundle with bare specifier, nested', (t) => {
 })
 
 test('load .bundle with bare specifier and import map', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   const bundle = new Module.Bundle()
     .write('/foo.js', 'module.exports = require(\'bar\')', { main: true })
@@ -590,7 +614,7 @@ test('load .bundle with bare specifier and import map', (t) => {
 })
 
 test('load unknown extension', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists () {
@@ -610,7 +634,7 @@ test('load unknown extension', (t) => {
 })
 
 test('load .cjs with hashbang', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists () {
@@ -626,7 +650,7 @@ test('load .cjs with hashbang', (t) => {
 })
 
 test('load .mjs with hashbang', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists () {
@@ -642,7 +666,7 @@ test('load .mjs with hashbang', (t) => {
 })
 
 test('load .cjs with dynamic .mjs import', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -666,7 +690,7 @@ test('load .cjs with dynamic .mjs import', (t) => {
 })
 
 test('load .cjs with dynamic .cjs import', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -690,7 +714,7 @@ test('load .cjs with dynamic .cjs import', (t) => {
 })
 
 test('load .mjs with dynamic .mjs import', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -714,7 +738,7 @@ test('load .mjs with dynamic .mjs import', (t) => {
 })
 
 test('load .mjs with dynamic .cjs import', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -738,7 +762,7 @@ test('load .mjs with dynamic .cjs import', (t) => {
 })
 
 test('load .cjs with bare specifier and import map', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -766,7 +790,7 @@ test('load .cjs with bare specifier and import map', (t) => {
 })
 
 test('load .mjs with bare specifier and import map', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -794,7 +818,7 @@ test('load .mjs with bare specifier and import map', (t) => {
 })
 
 test('load .cjs with explicit file: protocol', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     map (specifier) {
@@ -822,7 +846,7 @@ test('load .cjs with explicit file: protocol', (t) => {
 })
 
 test('load .mjs with explicit file: protocol', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     map (specifier) {
@@ -850,7 +874,7 @@ test('load .mjs with explicit file: protocol', (t) => {
 })
 
 test('load .cjs with node: require', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._builtins.foo = 42
 
@@ -868,7 +892,7 @@ test('load .cjs with node: require', (t) => {
 })
 
 test('load .mjs with node: import', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._builtins.foo = 42
 
@@ -885,8 +909,40 @@ test('load .mjs with node: import', (t) => {
   Module.load('/foo.mjs')
 })
 
+test('load .cjs with data: require', (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    read (filename) {
+      if (filename === '/foo.cjs') {
+        return `module.exports = require('data:,${encodeURIComponent('module.exports = 42')}')`
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load('/foo.cjs').exports, 42)
+})
+
+test('load .mjs with data: require', (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    read (filename) {
+      if (filename === '/foo.mjs') {
+        return `export { default } from 'data:,${encodeURIComponent('export default 42')}'`
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load('/foo.mjs').exports.default, 42)
+})
+
 test('import map with protocol', (t) => {
-  Module._cache = {}
+  t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
     exists (filename) {
@@ -912,3 +968,7 @@ test('import map with protocol', (t) => {
     }
   })
 })
+
+function onteardown () {
+  Module._cache = {}
+}

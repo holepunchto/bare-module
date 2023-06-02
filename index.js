@@ -36,16 +36,27 @@ const Module = module.exports = class Module {
     let protocol, imports
 
     if (referrer) {
+      protocol = this._protocolFor(specifier, referrer._protocol)
+
+      imports = referrer._imports
+
       specifier = this.resolve(specifier, referrer.dirname, {
-        protocol: protocol = referrer._protocol,
-        imports: imports = referrer._imports,
+        protocol,
+        imports,
         referrer
       })
     } else {
       specifier = this.resolve(specifier)
     }
 
-    return this.load(specifier, { protocol, imports, referrer, dynamic })._handle
+    const module = this.load(specifier, {
+      protocol: this._protocolFor(specifier, protocol),
+      imports,
+      referrer,
+      dynamic
+    })
+
+    return module._handle
   }
 
   static _onevaluate (specifier) {
@@ -141,6 +152,10 @@ const Module = module.exports = class Module {
 
     specifier = protocol.map(specifier, dirname)
 
+    if (protocol.resolve) {
+      yield * protocol.resolve(specifier, dirname, imports)
+    }
+
     if (this.isBuiltin(specifier)) {
       yield specifier
     }
@@ -214,7 +229,7 @@ const Module = module.exports = class Module {
     }
   }
 
-  static _protocolFor (specifier, fallback) {
+  static _protocolFor (specifier, fallback = null) {
     const i = specifier.indexOf(':')
 
     if (i < 2) return fallback // Allow drive letters in Windows paths
@@ -222,7 +237,11 @@ const Module = module.exports = class Module {
     const protocol = specifier.slice(0, i + 1)
 
     if (!this._protocols[protocol]) {
-      throw errors.UNKNOWN_PROTOCOL(`Unknown protocol '${protocol}' in specifier '${specifier}'`)
+      if (fallback === null) {
+        throw errors.UNKNOWN_PROTOCOL(`Unknown protocol '${protocol}' in specifier '${specifier}'`)
+      }
+
+      return fallback
     }
 
     return this._protocols[protocol]
@@ -276,11 +295,15 @@ const Module = module.exports = class Module {
 }
 
 Module._extensions['.js'] = function (module, source, referrer, protocol, imports) {
-  const loader = this._extensions[
-    module._info && module._info.type === 'module'
-      ? '.mjs'
-      : '.cjs'
-  ]
+  const isESM = (
+    // The package is explicitly declared as an ES module.
+    (module._info && module._info.type === 'module') ||
+
+    // The referrer is itself an ES module.
+    (referrer && referrer._type === 'esm')
+  )
+
+  const loader = this._extensions[isESM ? '.mjs' : '.cjs']
 
   return loader.call(this, module, source, referrer, protocol, imports)
 }
@@ -293,11 +316,21 @@ Module._extensions['.cjs'] = function (module, source, referrer, protocol, impor
   referrer = module
 
   const resolve = (specifier) => {
-    return this.resolve(specifier, module.dirname, { protocol, imports, referrer })
+    return this.resolve(specifier, module.dirname, {
+      protocol: this._protocolFor(specifier, protocol),
+      imports,
+      referrer
+    })
   }
 
   const require = (specifier) => {
-    return this.load(resolve(specifier), { protocol, imports, referrer }).exports
+    const module = this.load(resolve(specifier), {
+      protocol: this._protocolFor(specifier, protocol),
+      imports,
+      referrer
+    })
+
+    return module.exports
   }
 
   module._type = 'cjs'
@@ -401,6 +434,18 @@ Module._protocols['file:'] = new Protocol({
 Module._protocols['node:'] = new Protocol({
   map (specifier) {
     return specifier.replace(/^node:/, '')
+  }
+})
+
+Module._protocols['data:'] = new Protocol({
+  * resolve (specifier) {
+    yield specifier
+  },
+
+  read (specifier) {
+    const [, , , base64, data] = specifier.match(/data:(?:([^/]+\/[^;,]+)(;[^=]+=[^;,]+)*)?(;base64)?,(.*)/)
+
+    return Buffer.from(decodeURIComponent(data), base64 ? 'base64' : 'ascii')
   }
 })
 
