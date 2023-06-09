@@ -449,4 +449,8 @@ Module._protocols['data:'] = new Protocol({
   }
 })
 
-process.once('exit', () => binding.destroy(Module._context))
+process.on('exit', () => binding.destroy(Module._context))
+
+if (process.thread) {
+  process.thread.on('exit', () => binding.destroy(Module._context))
+}
