@@ -299,8 +299,8 @@ Module._extensions['.js'] = function (module, source, referrer, protocol, import
     // The package is explicitly declared as an ES module.
     (module._info && module._info.type === 'module') ||
 
-    // The referrer is itself an ES module.
-    (referrer && referrer._type === 'esm')
+    // The source is a data: URI and the referrer is itself an ES module.
+    (protocol === this._protocols['data:'] && referrer && referrer._type === 'esm')
   )
 
   const loader = this._extensions[isESM ? '.mjs' : '.cjs']

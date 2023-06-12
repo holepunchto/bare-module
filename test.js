@@ -293,7 +293,7 @@ test('load .mjs with .js import', (t) => {
       }
 
       if (filename === '/foo.js') {
-        return 'export default 42'
+        return 'module.exports = 42'
       }
 
       t.fail()
