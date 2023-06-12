@@ -209,7 +209,7 @@ const Module = module.exports = class Module {
   }
 
   static * _resolveNodeModules (specifier, dirname, protocol) {
-    for (const nodeModules of this._resolvePaths(dirname)) {
+    for (const nodeModules of this._resolveNodeModulesPaths(dirname)) {
       const filename = path.join(nodeModules, specifier)
 
       yield * this._resolveFile(filename, protocol)
@@ -217,7 +217,7 @@ const Module = module.exports = class Module {
     }
   }
 
-  static * _resolvePaths (start) {
+  static * _resolveNodeModulesPaths (start) {
     if (start === path.sep) return yield path.join(start, 'node_modules')
 
     const parts = start.split(path.sep)
