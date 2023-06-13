@@ -29,6 +29,7 @@ const Module = module.exports = class Module {
   static _builtins = Object.create(null)
   static _imports = Object.create(null)
   static _cache = Object.create(null)
+  static _bundles = Object.create(null)
 
   static _onimport (specifier, assertions, referrerFilename, dynamic) {
     const referrer = this._cache[referrerFilename]
@@ -82,7 +83,7 @@ const Module = module.exports = class Module {
       source = null
     }
 
-    const {
+    let {
       imports = this._imports,
       protocol = this._protocolFor(specifier, this._protocols['file:']),
       referrer = null,
@@ -90,6 +91,22 @@ const Module = module.exports = class Module {
     } = opts
 
     if (this._cache[specifier]) return this._transform(this._cache[specifier], referrer, dynamic)
+
+    const bundle = this._bundleFor(specifier, protocol, source)
+
+    if (bundle) {
+      imports = { ...imports, ...bundle.imports }
+
+      protocol = new Protocol({
+        exists (filename) {
+          return bundle.exists(filename)
+        },
+
+        read (filename) {
+          return bundle.read(filename)
+        }
+      })
+    }
 
     const module = this._cache[specifier] = new this(specifier)
 
@@ -126,11 +143,27 @@ const Module = module.exports = class Module {
       dirname = process.cwd()
     }
 
-    const {
+    let {
       imports = this._imports,
       protocol = this._protocols['file:'],
       referrer = null
     } = opts
+
+    const bundle = this._bundleFor(specifier, protocol)
+
+    if (bundle) {
+      imports = { ...imports, ...bundle.imports }
+
+      protocol = new Protocol({
+        exists (filename) {
+          return bundle.exists(filename)
+        },
+
+        read (filename) {
+          return bundle.read(filename)
+        }
+      })
+    }
 
     const [resolved = null] = this._resolve(specifier, dirname, protocol, imports)
 
@@ -230,21 +263,44 @@ const Module = module.exports = class Module {
   }
 
   static _protocolFor (specifier, fallback = null) {
+    let protocol = fallback
+
     const i = specifier.indexOf(':')
 
-    if (i < 2) return fallback // Allow drive letters in Windows paths
+    if (i >= 2) { // Allow drive letters in Windows paths
+      const name = specifier.slice(0, i + 1)
 
-    const protocol = specifier.slice(0, i + 1)
+      protocol = this._protocols[name] || fallback
 
-    if (!this._protocols[protocol]) {
-      if (fallback === null) {
-        throw errors.UNKNOWN_PROTOCOL(`Unknown protocol '${protocol}' in specifier '${specifier}'`)
+      if (protocol === null) {
+        throw errors.UNKNOWN_PROTOCOL(`Unknown protocol '${name}' in specifier '${specifier}'`)
       }
-
-      return fallback
     }
 
-    return this._protocols[protocol]
+    return protocol
+  }
+
+  static _bundleFor (specifier, protocol, source = null) {
+    let name = specifier
+    do {
+      if (path.extname(name) === '.bundle') {
+        break
+      }
+
+      name = path.dirname(name)
+    } while (name !== '/' && name !== '.')
+
+    if (path.extname(name) !== '.bundle') return null
+
+    let bundle = this._bundles[name]
+
+    if (bundle) return bundle
+
+    if (source === null || name !== specifier) source = protocol.read(name)
+
+    bundle = this._bundles[name] = Bundle.from(source).mount(name)
+
+    return bundle
   }
 
   static _transform (module, referrer = null, dynamic = false) {
@@ -392,27 +448,13 @@ Module._extensions['.node'] = function (module, source, referrer, protocol, impo
 }
 
 Module._extensions['.bundle'] = function (module, source, referrer, protocol, imports) {
-  if (source === null) source = protocol.read(module.filename)
-
   if (typeof source === 'string') source = Buffer.from(source)
 
-  const bundle = Bundle.from(source).mount(module.filename)
+  const bundle = this._bundleFor(module.filename, protocol, source)
 
   module._type = 'bundle'
   module._protocol = protocol
   module._imports = imports
-
-  protocol = new Protocol({
-    exists (filename) {
-      return bundle.exists(filename)
-    },
-
-    read (filename) {
-      return bundle.read(filename)
-    }
-  })
-
-  imports = bundle.imports
 
   module.exports = Module.load(bundle.main, bundle.read(bundle.main), { protocol, imports, referrer }).exports
 }

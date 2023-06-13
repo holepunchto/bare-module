@@ -461,7 +461,7 @@ test('load .bare', (t) => {
     }
   })
 
-  t.exception(() => Module.load(Module.resolve('native', '/')), /dlopen\(.*node_modules\/native\/native\.bare.+\)/)
+  t.exception(() => Module.load(Module.resolve('native', '/')), /no module registered/i)
 })
 
 test('load .node', (t) => {
@@ -484,7 +484,7 @@ test('load .node', (t) => {
     }
   })
 
-  t.exception(() => Module.load(Module.resolve('native', '/')), /dlopen\(.*node_modules\/native\/native\.node.+\)/)
+  t.exception(() => Module.load(Module.resolve('native', '/')), /no module registered/i)
 })
 
 test('load .bundle', (t) => {
@@ -611,6 +611,56 @@ test('load .bundle with bare specifier and import map', (t) => {
   })
 
   Module.load('/app.bundle', bundle)
+})
+
+test('load specific module within .bundle', (t) => {
+  t.teardown(onteardown)
+
+  const bundle = new Module.Bundle()
+    .write('/foo.js', 'module.exports = require(\'./bar\')')
+    .write('/bar.js', 'module.exports = 42')
+    .toBuffer()
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return false
+    },
+
+    read (filename) {
+      if (filename === '/app.bundle') {
+        return bundle
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load('/app.bundle/foo.js').exports, 42)
+})
+
+test('resolve specific module within .bundle', (t) => {
+  t.teardown(onteardown)
+
+  const bundle = new Module.Bundle()
+    .write('/foo.js', 'module.exports = require(\'./bar\')')
+    .write('/bar.js', 'module.exports = 42')
+    .toBuffer()
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return false
+    },
+
+    read (filename) {
+      if (filename === '/app.bundle') {
+        return bundle
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.resolve('/app.bundle/foo'), '/app.bundle/foo.js')
 })
 
 test('load unknown extension', (t) => {
