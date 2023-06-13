@@ -92,7 +92,7 @@ const Module = module.exports = class Module {
 
     if (this._cache[specifier]) return this._transform(this._cache[specifier], referrer, dynamic)
 
-    const bundle = this._bundleFor(specifier, protocol, source)
+    const bundle = this._bundleFor(path.dirname(specifier), protocol, source)
 
     if (bundle) {
       imports = { ...imports, ...bundle.imports }
@@ -149,7 +149,7 @@ const Module = module.exports = class Module {
       referrer = null
     } = opts
 
-    const bundle = this._bundleFor(specifier, protocol)
+    const bundle = this._bundleFor(path.dirname(specifier), protocol)
 
     if (bundle) {
       imports = { ...imports, ...bundle.imports }
