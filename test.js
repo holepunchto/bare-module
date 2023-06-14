@@ -461,7 +461,7 @@ test('load .bare', (t) => {
     }
   })
 
-  t.exception(() => Module.load(Module.resolve('native', '/')), /no module registered/i)
+  t.exception(() => Module.load(Module.resolve('native', '/')), /dlopen\(\/node_modules\/native\/native\.bare/i)
 })
 
 test('load .node', (t) => {
@@ -484,7 +484,7 @@ test('load .node', (t) => {
     }
   })
 
-  t.exception(() => Module.load(Module.resolve('native', '/')), /no module registered/i)
+  t.exception(() => Module.load(Module.resolve('native', '/')), /dlopen\(\/node_modules\/native\/native\.node/i)
 })
 
 test('load .bundle', (t) => {
