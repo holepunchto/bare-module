@@ -592,8 +592,8 @@ test('load .bundle with bare specifier and import map', (t) => {
   t.teardown(onteardown)
 
   const bundle = new Module.Bundle()
-    .write('/foo.js', 'module.exports = require(\'bar\')', { main: true })
-    .write('/bar.js', 'module.exports = 42', { alias: 'bar' })
+    .write('/foo.js', 'module.exports = require(\'baz\')', { main: true })
+    .write('/bar.js', 'module.exports = 42', { alias: 'baz' })
     .toBuffer()
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -610,7 +610,7 @@ test('load .bundle with bare specifier and import map', (t) => {
     }
   })
 
-  Module.load('/app.bundle', bundle)
+  t.is(Module.load('/app.bundle', bundle).exports, 42)
 })
 
 test('load specific module within .bundle', (t) => {
@@ -638,6 +638,34 @@ test('load specific module within .bundle', (t) => {
   t.is(Module.load('/app.bundle/foo.js').exports, 42)
 })
 
+test('load specific module within nested .bundle', (t) => {
+  t.teardown(onteardown)
+
+  const bundleA = new Module.Bundle()
+    .write('/bar.js', 'module.exports = 42')
+    .toBuffer()
+
+  const bundleB = new Module.Bundle()
+    .write('/bar.bundle', bundleA)
+    .toBuffer()
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return false
+    },
+
+    read (filename) {
+      if (filename === '/foo.bundle') {
+        return bundleB
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load('/foo.bundle/bar.bundle/bar.js').exports, 42)
+})
+
 test('resolve specific module within .bundle', (t) => {
   t.teardown(onteardown)
 
@@ -661,6 +689,34 @@ test('resolve specific module within .bundle', (t) => {
   })
 
   t.is(Module.resolve('/app.bundle/foo'), '/app.bundle/foo.js')
+})
+
+test('resolve specific module within nested .bundle', (t) => {
+  t.teardown(onteardown)
+
+  const bundleA = new Module.Bundle()
+    .write('/bar.js', 'module.exports = 42')
+    .toBuffer()
+
+  const bundleB = new Module.Bundle()
+    .write('/bar.bundle', bundleA)
+    .toBuffer()
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return false
+    },
+
+    read (filename) {
+      if (filename === '/foo.bundle') {
+        return bundleB
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.resolve('/foo.bundle/bar.bundle/bar'), '/foo.bundle/bar.bundle/bar.js')
 })
 
 test('load unknown extension', (t) => {

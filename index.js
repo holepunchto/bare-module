@@ -95,9 +95,9 @@ const Module = module.exports = class Module {
     const bundle = this._bundleFor(path.dirname(specifier), protocol, source)
 
     if (bundle) {
-      imports = { ...imports, ...bundle.imports }
-
       protocol = new Protocol({
+        imports: bundle.imports,
+
         exists (filename) {
           return bundle.exists(filename)
         },
@@ -152,9 +152,9 @@ const Module = module.exports = class Module {
     const bundle = this._bundleFor(path.dirname(specifier), protocol)
 
     if (bundle) {
-      imports = { ...imports, ...bundle.imports }
-
       protocol = new Protocol({
+        imports: bundle.imports,
+
         exists (filename) {
           return bundle.exists(filename)
         },
@@ -180,6 +180,7 @@ const Module = module.exports = class Module {
 
   static * _resolve (specifier, dirname, protocol, imports) {
     if (specifier in imports) specifier = imports[specifier]
+    else if (specifier in protocol.imports) specifier = protocol.imports[specifier]
 
     protocol = this._protocolFor(specifier, protocol)
 
@@ -295,6 +296,22 @@ const Module = module.exports = class Module {
     let bundle = this._bundles[name]
 
     if (bundle) return bundle
+
+    const parent = this._bundleFor(path.dirname(name), protocol)
+
+    if (parent) {
+      protocol = new Protocol({
+        imports: parent.imports,
+
+        exists (filename) {
+          return parent.exists(filename)
+        },
+
+        read (filename) {
+          return parent.read(filename)
+        }
+      })
+    }
 
     if (source === null || name !== specifier) source = protocol.read(name)
 
