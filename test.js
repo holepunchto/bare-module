@@ -1075,6 +1075,29 @@ test('import map with protocol', (t) => {
   })
 })
 
+test('import.meta', (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/bar.mjs'
+    },
+
+    read (filename) {
+      if (filename === '/foo.mjs') {
+        return 'export default import.meta'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { default: meta } = Module.load('/foo.mjs').exports
+
+  t.is(meta.url, '/foo.mjs')
+  t.is(meta.resolve('./bar'), '/bar.mjs')
+})
+
 function onteardown () {
   Module._cache = {}
 }

@@ -22,7 +22,7 @@ const Module = module.exports = class Module {
     return path.dirname(this.filename)
   }
 
-  static _context = binding.init(this, this._onimport, this._onevaluate)
+  static _context = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
 
   static _extensions = Object.create(null)
   static _protocols = Object.create(null)
@@ -68,6 +68,21 @@ const Module = module.exports = class Module {
     for (const [key, value] of Object.entries(module.exports)) {
       binding.setExport(module._handle, key, value)
     }
+  }
+
+  static _onmeta (specifier, meta) {
+    const module = this._cache[specifier]
+
+    const resolve = (specifier) => {
+      return this.resolve(specifier, module.dirname, {
+        protocol: this._protocolFor(specifier, module._protocol),
+        imports: module._imports,
+        referrer: module
+      })
+    }
+
+    meta.url = module.filename // TODO: Should we also use the file: protocol?
+    meta.resolve = resolve
   }
 
   static Protocol = Protocol
@@ -433,7 +448,7 @@ Module._extensions['.mjs'] = function (module, source, referrer, protocol, impor
   module._protocol = protocol
   module._imports = imports
 
-  module._handle = binding.createModule(module.filename, source, 0)
+  module._handle = binding.createModule(module.filename, source, 0, this._context)
 }
 
 Module._extensions['.json'] = function (module, source, referrer, protocol, imports) {

@@ -12,6 +12,7 @@ typedef struct {
   js_ref_t *ctx;
   js_ref_t *on_import;
   js_ref_t *on_evaluate;
+  js_ref_t *on_meta;
 } bare_module_context_t;
 
 static js_module_t *
@@ -109,17 +110,47 @@ on_evaluate (js_env_t *env, js_module_t *module, void *data) {
   if (err < 0) return;
 }
 
+static void
+on_meta (js_env_t *env, js_module_t *module, js_value_t *meta, void *data) {
+  bare_module_context_t *context = (bare_module_context_t *) data;
+
+  int err;
+
+  js_value_t *ctx;
+  err = js_get_reference_value(env, context->ctx, &ctx);
+  assert(err == 0);
+
+  js_value_t *on_meta;
+  err = js_get_reference_value(env, context->on_meta, &on_meta);
+  assert(err == 0);
+
+  const char *name;
+  err = js_get_module_name(env, module, &name);
+  assert(err == 0);
+
+  js_value_t *args[2];
+
+  err = js_create_string_utf8(env, (utf8_t *) name, -1, &args[0]);
+  if (err < 0) return;
+
+  args[1] = meta;
+
+  js_value_t *result;
+  err = js_call_function(env, ctx, on_meta, 2, args, &result);
+  if (err < 0) return;
+}
+
 static js_value_t *
 bare_module_init (js_env_t *env, js_callback_info_t *info) {
   int err;
 
-  size_t argc = 3;
-  js_value_t *argv[3];
+  size_t argc = 4;
+  js_value_t *argv[4];
 
   err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
   assert(err == 0);
 
-  assert(argc == 3);
+  assert(argc == 4);
 
   bare_module_context_t *context;
 
@@ -134,6 +165,9 @@ bare_module_init (js_env_t *env, js_callback_info_t *info) {
   assert(err == 0);
 
   err = js_create_reference(env, argv[2], 1, &context->on_evaluate);
+  assert(err == 0);
+
+  err = js_create_reference(env, argv[3], 1, &context->on_meta);
   assert(err == 0);
 
   err = js_on_dynamic_import(env, on_dynamic_import, (void *) context);
@@ -222,13 +256,13 @@ static js_value_t *
 bare_module_create_module (js_env_t *env, js_callback_info_t *info) {
   int err;
 
-  size_t argc = 3;
-  js_value_t *argv[3];
+  size_t argc = 4;
+  js_value_t *argv[4];
 
   err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
   assert(err == 0);
 
-  assert(argc == 3);
+  assert(argc == 4);
 
   size_t file_len;
   utf8_t file[1024];
@@ -241,8 +275,12 @@ bare_module_create_module (js_env_t *env, js_callback_info_t *info) {
   err = js_get_value_int32(env, argv[2], &offset);
   if (err < 0) return NULL;
 
+  bare_module_context_t *context;
+  err = js_get_arraybuffer_info(env, argv[3], (void **) &context, NULL);
+  if (err < 0) return NULL;
+
   js_module_t *module;
-  err = js_create_module(env, (char *) file, file_len, offset, source, NULL, NULL, &module);
+  err = js_create_module(env, (char *) file, file_len, offset, source, on_meta, (void *) context, &module);
   if (err < 0) return NULL;
 
   js_value_t *result;
