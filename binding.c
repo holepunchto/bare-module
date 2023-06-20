@@ -242,7 +242,7 @@ bare_module_create_module (js_env_t *env, js_callback_info_t *info) {
   if (err < 0) return NULL;
 
   js_module_t *module;
-  err = js_create_module(env, (char *) file, file_len, offset, source, &module);
+  err = js_create_module(env, (char *) file, file_len, offset, source, NULL, NULL, &module);
   if (err < 0) return NULL;
 
   js_value_t *result;
