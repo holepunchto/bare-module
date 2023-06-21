@@ -81,7 +81,7 @@ const Module = module.exports = class Module {
       })
     }
 
-    meta.url = module.filename // TODO: Should we also use the file: protocol?
+    meta.url = module.filename
     meta.resolve = resolve
   }
 
