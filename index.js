@@ -187,7 +187,7 @@ const Module = module.exports = class Module {
 
       if (referrer) msg += ` imported from '${referrer.filename}'`
 
-      throw errors.NOT_FOUND(msg)
+      throw errors.MODULE_NOT_FOUND(msg)
     }
 
     return resolved
