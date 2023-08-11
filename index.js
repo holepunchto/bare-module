@@ -6,8 +6,9 @@ const errors = require('./lib/errors')
 const binding = require('./binding')
 
 const Module = module.exports = class Module {
-  constructor (filename) {
+  constructor (filename, main) {
     this.filename = filename
+    this.main = main
     this.exports = null
 
     this._type = null
@@ -82,6 +83,7 @@ const Module = module.exports = class Module {
     }
 
     meta.url = module.filename
+    meta.main = module.main
     meta.resolve = resolve
   }
 
@@ -102,7 +104,8 @@ const Module = module.exports = class Module {
       imports = this._imports,
       protocol = this._protocolFor(specifier, this._protocols['file:']),
       referrer = null,
-      dynamic = false
+      dynamic = false,
+      main = referrer ? referrer.main : specifier
     } = opts
 
     if (this._cache[specifier]) return this._transform(this._cache[specifier], referrer, dynamic)
@@ -123,7 +126,7 @@ const Module = module.exports = class Module {
       })
     }
 
-    const module = this._cache[specifier] = new this(specifier)
+    const module = this._cache[specifier] = new this(specifier, main)
 
     let dirname = module.dirname
     do {
@@ -427,6 +430,7 @@ Module._extensions['.cjs'] = function (module, source, referrer, protocol, impor
 
   module.exports = {}
 
+  require.main = module.main
   require.cache = this._cache
   require.resolve = resolve
 

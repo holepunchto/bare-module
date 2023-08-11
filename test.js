@@ -1075,6 +1075,31 @@ test('import map with protocol', (t) => {
   })
 })
 
+test('require.main', (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/bar.js'
+    },
+
+    read (filename) {
+      if (filename === '/foo.js') {
+        return 'module.exports = require.main; require(\'./bar\')'
+      }
+
+      if (filename === '/bar.js') {
+        return 'module.exports = require.main'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load('/foo.js').exports, '/foo.js')
+  t.is(Module.load('/bar.js').exports, '/foo.js')
+})
+
 test('import.meta', (t) => {
   t.teardown(onteardown)
 
@@ -1095,6 +1120,7 @@ test('import.meta', (t) => {
   const { default: meta } = Module.load('/foo.mjs').exports
 
   t.is(meta.url, '/foo.mjs')
+  t.is(meta.main, '/foo.mjs')
   t.is(meta.resolve('./bar'), '/bar.mjs')
 })
 
