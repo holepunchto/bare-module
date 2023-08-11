@@ -1096,8 +1096,11 @@ test('require.main', (t) => {
     }
   })
 
-  t.is(Module.load('/foo.js').exports, '/foo.js')
-  t.is(Module.load('/bar.js').exports, '/foo.js')
+  const foo = Module.load('/foo.js')
+  const bar = Module.load('/bar.js')
+
+  t.is(foo.exports, foo)
+  t.is(bar.exports, foo)
 })
 
 test('import.meta', (t) => {
@@ -1120,7 +1123,7 @@ test('import.meta', (t) => {
   const { default: meta } = Module.load('/foo.mjs').exports
 
   t.is(meta.url, '/foo.mjs')
-  t.is(meta.main, '/foo.mjs')
+  t.is(meta.main, true)
   t.is(meta.resolve('./bar'), '/bar.mjs')
 })
 

@@ -8,7 +8,7 @@ const binding = require('./binding')
 const Module = module.exports = class Module {
   constructor (filename, main) {
     this.filename = filename
-    this.main = main
+    this.main = main || this
     this.exports = null
 
     this._type = null
@@ -83,7 +83,7 @@ const Module = module.exports = class Module {
     }
 
     meta.url = module.filename
-    meta.main = module.main
+    meta.main = module.main === module
     meta.resolve = resolve
   }
 
@@ -105,7 +105,7 @@ const Module = module.exports = class Module {
       protocol = this._protocolFor(specifier, this._protocols['file:']),
       referrer = null,
       dynamic = false,
-      main = referrer ? referrer.main : specifier
+      main = referrer ? referrer.main : null
     } = opts
 
     if (this._cache[specifier]) return this._transform(this._cache[specifier], referrer, dynamic)
