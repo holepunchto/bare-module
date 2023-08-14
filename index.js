@@ -90,6 +90,14 @@ const Module = module.exports = class Module {
   static Protocol = Protocol
   static Bundle = Bundle
 
+  static get cache () {
+    return this._cache
+  }
+
+  static get builtinModules () {
+    return Object.keys(this._builtins)
+  }
+
   static isBuiltin (name) {
     return name in this._builtins
   }
@@ -431,7 +439,7 @@ Module._extensions['.cjs'] = function (module, source, referrer, protocol, impor
   module.exports = {}
 
   require.main = module.main
-  require.cache = this._cache
+  require.cache = this.cache
   require.resolve = resolve
 
   binding.createFunction(module.filename, ['require', 'module', 'exports', '__filename', '__dirname'], source, 0)(
