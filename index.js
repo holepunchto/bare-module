@@ -23,6 +23,10 @@ const Module = module.exports = class Module {
     return path.dirname(this.filename)
   }
 
+  get importMap () {
+    return this._imports
+  }
+
   static _context = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
 
   static _extensions = Object.create(null)
