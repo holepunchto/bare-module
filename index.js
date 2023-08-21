@@ -27,6 +27,16 @@ const Module = module.exports = class Module {
     return this._imports
   }
 
+  // For Node.js compatibility
+  get id () {
+    return this.filename
+  }
+
+  // For Node.s compatibility
+  get path () {
+    return this.dirname
+  }
+
   static _context = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
 
   static _extensions = Object.create(null)
