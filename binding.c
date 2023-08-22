@@ -437,11 +437,11 @@ bare_module_exists (js_env_t *env, js_callback_info_t *info) {
 
   uv_stat_t *st = req.result < 0 ? NULL : req.ptr;
 
-  uv_fs_req_cleanup(&req);
-
   js_value_t *result;
   err = js_get_boolean(env, st && st->st_mode & S_IFREG, &result);
   assert(err == 0);
+
+  uv_fs_req_cleanup(&req);
 
   return result;
 }
@@ -469,9 +469,12 @@ bare_module_realpath (js_env_t *env, js_callback_info_t *info) {
   uv_fs_t req;
   uv_fs_realpath(loop, &req, (char *) path, NULL);
 
-  if (req.result < 0) {
-    js_throw_error(env, uv_err_name(err), uv_strerror(err));
-    return NULL;
+  int res = req.result;
+
+  if (res < 0) {
+    uv_fs_req_cleanup(&req);
+    err = res;
+    goto err;
   }
 
   js_value_t *result;
@@ -481,6 +484,11 @@ bare_module_realpath (js_env_t *env, js_callback_info_t *info) {
   uv_fs_req_cleanup(&req);
 
   return result;
+
+err:
+  js_throw_error(env, uv_err_name(err), uv_strerror(err));
+
+  return NULL;
 }
 
 static js_value_t *
@@ -536,6 +544,7 @@ bare_module_read (js_env_t *env, js_callback_info_t *info) {
     if (res < 0) {
       uv_fs_close(loop, &req, fd, NULL);
       uv_fs_req_cleanup(&req);
+      err = res;
       goto err;
     }
 
