@@ -447,6 +447,38 @@ bare_module_exists (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
+bare_module_realpath (js_env_t *env, js_callback_info_t *info) {
+  int err;
+
+  uv_loop_t *loop;
+  err = js_get_env_loop(env, &loop);
+  assert(err == 0);
+
+  js_value_t *argv[1];
+  size_t argc = 1;
+
+  err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
+  assert(err == 0);
+
+  assert(argc == 1);
+
+  utf8_t path[4096];
+  err = js_get_value_string_utf8(env, argv[0], path, 4096, NULL);
+  assert(err == 0);
+
+  uv_fs_t req;
+  uv_fs_realpath(loop, &req, (char *) path, NULL);
+
+  js_value_t *result;
+  err = js_create_string_utf8(env, (utf8_t *) req.ptr, -1, &result);
+  assert(err == 0);
+
+  uv_fs_req_cleanup(&req);
+
+  return result;
+}
+
+static js_value_t *
 bare_module_read (js_env_t *env, js_callback_info_t *info) {
   int err;
 
@@ -566,6 +598,11 @@ init (js_env_t *env, js_value_t *exports) {
     js_value_t *fn;
     js_create_function(env, "exists", -1, bare_module_exists, NULL, &fn);
     js_set_named_property(env, exports, "exists", fn);
+  }
+  {
+    js_value_t *fn;
+    js_create_function(env, "realpath", -1, bare_module_realpath, NULL, &fn);
+    js_set_named_property(env, exports, "realpath", fn);
   }
   {
     js_value_t *fn;

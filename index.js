@@ -215,7 +215,7 @@ const Module = module.exports = class Module {
       throw errors.MODULE_NOT_FOUND(msg)
     }
 
-    return resolved
+    return protocol.postresolve(resolved, dirname)
   }
 
   static * _resolve (specifier, dirname, protocol, imports) {
@@ -224,7 +224,7 @@ const Module = module.exports = class Module {
 
     protocol = this._protocolFor(specifier, protocol)
 
-    specifier = protocol.map(specifier, dirname)
+    specifier = protocol.preresolve(specifier, dirname)
 
     if (protocol.resolve) {
       yield * protocol.resolve(specifier, dirname, imports)
@@ -245,15 +245,18 @@ const Module = module.exports = class Module {
   }
 
   static * _resolveFile (filename, protocol) {
-    const f = filename
+    const extensions = [
+      '.js',
+      '.cjs',
+      '.mjs',
+      '.json',
+      '.bare',
+      '.node'
+    ]
 
-    if (protocol.exists(f)) yield f
-    if (protocol.exists(f + '.js')) yield f + '.js'
-    if (protocol.exists(f + '.cjs')) yield f + '.cjs'
-    if (protocol.exists(f + '.mjs')) yield f + '.mjs'
-    if (protocol.exists(f + '.json')) yield f + '.json'
-    if (protocol.exists(f + '.bare')) yield f + '.bare'
-    if (protocol.exists(f + '.node')) yield f + '.node'
+    for (const candidate of [filename, ...extensions.map(ext => filename + ext)]) {
+      if (protocol.exists(candidate)) yield candidate
+    }
   }
 
   static * _resolveIndex (dirname, protocol) {
@@ -518,8 +521,12 @@ Module._extensions['.bundle'] = function (module, source, referrer, protocol, im
 }
 
 Module._protocols['file:'] = new Protocol({
-  map (specifier) {
+  preresolve (specifier) {
     return specifier.replace(/^file:/, '')
+  },
+
+  postresolve (specifier) {
+    return binding.realpath(specifier)
   },
 
   exists (filename) {
@@ -532,7 +539,7 @@ Module._protocols['file:'] = new Protocol({
 })
 
 Module._protocols['node:'] = new Protocol({
-  map (specifier) {
+  preresolve (specifier) {
     return specifier.replace(/^node:/, '')
   }
 })

@@ -927,7 +927,7 @@ test('load .cjs with explicit file: protocol', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
-    map (specifier) {
+    preresolve (specifier) {
       return specifier.replace(/^file:/, '')
     },
 
@@ -955,7 +955,7 @@ test('load .mjs with explicit file: protocol', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
-    map (specifier) {
+    preresolve (specifier) {
       return specifier.replace(/^file:/, '')
     },
 
