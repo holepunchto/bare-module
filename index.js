@@ -526,6 +526,7 @@ Module._protocols['file:'] = new Protocol({
   },
 
   postresolve (specifier) {
+    if (Module.isBuiltin(specifier)) return specifier
     return binding.realpath(specifier)
   },
 
