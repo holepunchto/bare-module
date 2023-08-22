@@ -469,6 +469,11 @@ bare_module_realpath (js_env_t *env, js_callback_info_t *info) {
   uv_fs_t req;
   uv_fs_realpath(loop, &req, (char *) path, NULL);
 
+  if (req.result < 0) {
+    js_throw_error(env, uv_err_name(err), uv_strerror(err));
+    return NULL;
+  }
+
   js_value_t *result;
   err = js_create_string_utf8(env, (utf8_t *) req.ptr, -1, &result);
   assert(err == 0);
