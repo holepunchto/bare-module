@@ -116,6 +116,31 @@ const Module = module.exports = class Module {
     return name in this._builtins
   }
 
+  static createRequire (filename) {
+    const module = new Module(filename)
+    const referrer = module
+
+    const resolve = (specifier) => {
+      return this.resolve(specifier, module.dirname, {
+        referrer
+      })
+    }
+
+    const require = (specifier) => {
+      const module = this.load(resolve(specifier), {
+        referrer
+      })
+
+      return module.exports
+    }
+
+    require.main = module.main
+    require.cache = this.cache
+    require.resolve = resolve
+
+    return require
+  }
+
   static load (specifier, source = null, opts = {}) {
     if (!ArrayBuffer.isView(source) && typeof source !== 'string' && source !== null) {
       opts = source

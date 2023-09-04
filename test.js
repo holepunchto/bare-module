@@ -1127,6 +1127,28 @@ test('import.meta', (t) => {
   t.is(meta.resolve('./bar'), '/bar.mjs')
 })
 
+test('createRequire', (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/dir/bar.js'
+    },
+
+    read (filename) {
+      if (filename === '/dir/bar.js') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const require = Module.createRequire('/dir/foo.js')
+
+  t.is(require('./bar.js'), 42)
+})
+
 function onteardown () {
   Module._cache = {}
 }
