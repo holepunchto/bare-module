@@ -390,20 +390,20 @@ const Module = module.exports = class Module {
 
   static _transform (module, referrer = null, dynamic = false) {
     if (dynamic) {
-      if (module._type !== 'esm' && module._handle === null) {
+      if (module._type !== constants.TYPE_ESM && module._handle === null) {
         this._synthesize(module)
       }
 
       this._evaluate(module)
     } else if (referrer) {
-      if (referrer._type === 'esm') {
-        if (module._type !== 'esm' && module._handle === null) {
+      if (referrer._type === constants.TYPE_ESM) {
+        if (module._type !== constants.TYPE_ESM && module._handle === null) {
           this._synthesize(module)
         }
-      } else if (module._type === 'esm') {
+      } else if (module._type === constants.TYPE_ESM) {
         this._evaluate(module)
       }
-    } else if (module._type === 'esm') {
+    } else if (module._type === constants.TYPE_ESM) {
       this._evaluate(module)
     }
 
@@ -415,7 +415,7 @@ const Module = module.exports = class Module {
 
     binding.runModule(module._handle, this._context)
 
-    if (module._type === 'esm') {
+    if (module._type === constants.TYPE_ESM) {
       module.exports = binding.getNamespace(module._handle)
     }
 
@@ -441,7 +441,7 @@ Module._extensions['.js'] = function (module, source, referrer, protocol, import
     (module._info && module._info.type === 'module') ||
 
     // The source is a data: URI and the referrer is itself an ES module.
-    (protocol === this._protocols['data:'] && referrer && referrer._type === 'esm')
+    (protocol === this._protocols['data:'] && referrer && referrer._type === constants.TYPE_ESM)
   )
 
   const loader = this._extensions[isESM ? '.mjs' : '.cjs']
@@ -474,7 +474,7 @@ Module._extensions['.cjs'] = function (module, source, referrer, protocol, impor
     return module.exports
   }
 
-  module._type = 'cjs'
+  module._type = constants.TYPE_CJS
   module._protocol = protocol
   module._imports = imports
 
@@ -498,7 +498,7 @@ Module._extensions['.mjs'] = function (module, source, referrer, protocol, impor
 
   if (typeof source !== 'string') source = Buffer.coerce(source).toString()
 
-  module._type = 'esm'
+  module._type = constants.TYPE_ESM
   module._protocol = protocol
   module._imports = imports
 
@@ -510,7 +510,7 @@ Module._extensions['.json'] = function (module, source, referrer, protocol, impo
 
   if (typeof source !== 'string') source = Buffer.coerce(source).toString()
 
-  module._type = 'json'
+  module._type = constants.TYPE_JSON
   module._protocol = protocol
   module._imports = imports
 
@@ -518,7 +518,7 @@ Module._extensions['.json'] = function (module, source, referrer, protocol, impo
 }
 
 Module._extensions['.bare'] = function (module, source, referrer, protocol, imports) {
-  module._type = 'addon'
+  module._type = constants.TYPE_ADDON
   module._protocol = protocol
   module._imports = imports
 
@@ -526,7 +526,7 @@ Module._extensions['.bare'] = function (module, source, referrer, protocol, impo
 }
 
 Module._extensions['.node'] = function (module, source, referrer, protocol, imports) {
-  module._type = 'addon'
+  module._type = constants.TYPE_ADDON
   module._protocol = protocol
   module._imports = imports
 
@@ -538,7 +538,7 @@ Module._extensions['.bundle'] = function (module, source, referrer, protocol, im
 
   const bundle = this._bundleFor(module.filename, protocol, source)
 
-  module._type = 'bundle'
+  module._type = constants.TYPE_BUNDLE
   module._protocol = protocol
   module._imports = imports
 
