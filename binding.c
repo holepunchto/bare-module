@@ -198,6 +198,9 @@ bare_module_destroy (js_env_t *env, js_callback_info_t *info) {
   err = js_delete_reference(env, context->on_evaluate);
   assert(err == 0);
 
+  err = js_delete_reference(env, context->on_meta);
+  assert(err == 0);
+
   err = js_delete_reference(env, context->ctx);
   assert(err == 0);
 
