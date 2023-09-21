@@ -49,10 +49,6 @@ module.exports = exports = class Module {
     this._exports = value
   }
 
-  get imports () {
-    return this._imports
-  }
-
   // For Node.js compatibility
   get id () {
     return this.filename
@@ -72,8 +68,7 @@ module.exports = exports = class Module {
       filename: this.filename,
       dirname: this.dirname,
       main: this.main,
-      exports: this.exports,
-      imports: this.imports
+      exports: this.exports
     }
   }
 
