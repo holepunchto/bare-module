@@ -1217,6 +1217,28 @@ test('createRequire', (t) => {
   t.is(require('./bar.js'), 42)
 })
 
+test('createRequire with default type', (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/dir/bar.js'
+    },
+
+    read (filename) {
+      if (filename === '/dir/bar.js') {
+        return 'export default 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const require = Module.createRequire('/dir/foo.js', { defaultType: Module.constants.types.MODULE })
+
+  t.is(require('./bar.js').default, 42)
+})
+
 function onteardown () {
   Module._cache = {}
 }

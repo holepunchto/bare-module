@@ -164,18 +164,35 @@ module.exports = exports = class Module {
     return name in this._builtins
   }
 
-  static createRequire (filename) {
+  static createRequire (filename, opts = {}) {
+    const {
+      imports = this._imports,
+      protocol = this._protocolFor(filename, this._protocols['file:']),
+      type = constants.types.SCRIPT,
+      defaultType = constants.types.SCRIPT
+    } = opts
+
     const module = new Module(filename)
+
+    module._type = type
+    module._defaultType = defaultType
+    module._imports = imports
+    module._protocol = protocol
+
     const referrer = module
 
     const resolve = (specifier) => {
       return this.resolve(specifier, path.dirname(module._filename), {
+        protocol: this._protocolFor(specifier, protocol),
+        imports,
         referrer
       })
     }
 
     const require = (specifier) => {
       const module = this.load(resolve(specifier), {
+        protocol: this._protocolFor(specifier, protocol),
+        imports,
         referrer
       })
 
