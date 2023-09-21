@@ -97,6 +97,30 @@ test('load .js with pkg.type module', (t) => {
   Module.load('/index.js')
 })
 
+test('load .js with default type', (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/bar.js'
+    },
+
+    read (filename) {
+      if (filename === '/foo.js') {
+        return 'export { default } from \'./bar.js\''
+      }
+
+      if (filename === '/bar.js') {
+        return 'export default 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load('/foo.js', { defaultType: Module.constants.types.MODULE }).exports.default, 42)
+})
+
 test('load .cjs', (t) => {
   t.teardown(onteardown)
 
@@ -739,6 +763,26 @@ test('load unknown extension', (t) => {
   t.is(Module.load('/index.foo').exports, 42)
 })
 
+test('load unknown extension with default type', (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists () {
+      return false
+    },
+
+    read (filename) {
+      if (filename === '/index.foo') {
+        return '42'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load('/index.foo', { defaultType: Module.constants.types.JSON }).exports, 42)
+})
+
 test('load .cjs with hashbang', (t) => {
   t.teardown(onteardown)
 
@@ -1125,6 +1169,30 @@ test('import.meta', (t) => {
   t.is(meta.url, '/foo.mjs')
   t.is(meta.main, true)
   t.is(meta.resolve('./bar'), '/bar.mjs')
+})
+
+test('import assertions', (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/bar'
+    },
+
+    read (filename) {
+      if (filename === '/foo.mjs') {
+        return 'export { default } from \'/bar\' assert { type: \'json\' }'
+      }
+
+      if (filename === '/bar') {
+        return '{ "hello": "world" }'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.alike(Module.load('/foo.mjs').exports.default, { hello: 'world' })
 })
 
 test('createRequire', (t) => {
