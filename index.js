@@ -8,12 +8,12 @@ const errors = require('./lib/errors')
 const binding = require('./binding')
 
 module.exports = exports = class Module {
-  constructor (filename, main) {
+  constructor (filename) {
+    this._filename = filename
     this._state = 0
     this._type = 0
     this._defaultType = this._type
-    this._filename = filename
-    this._main = main || this
+    this._main = null
     this._exports = null
     this._imports = null
     this._info = null
@@ -240,7 +240,7 @@ module.exports = exports = class Module {
       })
     }
 
-    const module = this._cache[specifier] = new this(specifier, main)
+    const module = this._cache[specifier] = new this(specifier)
 
     module._defaultType = defaultType
 
@@ -261,6 +261,8 @@ module.exports = exports = class Module {
     if (specifier in this._builtins) {
       module._exports = this._builtins[specifier]
     } else {
+      module._main = main || module
+
       let extension = this._extensionFor(type) || path.extname(specifier)
 
       if (extension in this._extensions === false) {
