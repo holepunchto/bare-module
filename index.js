@@ -465,16 +465,11 @@ module.exports = exports = class Module {
 
   static _transform (module, referrer = null, dynamic = false) {
     if (dynamic) {
-      if (module._type !== constants.types.MODULE && module._handle === null) {
-        this._synthesize(module)
-      }
-
+      if (module._type !== constants.types.MODULE) this._synthesize(module)
       this._evaluate(module)
     } else if (referrer) {
       if (referrer._type === constants.types.MODULE) {
-        if (module._type !== constants.types.MODULE && module._handle === null) {
-          this._synthesize(module)
-        }
+        if (module._type !== constants.types.MODULE) this._synthesize(module)
       } else if (module._type === constants.types.MODULE) {
         this._evaluate(module)
       }
@@ -498,6 +493,8 @@ module.exports = exports = class Module {
   }
 
   static _synthesize (module) {
+    if ((module._state & constants.states.SYNTHESIZED) !== 0) return
+
     const names = ['default']
 
     for (const key of Object.keys(module.exports)) {
@@ -506,7 +503,7 @@ module.exports = exports = class Module {
 
     module._handle = binding.createSyntheticModule(module.filename, names, this._context)
 
-    module._state &= ~constants.states.EVALUATED
+    module._state |= constants.states.SYNTHESIZED
   }
 }
 
