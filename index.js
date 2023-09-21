@@ -1,4 +1,6 @@
 const path = require('path')
+const os = require('os')
+const Addon = require('addon')
 const Bundle = require('bare-bundle')
 const Protocol = require('./lib/protocol')
 const constants = require('./lib/constants')
@@ -94,7 +96,7 @@ module.exports = exports = class Module {
 
       imports = referrer._imports
 
-      specifier = this.resolve(specifier, referrer.dirname, {
+      specifier = this.resolve(specifier, path.dirname(referrer._filename), {
         protocol,
         imports,
         referrer
@@ -128,9 +130,9 @@ module.exports = exports = class Module {
   static _onevaluate (specifier) {
     const module = this._cache[specifier]
 
-    binding.setExport(module._handle, 'default', module.exports)
+    binding.setExport(module._handle, 'default', module._exports)
 
-    for (const [key, value] of Object.entries(module.exports)) {
+    for (const [key, value] of Object.entries(module._exports)) {
       binding.setExport(module._handle, key, value)
     }
   }
@@ -139,15 +141,15 @@ module.exports = exports = class Module {
     const module = this._cache[specifier]
 
     const resolve = (specifier) => {
-      return this.resolve(specifier, module.dirname, {
+      return this.resolve(specifier, path.dirname(module._filename), {
         protocol: this._protocolFor(specifier, module._protocol),
         imports: module._imports,
         referrer: module
       })
     }
 
-    meta.url = module.filename
-    meta.main = module.main === module
+    meta.url = module._filename
+    meta.main = module._main === module
     meta.resolve = resolve
   }
 
@@ -172,7 +174,7 @@ module.exports = exports = class Module {
     const referrer = module
 
     const resolve = (specifier) => {
-      return this.resolve(specifier, module.dirname, {
+      return this.resolve(specifier, path.dirname(module._filename), {
         referrer
       })
     }
@@ -182,11 +184,11 @@ module.exports = exports = class Module {
         referrer
       })
 
-      return module.exports
+      return module._exports
     }
 
-    require.main = module.main
-    require.cache = this.cache
+    require.main = module._main
+    require.cache = this._cache
     require.resolve = resolve
 
     return require
@@ -230,13 +232,13 @@ module.exports = exports = class Module {
 
     module._defaultType = defaultType
 
-    let dirname = module.dirname
+    let dirname = path.dirname(module._filename)
     do {
       const pkg = path.join(dirname, 'package.json')
 
       if (protocol.exists(pkg)) {
         try {
-          module._info = Module.load(pkg, { protocol }).exports
+          module._info = Module.load(pkg, { protocol })._exports
         } catch {}
         break
       }
@@ -245,7 +247,7 @@ module.exports = exports = class Module {
     } while (dirname !== '/' && dirname !== '.')
 
     if (specifier in this._builtins) {
-      module.exports = this._builtins[specifier]
+      module._exports = this._builtins[specifier]
     } else {
       let extension = this._extensionFor(type) || path.extname(specifier)
 
@@ -260,10 +262,10 @@ module.exports = exports = class Module {
     return this._transform(module, referrer, dynamic)
   }
 
-  static resolve (specifier, dirname = process.cwd(), opts = {}) {
+  static resolve (specifier, dirname = os.cwd(), opts = {}) {
     if (typeof dirname !== 'string') {
       opts = dirname
-      dirname = process.cwd()
+      dirname = os.cwd()
     }
 
     let {
@@ -293,7 +295,7 @@ module.exports = exports = class Module {
     if (resolved === null) {
       let msg = `Cannot find module '${specifier}'`
 
-      if (referrer) msg += ` imported from '${referrer.filename}'`
+      if (referrer) msg += ` imported from '${referrer._filename}'`
 
       throw errors.MODULE_NOT_FOUND(msg)
     }
@@ -352,7 +354,7 @@ module.exports = exports = class Module {
     if (protocol.exists(pkg)) {
       let info
       try {
-        info = this.load(pkg, { protocol }).exports
+        info = this.load(pkg, { protocol })._exports
       } catch {
         info = null
       }
@@ -486,7 +488,7 @@ module.exports = exports = class Module {
     binding.runModule(module._handle, this._context)
 
     if (module._type === constants.types.MODULE) {
-      module.exports = binding.getNamespace(module._handle)
+      module._exports = binding.getNamespace(module._handle)
     }
 
     module._state |= constants.states.EVALUATED
@@ -497,11 +499,11 @@ module.exports = exports = class Module {
 
     const names = ['default']
 
-    for (const key of Object.keys(module.exports)) {
+    for (const key of Object.keys(module._exports)) {
       if (key !== 'default') names.push(key)
     }
 
-    module._handle = binding.createSyntheticModule(module.filename, names, this._context)
+    module._handle = binding.createSyntheticModule(module._filename, names, this._context)
 
     module._state |= constants.states.SYNTHESIZED
   }
@@ -525,14 +527,14 @@ exports._extensions['.js'] = function (module, source, referrer, protocol, impor
 }
 
 exports._extensions['.cjs'] = function (module, source, referrer, protocol, imports) {
-  if (source === null) source = protocol.read(module.filename)
+  if (source === null) source = protocol.read(module._filename)
 
   if (typeof source !== 'string') source = Buffer.coerce(source).toString()
 
   referrer = module
 
   const resolve = (specifier) => {
-    return this.resolve(specifier, module.dirname, {
+    return this.resolve(specifier, path.dirname(module._filename), {
       protocol: this._protocolFor(specifier, protocol),
       imports,
       referrer
@@ -546,78 +548,72 @@ exports._extensions['.cjs'] = function (module, source, referrer, protocol, impo
       referrer
     })
 
-    return module.exports
+    return module._exports
   }
 
   module._type = constants.types.SCRIPT
   module._protocol = protocol
   module._imports = imports
+  module._exports = {}
 
-  module.exports = {}
-
-  require.main = module.main
-  require.cache = this.cache
+  require.main = module._main
+  require.cache = this._cache
   require.resolve = resolve
 
-  binding.createFunction(module.filename, ['require', 'module', 'exports', '__filename', '__dirname'], source, 0)(
+  binding.createFunction(module._filename, ['require', 'module', 'exports', '__filename', '__dirname'], source, 0)(
     require,
     module,
-    module.exports,
-    module.filename,
-    module.dirname
+    module._exports,
+    module._filename,
+    path.dirname(module._filename)
   )
 }
 
 exports._extensions['.mjs'] = function (module, source, referrer, protocol, imports) {
-  if (source === null) source = protocol.read(module.filename)
+  if (source === null) source = protocol.read(module._filename)
 
   if (typeof source !== 'string') source = Buffer.coerce(source).toString()
 
   module._type = constants.types.MODULE
   module._protocol = protocol
   module._imports = imports
-
-  module._handle = binding.createModule(module.filename, source, 0, this._context)
+  module._handle = binding.createModule(module._filename, source, 0, this._context)
 }
 
 exports._extensions['.json'] = function (module, source, referrer, protocol, imports) {
-  if (source === null) source = protocol.read(module.filename)
+  if (source === null) source = protocol.read(module._filename)
 
   if (typeof source !== 'string') source = Buffer.coerce(source).toString()
 
   module._type = constants.types.JSON
   module._protocol = protocol
   module._imports = imports
-
-  module.exports = JSON.parse(source)
+  module._exports = JSON.parse(source)
 }
 
 exports._extensions['.bare'] = function (module, source, referrer, protocol, imports) {
   module._type = constants.types.ADDON
   module._protocol = protocol
   module._imports = imports
-
-  module.exports = process.addon(module.filename)
+  module._exports = Addon.load(module._filename)
 }
 
 exports._extensions['.node'] = function (module, source, referrer, protocol, imports) {
   module._type = constants.types.ADDON
   module._protocol = protocol
   module._imports = imports
-
-  module.exports = process.addon(module.filename)
+  module._exports = Addon.load(module._filename)
 }
 
 exports._extensions['.bundle'] = function (module, source, referrer, protocol, imports) {
   if (typeof source === 'string') source = Buffer.from(source)
 
-  const bundle = this._bundleFor(module.filename, protocol, source)
+  const bundle = this._bundleFor(module._filename, protocol, source)
 
   module._type = constants.types.BUNDLE
   module._protocol = protocol
   module._imports = imports
-
-  module.exports = exports.load(bundle.main, bundle.read(bundle.main), { protocol, imports, referrer }).exports
+  module._exports = exports.load(bundle.main, bundle.read(bundle.main), { protocol, imports, referrer })._exports
 }
 
 exports._protocols['file:'] = new Protocol({
