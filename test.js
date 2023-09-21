@@ -519,20 +519,6 @@ test('load .bundle', (t) => {
     .write('/bar.js', 'module.exports = 42')
     .toBuffer()
 
-  Module._protocols['file:'] = new Module.Protocol({
-    exists () {
-      return false
-    },
-
-    read (filename) {
-      if (filename === '/app.bundle') {
-        return bundle
-      }
-
-      t.fail()
-    }
-  })
-
   Module.load('/app.bundle', bundle)
 })
 
