@@ -530,20 +530,6 @@ test('load .bundle with .mjs', (t) => {
     .write('/bar.mjs', 'export default 42')
     .toBuffer()
 
-  Module._protocols['file:'] = new Module.Protocol({
-    exists () {
-      return false
-    },
-
-    read (filename) {
-      if (filename === '/app.bundle') {
-        return bundle
-      }
-
-      t.fail()
-    }
-  })
-
   Module.load('/app.bundle', bundle)
 })
 
@@ -554,20 +540,6 @@ test('load .bundle with bare specifier', (t) => {
     .write('/foo.js', 'module.exports = require(\'bar\')', { main: true })
     .write('/node_modules/bar/index.js', 'module.exports = 42')
     .toBuffer()
-
-  Module._protocols['file:'] = new Module.Protocol({
-    exists () {
-      return false
-    },
-
-    read (filename) {
-      if (filename === '/app.bundle') {
-        return bundle
-      }
-
-      t.fail()
-    }
-  })
 
   Module.load('/app.bundle', bundle)
 })
@@ -581,20 +553,6 @@ test('load .bundle with bare specifier, nested', (t) => {
     .write('/node_modules/baz/index.js', 'module.exports = 42')
     .toBuffer()
 
-  Module._protocols['file:'] = new Module.Protocol({
-    exists () {
-      return false
-    },
-
-    read (filename) {
-      if (filename === '/app.bundle') {
-        return bundle
-      }
-
-      t.fail()
-    }
-  })
-
   Module.load('/app.bundle', bundle)
 })
 
@@ -605,20 +563,6 @@ test('load .bundle with bare specifier and import map', (t) => {
     .write('/foo.js', 'module.exports = require(\'baz\')', { main: true })
     .write('/bar.js', 'module.exports = 42', { alias: 'baz' })
     .toBuffer()
-
-  Module._protocols['file:'] = new Module.Protocol({
-    exists () {
-      return false
-    },
-
-    read (filename) {
-      if (filename === '/app.bundle') {
-        return bundle
-      }
-
-      t.fail()
-    }
-  })
 
   t.is(Module.load('/app.bundle', bundle).exports, 42)
 })
