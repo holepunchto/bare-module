@@ -620,6 +620,19 @@ test('load specific module within nested .bundle', (t) => {
   t.is(Module.load('/foo.bundle/bar.bundle/bar.js').exports, 42)
 })
 
+test('load .bundle with type option and no .bundle extension', (t) => {
+  t.teardown(onteardown)
+
+  const bundle = new Module.Bundle()
+    .write('/foo.js', 'module.exports = 42', { main: true })
+    .toBuffer()
+
+  t.exception(
+    () => Module.load('/app', bundle, { type: Module.constants.types.BUNDLE }),
+    /invalid extension for bundle '\/app'/i
+  )
+})
+
 test('resolve specific module within .bundle', (t) => {
   t.teardown(onteardown)
 

@@ -270,6 +270,10 @@ module.exports = exports = class Module {
         else extension = '.js'
       }
 
+      if (extension === '.bundle' && path.extname(specifier) !== extension) {
+        throw errors.INVALID_BUNDLE_EXTENSION(`Invalid extension for bundle '${specifier}'`)
+      }
+
       this._extensions[extension].call(this, module, source, referrer, protocol, imports)
     }
 
