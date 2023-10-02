@@ -19,6 +19,8 @@ module.exports = exports = class Module {
     this._info = null
     this._protocol = null
     this._handle = null
+
+    Module._modules.add(this)
   }
 
   get type () {
@@ -66,6 +68,8 @@ module.exports = exports = class Module {
       binding.deleteModule(this._handle)
       this._handle = null
     }
+
+    Module._modules.delete(this)
   }
 
   [Symbol.for('bare.inspect')] () {
@@ -87,12 +91,13 @@ module.exports = exports = class Module {
   static _imports = Object.create(null)
   static _cache = Object.create(null)
   static _bundles = Object.create(null)
+  static _modules = new Set()
 
   static _context = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
 
   static _ondestroy () {
-    for (const specifier in this._cache) {
-      this._cache[specifier].destroy()
+    for (const module in this._modules) {
+      module.destroy()
     }
 
     binding.destroy(this._context)
