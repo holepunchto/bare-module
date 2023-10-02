@@ -59,6 +59,15 @@ module.exports = exports = class Module {
     return this.dirname
   }
 
+  destroy () {
+    this._state |= constants.states.DESTROYED
+
+    if (this._handle) {
+      binding.deleteModule(this._handle)
+      this._handle = null
+    }
+  }
+
   [Symbol.for('bare.inspect')] () {
     return {
       __proto__: { constructor: Module },
@@ -72,14 +81,22 @@ module.exports = exports = class Module {
     }
   }
 
-  static _context = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
-
   static _extensions = Object.create(null)
   static _protocols = Object.create(null)
   static _builtins = Object.create(null)
   static _imports = Object.create(null)
   static _cache = Object.create(null)
   static _bundles = Object.create(null)
+
+  static _context = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
+
+  static _ondestroy () {
+    for (const specifier in this._cache) {
+      this._cache[specifier].destroy()
+    }
+
+    binding.destroy(this._context)
+  }
 
   static _onimport (specifier, assertions, referrerFilename, dynamic) {
     const referrer = this._cache[referrerFilename]
@@ -671,8 +688,8 @@ exports._protocols['data:'] = new Protocol({
   }
 })
 
-process.on('exit', () => binding.destroy(exports._context))
+process.on('exit', exports._ondestroy.bind(exports))
 
 if (process.thread) {
-  process.thread.on('exit', () => binding.destroy(exports._context))
+  process.thread.on('exit', exports._ondestroy.bind(exports))
 }

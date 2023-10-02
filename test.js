@@ -1183,5 +1183,9 @@ test('createRequire with default type', (t) => {
 })
 
 function onteardown () {
-  Module._cache = {}
+  for (const specifier in Module._cache) {
+    Module._cache[specifier].destroy()
+  }
+
+  Module._cache = Object.create(null)
 }
