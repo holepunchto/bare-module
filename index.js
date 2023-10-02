@@ -93,15 +93,7 @@ module.exports = exports = class Module {
   static _bundles = Object.create(null)
   static _modules = new Set()
 
-  static _context = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
-
-  static _ondestroy () {
-    for (const module in this._modules) {
-      module.destroy()
-    }
-
-    binding.destroy(this._context)
-  }
+  static _handle = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
 
   static _onimport (specifier, assertions, referrerFilename, dynamic) {
     const referrer = this._cache[referrerFilename]
@@ -525,7 +517,7 @@ module.exports = exports = class Module {
   static _evaluate (module) {
     if ((module._state & constants.states.EVALUATED) !== 0) return
 
-    binding.runModule(module._handle, this._context)
+    binding.runModule(module._handle, this._handle)
 
     if (module._type === constants.types.MODULE) {
       module._exports = binding.getNamespace(module._handle)
@@ -543,7 +535,7 @@ module.exports = exports = class Module {
       if (key !== 'default') names.push(key)
     }
 
-    module._handle = binding.createSyntheticModule(module._filename, names, this._context)
+    module._handle = binding.createSyntheticModule(module._filename, names, this._handle)
 
     module._state |= constants.states.SYNTHESIZED
   }
@@ -617,7 +609,7 @@ exports._extensions['.mjs'] = function (module, source, referrer, protocol, impo
   module._type = constants.types.MODULE
   module._protocol = protocol
   module._imports = imports
-  module._handle = binding.createModule(module._filename, source, 0, this._context)
+  module._handle = binding.createModule(module._filename, source, 0, this._handle)
 }
 
 exports._extensions['.json'] = function (module, source, referrer, protocol, imports) {
@@ -693,4 +685,11 @@ exports._protocols['data:'] = new Protocol({
   }
 })
 
-process.on('exit', exports._ondestroy.bind(exports))
+process
+  .on('exit', () => {
+    for (const module of exports._modules) {
+      module.destroy()
+    }
+
+    binding.destroy(exports._handle)
+  })
