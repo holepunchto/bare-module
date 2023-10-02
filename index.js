@@ -689,7 +689,3 @@ exports._protocols['data:'] = new Protocol({
 })
 
 process.on('exit', exports._ondestroy.bind(exports))
-
-if (process.thread) {
-  process.thread.on('exit', exports._ondestroy.bind(exports))
-}
