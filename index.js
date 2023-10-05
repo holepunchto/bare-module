@@ -686,7 +686,7 @@ exports._protocols['data:'] = new Protocol({
 })
 
 process
-  .on('exit', () => {
+  .prependListener('teardown', () => {
     for (const module of exports._modules) {
       module.destroy()
     }
