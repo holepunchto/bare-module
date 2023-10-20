@@ -384,18 +384,25 @@ module.exports = exports = class Module {
     const pkg = path.join(dirname, 'package.json')
 
     if (protocol.exists(pkg)) {
-      let info
+      let info = null
       try {
         info = this.load(pkg, { protocol })._exports
-      } catch {
-        info = null
-      }
+      } catch {}
 
-      if (info && info.main) {
-        const main = path.join(dirname, info.main)
+      if (info) {
+        let specifier
 
-        yield * this._resolveFile(main, protocol)
-        yield * this._resolveIndex(main, protocol)
+        if (info.exports) {
+          specifier = this._mapConditionalExport('.', dirname, info.exports)
+
+          if (specifier) specifier = path.join(dirname, specifier)
+          else return
+        } else if (info.main) {
+          specifier = path.join(dirname, info.main)
+        }
+
+        yield * this._resolveFile(specifier, protocol)
+        yield * this._resolveIndex(specifier, protocol)
       }
     }
 
@@ -404,6 +411,28 @@ module.exports = exports = class Module {
 
   static * _resolveNodeModules (specifier, dirname, protocol) {
     for (const nodeModules of this._resolveNodeModulesPaths(dirname)) {
+      const [, name, expansion = '.'] = /^((?:@[^/\\%]+\/)?[^./\\%][^/\\%]*)(\/.*)?$/.exec(specifier) || []
+
+      if (name) {
+        const pkg = path.join(nodeModules, name, 'package.json')
+
+        if (protocol.exists(pkg)) {
+          let info = null
+          try {
+            info = this.load(pkg, { protocol })._exports
+          } catch {}
+
+          if (info) {
+            if (info.exports) {
+              specifier = this._mapConditionalExport(expansion, dirname, info.exports)
+
+              if (specifier) specifier = path.join(name, specifier)
+              else return
+            }
+          }
+        }
+      }
+
       const filename = path.join(nodeModules, specifier)
 
       yield * this._resolveFile(filename, protocol)
@@ -420,6 +449,40 @@ module.exports = exports = class Module {
       if (parts[i] !== 'node_modules') {
         yield path.join(parts.slice(0, i + 1).join(path.sep), 'node_modules')
       }
+    }
+  }
+
+  static _mapConditionalExport (specifier, dirname, exports) {
+    if (typeof exports !== 'object') exports = { '.': exports }
+
+    if (specifier in exports) {
+      specifier = search(exports[specifier])
+    } else {
+      specifier = search(exports)
+    }
+
+    if (specifier) specifier = path.join(dirname, specifier)
+
+    return specifier
+
+    function search (specifier) {
+      while (true) {
+        if (typeof specifier === 'string') return specifier
+        if (specifier === null || typeof specifier !== 'object') return specifier
+        specifier = first(specifier)
+      }
+    }
+
+    function first (exports) {
+      for (const key in exports) {
+        switch (key) {
+          case 'require':
+          case 'import':
+            return exports[key]
+        }
+      }
+
+      return null
     }
   }
 

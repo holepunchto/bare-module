@@ -211,7 +211,7 @@ test('load .cjs with .mjs require', (t) => {
   Module.load('/foo.cjs')
 })
 
-test('load .cjs with top-level await .mjs require', (t) => {
+test('load .cjs with top-level await .mjs require', async (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -232,7 +232,7 @@ test('load .cjs with top-level await .mjs require', (t) => {
     }
   })
 
-  t.exception.all(() => Module.load('/foo.cjs'), /cannot access 'default' before initialization/i)
+  await t.exception.all(() => Module.load('/foo.cjs'), /cannot access 'default' before initialization/i)
 })
 
 test('load .mjs', (t) => {
@@ -349,7 +349,7 @@ test('load .mjs with builtin import', (t) => {
   Module.load('/index.mjs')
 })
 
-test('load .mjs with missing import', (t) => {
+test('load .mjs with missing import', async (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -366,7 +366,7 @@ test('load .mjs with missing import', (t) => {
     }
   })
 
-  t.exception(() => Module.load('/index.mjs'), /cannot find module '\.\/foo'/i)
+  await t.exception(() => Module.load('/index.mjs'), /cannot find module '\.\/foo'/i)
 })
 
 test('load .mjs with nested import', (t) => {
@@ -465,7 +465,7 @@ test('load .json', (t) => {
   t.is(Module.load('/index.json').exports, 42)
 })
 
-test('load .bare', (t) => {
+test('load .bare', async (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -485,10 +485,10 @@ test('load .bare', (t) => {
     }
   })
 
-  t.exception(() => Module.load(Module.resolve('native', '/')), /dlopen\(\/node_modules\/native\/native\.bare/i)
+  await t.exception(() => Module.load(Module.resolve('native', '/')), /dlopen\(\/node_modules\/native\/native\.bare/i)
 })
 
-test('load .node', (t) => {
+test('load .node', async (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -508,7 +508,7 @@ test('load .node', (t) => {
     }
   })
 
-  t.exception(() => Module.load(Module.resolve('native', '/')), /dlopen\(\/node_modules\/native\/native\.node/i)
+  await t.exception(() => Module.load(Module.resolve('native', '/')), /dlopen\(\/node_modules\/native\/native\.node/i)
 })
 
 test('load .bundle', (t) => {
@@ -620,14 +620,14 @@ test('load specific module within nested .bundle', (t) => {
   t.is(Module.load('/foo.bundle/bar.bundle/bar.js').exports, 42)
 })
 
-test('load .bundle with type option and no .bundle extension', (t) => {
+test('load .bundle with type option and no .bundle extension', async (t) => {
   t.teardown(onteardown)
 
   const bundle = new Module.Bundle()
     .write('/foo.js', 'module.exports = 42', { main: true })
     .toBuffer()
 
-  t.exception(
+  await t.exception(
     () => Module.load('/app', bundle, { type: Module.constants.types.BUNDLE }),
     /invalid extension for bundle '\/app'/i
   )
@@ -1182,6 +1182,110 @@ test('createRequire with default type', (t) => {
   t.is(require('./bar.js').default, 42)
 })
 
+test('main in package.json', (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/package.json' || filename === '/foo.js'
+    },
+
+    read (filename) {
+      if (filename === '/package.json') {
+        return '{ "main": "./foo.js" }'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.resolve('/'), '/foo.js')
+})
+
+test('exports in package.json', (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/package.json' || filename === '/foo.js'
+    },
+
+    read (filename) {
+      if (filename === '/package.json') {
+        return '{ "exports": "./foo.js" }'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.resolve('/'), '/foo.js')
+})
+
+test('conditional exports in package.json, .cjs before .mjs', (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/package.json' || filename === '/foo.cjs' || filename === '/foo.mjs'
+    },
+
+    read (filename) {
+      if (filename === '/package.json') {
+        return '{ "exports": { "require": "./foo.cjs", "import": "./foo.mjs" } }'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.resolve('/'), '/foo.cjs')
+})
+
+test('conditional exports in package.json, .mjs before .cjs', (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/package.json' || filename === '/foo.cjs' || filename === '/foo.mjs'
+    },
+
+    read (filename) {
+      if (filename === '/package.json') {
+        return '{ "exports": { "import": "./foo.mjs", "require": "./foo.cjs" } }'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.resolve('/'), '/foo.mjs')
+})
+
+test('exports in node_modules', (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return (
+        filename === '/node_modules/foo/package.json' ||
+        filename === '/node_modules/foo/foo.js'
+      )
+    },
+
+    read (filename) {
+      if (filename === '/node_modules/foo/package.json') {
+        return '{ "exports": "./foo.js" }'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.resolve('foo', '/'), '/node_modules/foo/foo.js')
+})
+
 function onteardown () {
+  Module._builtins = Object.create(null)
   Module._cache = Object.create(null)
 }
