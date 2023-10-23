@@ -56,7 +56,7 @@ module.exports = exports = class Module {
     return this.filename
   }
 
-  // For Node.s compatibility
+  // For Node.js compatibility
   get path () {
     return this.dirname
   }
@@ -713,7 +713,7 @@ exports._extensions['.bundle'] = function (module, source, referrer, protocol, i
 
 exports._protocols['file:'] = new Protocol({
   preresolve (specifier) {
-    return specifier.replace(/^file:/, '')
+    return path.normalize(specifier.replace(/^file:/, ''))
   },
 
   postresolve (specifier) {
