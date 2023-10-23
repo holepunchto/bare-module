@@ -343,9 +343,7 @@ module.exports = exports = class Module {
 
     specifier = protocol.preresolve(specifier, dirname)
 
-    if (protocol.resolve) {
-      yield * protocol.resolve(specifier, dirname, imports)
-    }
+    yield * protocol.resolve(specifier, dirname, imports)
 
     if (this.isBuiltin(specifier)) {
       yield specifier
