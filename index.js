@@ -238,7 +238,7 @@ module.exports = exports = class Module {
 
     if (this._cache[specifier]) return this._transform(this._cache[specifier], referrer, dynamic)
 
-    const bundle = this._bundleFor(path.dirname(specifier), protocol, source)
+    const bundle = this._bundleFor(path.dirname(specifier), protocol)
 
     if (bundle) {
       protocol = new Protocol({
@@ -699,6 +699,8 @@ exports._extensions['.node'] = function (module, source, referrer, protocol, imp
 }
 
 exports._extensions['.bundle'] = function (module, source, referrer, protocol, imports) {
+  if (source === null) source = protocol.read(module._filename)
+
   if (typeof source === 'string') source = Buffer.from(source)
 
   const bundle = this._bundleFor(module._filename, protocol, source)
