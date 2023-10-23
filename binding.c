@@ -542,7 +542,10 @@ bare_module_read (js_env_t *env, js_callback_info_t *info) {
   int fd = req.result;
   uv_fs_req_cleanup(&req);
 
-  if (fd < 0) goto err;
+  if (fd < 0) {
+    err = fd;
+    goto err;
+  }
 
   uv_fs_fstat(loop, &req, fd, NULL);
   uv_stat_t *st = req.ptr;

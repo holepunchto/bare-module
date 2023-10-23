@@ -1,6 +1,8 @@
 const test = require('brittle')
 const Module = require('.')
 
+const file = Module._protocols['file:']
+
 test('resolve', (t) => {
   t.teardown(onteardown)
 
@@ -1283,6 +1285,22 @@ test('exports in node_modules', (t) => {
   })
 
   t.is(Module.resolve('foo', '/'), '/node_modules/foo/foo.js')
+})
+
+test('load file that cannot be read', async (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists (filename) {
+      return filename === '/foo.cjs'
+    },
+
+    read (filename) {
+      return file.read(filename)
+    }
+  })
+
+  await t.exception(() => Module.load('/foo.cjs'), /no such file or directory/)
 })
 
 function onteardown () {
