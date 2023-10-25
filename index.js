@@ -713,7 +713,7 @@ exports._extensions['.bundle'] = function (module, source, referrer, protocol, i
 
 exports._protocols['file:'] = new Protocol({
   preresolve (specifier) {
-    return path.normalize(specifier.replace(/^file:/, ''))
+    return specifier.replace(/^file:/, '')
   },
 
   postresolve (specifier) {
