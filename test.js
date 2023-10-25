@@ -103,6 +103,8 @@ test('load .js with default type', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return filename === '/bar.js'
     },
@@ -193,6 +195,8 @@ test('load .cjs with .mjs require', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return filename === '/bar.mjs'
     },
@@ -217,6 +221,8 @@ test('load .cjs with top-level await .mjs require', async (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return filename === '/bar.mjs'
     },
@@ -261,6 +267,8 @@ test('load .mjs with import', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return filename === '/foo.mjs'
     },
@@ -285,6 +293,8 @@ test('load .mjs with .cjs import', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return filename === '/foo.cjs'
     },
@@ -309,6 +319,8 @@ test('load .mjs with .js import', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return filename === '/foo.js'
     },
@@ -355,6 +367,8 @@ test('load .mjs with missing import', async (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists () {
       return false
     },
@@ -375,6 +389,8 @@ test('load .mjs with nested import', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return filename === '/foo.mjs' || filename === '/bar.mjs' || filename === '/baz.mjs'
     },
@@ -403,6 +419,8 @@ test('load .mjs with cyclic import', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return filename === '/foo.mjs' || filename === '/bar.mjs'
     },
@@ -427,6 +445,8 @@ test('load .mjs with top-level await .mjs import', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return filename === '/bar.mjs'
     },
@@ -471,15 +491,17 @@ test('load .bare', async (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return (
-        filename === '/node_modules/native/index.js' ||
-        filename === '/node_modules/native/native.bare'
+        filename === '/index.js' ||
+        filename === '/native.bare'
       )
     },
 
     read (filename) {
-      if (filename === '/node_modules/native/index.js') {
+      if (filename === '/index.js') {
         return 'require(\'./native.bare\')'
       }
 
@@ -487,22 +509,24 @@ test('load .bare', async (t) => {
     }
   })
 
-  await t.exception(() => Module.load(Module.resolve('native', '/')), /dlopen\(\/node_modules\/native\/native\.bare/i)
+  await t.exception(() => Module.load('/index.js'), /dlopen\(\/native\.bare/i)
 })
 
 test('load .node', async (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return (
-        filename === '/node_modules/native/index.js' ||
-        filename === '/node_modules/native/native.node'
+        filename === '/index.js' ||
+        filename === '/native.node'
       )
     },
 
     read (filename) {
-      if (filename === '/node_modules/native/index.js') {
+      if (filename === '/index.js') {
         return 'require(\'./native.node\')'
       }
 
@@ -510,7 +534,7 @@ test('load .node', async (t) => {
     }
   })
 
-  await t.exception(() => Module.load(Module.resolve('native', '/')), /dlopen\(\/node_modules\/native\/native\.node/i)
+  await t.exception(() => Module.load('/index.js'), /dlopen\(\/native\.node/i)
 })
 
 test('load .bundle', (t) => {
@@ -578,6 +602,8 @@ test('load specific module within .bundle', (t) => {
     .toBuffer()
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return false
     },
@@ -764,6 +790,8 @@ test('load .cjs with dynamic .mjs import', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return filename === '/bar.mjs'
     },
@@ -788,6 +816,8 @@ test('load .cjs with dynamic .cjs import', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return filename === '/bar.cjs'
     },
@@ -812,6 +842,8 @@ test('load .mjs with dynamic .mjs import', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return filename === '/bar.mjs'
     },
@@ -836,6 +868,8 @@ test('load .mjs with dynamic .cjs import', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return filename === '/bar.cjs'
     },
@@ -1068,6 +1102,8 @@ test('require.main', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return filename === '/bar.js'
     },
@@ -1096,6 +1132,8 @@ test('import.meta', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return filename === '/bar.mjs'
     },
@@ -1144,6 +1182,8 @@ test('createRequire', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return filename === '/dir/bar.js'
     },
@@ -1166,6 +1206,8 @@ test('createRequire with default type', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
+    preresolve: file.preresolve,
+
     exists (filename) {
       return filename === '/dir/bar.js'
     },
@@ -1306,4 +1348,5 @@ test('load file that cannot be read', async (t) => {
 function onteardown () {
   Module._builtins = Object.create(null)
   Module._cache = Object.create(null)
+  Module._protocols['file:'] = file
 }

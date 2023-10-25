@@ -244,6 +244,8 @@ module.exports = exports = class Module {
       protocol = new Protocol({
         imports: bundle.imports,
 
+        preresolve: this._protocols['file:'].preresolve,
+
         exists (filename) {
           return bundle.exists(filename)
         },
@@ -312,6 +314,8 @@ module.exports = exports = class Module {
       protocol = new Protocol({
         imports: bundle.imports,
 
+        preresolve: this._protocols['file:'].preresolve,
+
         exists (filename) {
           return bundle.exists(filename)
         },
@@ -349,9 +353,7 @@ module.exports = exports = class Module {
       yield specifier
     }
 
-    if (/^([a-z]:)?([/\\]|\.{1,2}[/\\]?)/i.test(specifier)) {
-      if (specifier[0] === '.') specifier = path.join(dirname, specifier)
-
+    if (path.isAbsolute(specifier)) {
       yield * this._resolveFile(specifier, protocol)
       yield * this._resolveDirectory(specifier, protocol)
     }
@@ -541,6 +543,8 @@ module.exports = exports = class Module {
       protocol = new Protocol({
         imports: parent.imports,
 
+        preresolve: this._protocols['file:'].preresolve,
+
         exists (filename) {
           return parent.exists(filename)
         },
@@ -712,8 +716,13 @@ exports._extensions['.bundle'] = function (module, source, referrer, protocol, i
 }
 
 exports._protocols['file:'] = new Protocol({
-  preresolve (specifier) {
-    return specifier.replace(/^file:/, '')
+  preresolve (specifier, dirname) {
+    specifier = specifier.replace(/^file:/, '')
+
+    if (specifier[0] === '.') specifier = path.join(dirname, specifier)
+    if (specifier[0] === '/' || specifier[0] === '\\') specifier = path.normalize(specifier)
+
+    return specifier
   },
 
   postresolve (specifier) {
