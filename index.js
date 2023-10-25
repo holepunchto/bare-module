@@ -720,7 +720,7 @@ exports._protocols['file:'] = new Protocol({
     specifier = specifier.replace(/^file:/, '')
 
     if (specifier[0] === '.') specifier = path.join(dirname, specifier)
-    if (specifier[0] === '/' || specifier[0] === '\\') specifier = path.normalize(specifier)
+    else if (path.isAbsolute(specifier)) specifier = path.normalize(specifier)
 
     return specifier
   },
