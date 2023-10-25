@@ -1,6 +1,6 @@
 {
   "name": "bare-module",
-  "version": "1.14.6",
+  "version": "1.14.7",
   "description": "Module support for JavaScript",
   "main": "index.js",
   "files": [
