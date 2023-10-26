@@ -3,7 +3,7 @@ const Module = require('.')
 
 const file = Module._protocols['file:']
 
-test('resolve', (t) => {
+test('resolve bare specifier', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -19,7 +19,7 @@ test('resolve', (t) => {
   t.is(Module.resolve('foo', '/'), '/node_modules/foo/index.js')
 })
 
-test('load bare specifier', (t) => {
+test('load resolved bare specifier', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -39,7 +39,7 @@ test('load bare specifier', (t) => {
   t.is(Module.load(Module.resolve('foo', '/')).exports, 42)
 })
 
-test('load bare specifier with source', (t) => {
+test('load resolved bare specifier with source', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -145,7 +145,7 @@ test('load .cjs', (t) => {
   t.is(Module.load('/index.cjs').exports, 42)
 })
 
-test('load .cjs with bare specifier', (t) => {
+test('load .cjs with bare specifier require', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -215,6 +215,26 @@ test('load .cjs with .mjs require', (t) => {
   })
 
   Module.load('/foo.cjs')
+})
+
+test('load .cjs with top-level await', async (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists () {
+      return false
+    },
+
+    read (filename) {
+      if (filename === '/index.cjs') {
+        return 'await 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  await t.exception.all(() => Module.load('/index.cjs'))
 })
 
 test('load .cjs with top-level await .mjs require', async (t) => {
@@ -439,6 +459,26 @@ test('load .mjs with cyclic import', (t) => {
   })
 
   Module.load('/foo.mjs')
+})
+
+test('load .mjs with top-level await', (t) => {
+  t.teardown(onteardown)
+
+  Module._protocols['file:'] = new Module.Protocol({
+    exists () {
+      return false
+    },
+
+    read (filename) {
+      if (filename === '/index.mjs') {
+        return 'await 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/index.mjs')
 })
 
 test('load .mjs with top-level await .mjs import', (t) => {
@@ -890,7 +930,7 @@ test('load .mjs with dynamic .cjs import', (t) => {
   Module.load('/foo.mjs')
 })
 
-test('load .cjs with bare specifier and import map', (t) => {
+test('load .cjs with bare specifier require and import map', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -918,7 +958,7 @@ test('load .cjs with bare specifier and import map', (t) => {
   })
 })
 
-test('load .mjs with bare specifier and import map', (t) => {
+test('load .mjs with bare specifier import and import map', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -946,7 +986,7 @@ test('load .mjs with bare specifier and import map', (t) => {
   })
 })
 
-test('load .cjs with explicit file: protocol', (t) => {
+test('load .cjs with explicit file: protocol require', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -974,7 +1014,7 @@ test('load .cjs with explicit file: protocol', (t) => {
   Module.load('/foo.cjs')
 })
 
-test('load .mjs with explicit file: protocol', (t) => {
+test('load .mjs with explicit file: protocol import', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -1002,7 +1042,7 @@ test('load .mjs with explicit file: protocol', (t) => {
   Module.load('/foo.mjs')
 })
 
-test('load .cjs with node: require', (t) => {
+test('load .cjs with node: protocol require', (t) => {
   t.teardown(onteardown)
 
   Module._builtins.foo = 42
@@ -1020,7 +1060,7 @@ test('load .cjs with node: require', (t) => {
   Module.load('/foo.cjs')
 })
 
-test('load .mjs with node: import', (t) => {
+test('load .mjs with node: protocol import', (t) => {
   t.teardown(onteardown)
 
   Module._builtins.foo = 42
@@ -1038,7 +1078,7 @@ test('load .mjs with node: import', (t) => {
   Module.load('/foo.mjs')
 })
 
-test('load .cjs with data: require', (t) => {
+test('load .cjs with data: protocol require', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
@@ -1054,7 +1094,7 @@ test('load .cjs with data: require', (t) => {
   t.is(Module.load('/foo.cjs').exports, 42)
 })
 
-test('load .mjs with data: require', (t) => {
+test('load .mjs with data: protocol import', (t) => {
   t.teardown(onteardown)
 
   Module._protocols['file:'] = new Module.Protocol({
