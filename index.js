@@ -266,13 +266,13 @@ module.exports = exports = class Module {
 
       if (protocol.exists(pkg)) {
         try {
-          module._info = Module.load(pkg, { protocol })._exports
+          module._info = this.load(pkg, { protocol })._exports
         } catch {}
         break
       }
 
       dirname = path.dirname(dirname)
-    } while (dirname !== '/' && dirname !== '.')
+    } while (dirname !== path.sep && dirname !== '.')
 
     if (specifier in this._builtins) {
       module._exports = this._builtins[specifier]
@@ -529,7 +529,7 @@ module.exports = exports = class Module {
       }
 
       name = path.dirname(name)
-    } while (name !== '/' && name !== '.')
+    } while (name !== path.sep && name !== '.')
 
     if (path.extname(name) !== '.bundle') return null
 
