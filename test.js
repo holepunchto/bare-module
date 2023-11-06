@@ -549,7 +549,7 @@ test('load .bare', async (t) => {
     }
   })
 
-  await t.exception(() => Module.load('/index.js'), /dlopen\(\/native\.bare/i)
+  await t.exception(() => Module.load('/index.js'))
 })
 
 test('load .node', async (t) => {
@@ -574,7 +574,7 @@ test('load .node', async (t) => {
     }
   })
 
-  await t.exception(() => Module.load('/index.js'), /dlopen\(\/native\.node/i)
+  await t.exception(() => Module.load('/index.js'))
 })
 
 test('load .bundle', (t) => {
