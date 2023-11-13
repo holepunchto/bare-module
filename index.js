@@ -1,13 +1,14 @@
-const path = require('path')
-const os = require('os')
-const Addon = require('addon')
+/* global Bare */
+const path = require('bare-path')
+const os = require('bare-os')
 const Bundle = require('bare-bundle')
 const Protocol = require('./lib/protocol')
 const constants = require('./lib/constants')
 const errors = require('./lib/errors')
 const binding = require('./binding')
+const addon = require.addon.bind(require)
 
-module.exports = exports = class Module {
+const Module = module.exports = exports = class Module {
   constructor (filename) {
     this._filename = filename
     this._state = 0
@@ -87,7 +88,6 @@ module.exports = exports = class Module {
 
   static _extensions = Object.create(null)
   static _protocols = Object.create(null)
-  static _builtins = Object.create(null)
   static _imports = Object.create(null)
   static _cache = Object.create(null)
   static _bundles = Object.create(null)
@@ -170,14 +170,6 @@ module.exports = exports = class Module {
     return this._cache
   }
 
-  static get builtinModules () {
-    return Object.keys(this._builtins)
-  }
-
-  static isBuiltin (name) {
-    return name in this._builtins
-  }
-
   static createRequire (filename, opts = {}) {
     const {
       imports = this._imports,
@@ -216,6 +208,7 @@ module.exports = exports = class Module {
     require.main = module._main
     require.cache = this._cache
     require.resolve = resolve
+    require.addon = (specifier = path.dirname(module._filename)) => addon(specifier)
 
     return require
   }
@@ -274,24 +267,20 @@ module.exports = exports = class Module {
       dirname = path.dirname(dirname)
     } while (dirname !== path.sep && dirname !== '.')
 
-    if (specifier in this._builtins) {
-      module._exports = this._builtins[specifier]
-    } else {
-      module._main = main || module
+    module._main = main || module
 
-      let extension = this._extensionFor(type) || path.extname(specifier)
+    let extension = this._extensionFor(type) || path.extname(specifier)
 
-      if (extension in this._extensions === false) {
-        if (defaultType) extension = this._extensionFor(defaultType) || '.js'
-        else extension = '.js'
-      }
-
-      if (extension === '.bundle' && path.extname(specifier) !== extension) {
-        throw errors.INVALID_BUNDLE_EXTENSION(`Invalid extension for bundle '${specifier}'`)
-      }
-
-      this._extensions[extension].call(this, module, source, referrer, protocol, imports)
+    if (extension in this._extensions === false) {
+      if (defaultType) extension = this._extensionFor(defaultType) || '.js'
+      else extension = '.js'
     }
+
+    if (extension === '.bundle' && path.extname(specifier) !== extension) {
+      throw errors.INVALID_BUNDLE_EXTENSION(`Invalid extension for bundle '${specifier}'`)
+    }
+
+    this._extensions[extension].call(this, module, source, referrer, protocol, imports)
 
     return this._transform(module, referrer, dynamic)
   }
@@ -348,10 +337,6 @@ module.exports = exports = class Module {
     specifier = protocol.preresolve(specifier, dirname)
 
     yield * protocol.resolve(specifier, dirname, imports)
-
-    if (this.isBuiltin(specifier)) {
-      yield specifier
-    }
 
     if (path.isAbsolute(specifier)) {
       yield * this._resolveFile(specifier, protocol)
@@ -606,7 +591,7 @@ module.exports = exports = class Module {
   }
 }
 
-exports._extensions['.js'] = function (module, source, referrer, protocol, imports) {
+Module._extensions['.js'] = function (module, source, referrer, protocol, imports) {
   const isESM = (
     // The default type is ES modules.
     (module._defaultType === constants.types.MODULE) ||
@@ -623,99 +608,118 @@ exports._extensions['.js'] = function (module, source, referrer, protocol, impor
   return loader.call(this, module, source, referrer, protocol, imports)
 }
 
-exports._extensions['.cjs'] = function (module, source, referrer, protocol, imports) {
-  if (source === null) source = protocol.read(module._filename)
-
-  if (typeof source !== 'string') source = Buffer.coerce(source).toString()
-
-  referrer = module
-
-  const resolve = (specifier) => {
-    return this.resolve(specifier, path.dirname(module._filename), {
-      protocol: this._protocolFor(specifier, protocol),
-      imports,
-      referrer
-    })
-  }
-
-  const require = (specifier) => {
-    const module = this.load(resolve(specifier), {
-      protocol: this._protocolFor(specifier, protocol),
-      imports,
-      referrer
-    })
-
-    return module._exports
-  }
-
+Module._extensions['.cjs'] = function (module, source, referrer, protocol, imports) {
   module._type = constants.types.SCRIPT
   module._protocol = protocol
   module._imports = imports
-  module._exports = {}
 
-  require.main = module._main
-  require.cache = this._cache
-  require.resolve = resolve
+  if (protocol.load) {
+    module._exports = protocol.load(module._filename)
+  } else {
+    if (source === null) source = protocol.read(module._filename)
 
-  binding.createFunction(module._filename, ['require', 'module', 'exports', '__filename', '__dirname'], source, 0)(
-    require,
-    module,
-    module._exports,
-    module._filename,
-    path.dirname(module._filename)
-  )
+    if (typeof source !== 'string') source = Buffer.coerce(source).toString()
+
+    referrer = module
+
+    const resolve = (specifier) => {
+      return this.resolve(specifier, path.dirname(module._filename), {
+        protocol: this._protocolFor(specifier, protocol),
+        imports,
+        referrer
+      })
+    }
+
+    const require = (specifier) => {
+      const module = this.load(resolve(specifier), {
+        protocol: this._protocolFor(specifier, protocol),
+        imports,
+        referrer
+      })
+
+      return module._exports
+    }
+
+    module._exports = {}
+
+    require.main = module._main
+    require.cache = this._cache
+    require.resolve = resolve
+    require.addon = (specifier = path.dirname(module._filename)) => addon(specifier)
+
+    binding.createFunction(module._filename, ['require', 'module', 'exports', '__filename', '__dirname'], source, 0)(
+      require,
+      module,
+      module._exports,
+      module._filename,
+      path.dirname(module._filename)
+    )
+  }
 }
 
-exports._extensions['.mjs'] = function (module, source, referrer, protocol, imports) {
-  if (source === null) source = protocol.read(module._filename)
-
-  if (typeof source !== 'string') source = Buffer.coerce(source).toString()
-
+Module._extensions['.mjs'] = function (module, source, referrer, protocol, imports) {
   module._type = constants.types.MODULE
   module._protocol = protocol
   module._imports = imports
-  module._handle = binding.createModule(module._filename, source, 0, this._handle)
+
+  if (protocol.load) {
+    module._exports = protocol.load(module._filename)
+  } else {
+    if (source === null) source = protocol.read(module._filename)
+
+    if (typeof source !== 'string') source = Buffer.coerce(source).toString()
+
+    module._handle = binding.createModule(module._filename, source, 0, this._handle)
+  }
 }
 
-exports._extensions['.json'] = function (module, source, referrer, protocol, imports) {
-  if (source === null) source = protocol.read(module._filename)
-
-  if (typeof source !== 'string') source = Buffer.coerce(source).toString()
-
+Module._extensions['.json'] = function (module, source, referrer, protocol, imports) {
   module._type = constants.types.JSON
   module._protocol = protocol
   module._imports = imports
-  module._exports = JSON.parse(source)
+
+  if (protocol.load) {
+    module._exports = protocol.load(module._filename)
+  } else {
+    if (source === null) source = protocol.read(module._filename)
+
+    if (typeof source !== 'string') source = Buffer.coerce(source).toString()
+
+    module._exports = JSON.parse(source)
+  }
 }
 
-exports._extensions['.bare'] = function (module, source, referrer, protocol, imports) {
+Module._extensions['.bare'] = function (module, source, referrer, protocol, imports) {
   module._type = constants.types.ADDON
   module._protocol = protocol
   module._imports = imports
-  module._exports = Addon.load(module._filename)
+
+  module._exports = addon(module._filename)
 }
 
-exports._extensions['.node'] = function (module, source, referrer, protocol, imports) {
+Module._extensions['.node'] = function (module, source, referrer, protocol, imports) {
   module._type = constants.types.ADDON
   module._protocol = protocol
   module._imports = imports
-  module._exports = Addon.load(module._filename)
+
+  module._exports = addon(module._filename)
 }
 
-exports._extensions['.bundle'] = function (module, source, referrer, protocol, imports) {
+Module._extensions['.bundle'] = function (module, source, referrer, protocol, imports) {
+  module._type = constants.types.BUNDLE
+  module._protocol = protocol
+  module._imports = imports
+
   if (source === null) source = protocol.read(module._filename)
 
   if (typeof source === 'string') source = Buffer.from(source)
 
   const bundle = this._bundleFor(module._filename, protocol, source)
 
-  module._type = constants.types.BUNDLE
-  module._protocol = protocol
-  module._imports = imports
-  module._exports = exports.load(bundle.main, bundle.read(bundle.main), { protocol, imports, referrer })._exports
+  module._exports = this.load(bundle.main, bundle.read(bundle.main), { protocol, imports, referrer })._exports
 }
 
-exports._protocols['file:'] = new Protocol({
+Module._protocols['file:'] = new Protocol({
   preresolve (specifier, dirname) {
     specifier = specifier.replace(/^file:/, '')
 
@@ -726,7 +730,6 @@ exports._protocols['file:'] = new Protocol({
   },
 
   postresolve (specifier) {
-    if (exports.isBuiltin(specifier)) return specifier
     return binding.realpath(specifier)
   },
 
@@ -739,13 +742,7 @@ exports._protocols['file:'] = new Protocol({
   }
 })
 
-exports._protocols['node:'] = new Protocol({
-  preresolve (specifier) {
-    return specifier.replace(/^node:/, '')
-  }
-})
-
-exports._protocols['data:'] = new Protocol({
+Module._protocols['data:'] = new Protocol({
   * resolve (specifier) {
     yield specifier
   },
@@ -757,11 +754,11 @@ exports._protocols['data:'] = new Protocol({
   }
 })
 
-process
+Bare
   .prependListener('teardown', () => {
-    for (const module of exports._modules) {
+    for (const module of Module._modules) {
       module.destroy()
     }
 
-    binding.destroy(exports._handle)
+    binding.destroy(Module._handle)
   })

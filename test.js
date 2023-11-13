@@ -169,28 +169,6 @@ test('load .cjs with bare specifier require', (t) => {
   t.is(Module.load('/index.cjs').exports, 42)
 })
 
-test('load .cjs with builtin require', (t) => {
-  t.teardown(onteardown)
-
-  Module._builtins.foo = 42
-
-  Module._protocols['file:'] = new Module.Protocol({
-    exists () {
-      return false
-    },
-
-    read (filename) {
-      if (filename === '/index.cjs') {
-        return 'const foo = require(\'foo\')'
-      }
-
-      t.fail()
-    }
-  })
-
-  Module.load('/index.cjs')
-})
-
 test('load .cjs with .mjs require', (t) => {
   t.teardown(onteardown)
 
@@ -352,28 +330,6 @@ test('load .mjs with .js import', (t) => {
 
       if (filename === '/foo.js') {
         return 'module.exports = 42'
-      }
-
-      t.fail()
-    }
-  })
-
-  Module.load('/index.mjs')
-})
-
-test('load .mjs with builtin import', (t) => {
-  t.teardown(onteardown)
-
-  Module._builtins.foo = 42
-
-  Module._protocols['file:'] = new Module.Protocol({
-    exists () {
-      return false
-    },
-
-    read (filename) {
-      if (filename === '/index.mjs') {
-        return 'import foo from \'foo\''
       }
 
       t.fail()
@@ -1042,42 +998,6 @@ test('load .mjs with explicit file: protocol import', (t) => {
   Module.load('/foo.mjs')
 })
 
-test('load .cjs with node: protocol require', (t) => {
-  t.teardown(onteardown)
-
-  Module._builtins.foo = 42
-
-  Module._protocols['file:'] = new Module.Protocol({
-    read (filename) {
-      if (filename === '/foo.cjs') {
-        return 'const foo = require(\'node:foo\')'
-      }
-
-      t.fail()
-    }
-  })
-
-  Module.load('/foo.cjs')
-})
-
-test('load .mjs with node: protocol import', (t) => {
-  t.teardown(onteardown)
-
-  Module._builtins.foo = 42
-
-  Module._protocols['file:'] = new Module.Protocol({
-    read (filename) {
-      if (filename === '/foo.mjs') {
-        return 'import foo from \'node:foo\''
-      }
-
-      t.fail()
-    }
-  })
-
-  Module.load('/foo.mjs')
-})
-
 test('load .cjs with data: protocol require', (t) => {
   t.teardown(onteardown)
 
@@ -1386,7 +1306,6 @@ test('load file that cannot be read', async (t) => {
 })
 
 function onteardown () {
-  Module._builtins = Object.create(null)
   Module._cache = Object.create(null)
   Module._protocols['file:'] = file
 }

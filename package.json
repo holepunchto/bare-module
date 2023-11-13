@@ -16,7 +16,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/holepunchto/bare-module.git"
+    "url": "git+https://github.com/holepunchto/bare-module.git"
   },
   "author": "Holepunch",
   "license": "Apache-2.0",
@@ -25,7 +25,9 @@
   },
   "homepage": "https://github.com/holepunchto/bare-module#readme",
   "dependencies": {
-    "bare-bundle": "^0.1.2"
+    "bare-bundle": "^0.3.0",
+    "bare-os": "^2.0.0",
+    "bare-path": "^2.0.0"
   },
   "devDependencies": {
     "brittle": "^3.1.1",
