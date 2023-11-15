@@ -395,8 +395,10 @@ const Module = module.exports = exports = class Module {
   }
 
   static * _resolveNodeModules (specifier, dirname, protocol) {
+    const [, name, expansion = '.'] = /^((?:@[^/\\%]+\/)?[^./\\%][^/\\%]*)(\/.*)?$/.exec(specifier) || []
+
     for (const nodeModules of this._resolveNodeModulesPaths(dirname)) {
-      const [, name, expansion = '.'] = /^((?:@[^/\\%]+\/)?[^./\\%][^/\\%]*)(\/.*)?$/.exec(specifier) || []
+      let resolved = specifier
 
       if (name) {
         const pkg = path.join(nodeModules, name, 'package.json')
@@ -409,16 +411,16 @@ const Module = module.exports = exports = class Module {
 
           if (info) {
             if (info.exports) {
-              specifier = this._mapConditionalExport(expansion, dirname, info.exports)
+              resolved = this._mapConditionalExport(expansion, dirname, info.exports)
 
-              if (specifier) specifier = path.join(name, specifier)
+              if (resolved) resolved = path.join(name, resolved)
               else return
             }
           }
         }
       }
 
-      const filename = path.join(nodeModules, specifier)
+      const filename = path.join(nodeModules, resolved)
 
       yield * this._resolveFile(filename, protocol)
       yield * this._resolveDirectory(filename, protocol)
