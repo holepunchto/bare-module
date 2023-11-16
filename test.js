@@ -1,12 +1,11 @@
 const test = require('brittle')
+const path = require('bare-path')
 const Module = require('.')
-
-const file = Module._protocols['file:']
 
 test('resolve bare specifier', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/node_modules/foo/index.js'
     },
@@ -16,13 +15,13 @@ test('resolve bare specifier', (t) => {
     }
   })
 
-  t.is(Module.resolve('foo', '/'), '/node_modules/foo/index.js')
+  t.is(Module.resolve('foo', '/', { protocol }), '/node_modules/foo/index.js')
 })
 
 test('load resolved bare specifier', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/node_modules/foo/index.js'
     },
@@ -36,13 +35,13 @@ test('load resolved bare specifier', (t) => {
     }
   })
 
-  t.is(Module.load(Module.resolve('foo', '/')).exports, 42)
+  t.is(Module.load(Module.resolve('foo', '/', { protocol }), { protocol }).exports, 42)
 })
 
 test('load resolved bare specifier with source', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/node_modules/foo/index.js'
     },
@@ -52,13 +51,13 @@ test('load resolved bare specifier with source', (t) => {
     }
   })
 
-  t.is(Module.load(Module.resolve('foo', '/'), 'module.exports = 42').exports, 42)
+  t.is(Module.load(Module.resolve('foo', '/', { protocol }), 'module.exports = 42').exports, 42)
 })
 
 test('load .js', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists () {
       return false
     },
@@ -72,13 +71,13 @@ test('load .js', (t) => {
     }
   })
 
-  t.is(Module.load('/index.js').exports, 42)
+  t.is(Module.load('/index.js', { protocol }).exports, 42)
 })
 
 test('load .js with pkg.type module', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/package.json'
     },
@@ -96,22 +95,20 @@ test('load .js with pkg.type module', (t) => {
     }
   })
 
-  Module.load('/index.js')
+  Module.load('/index.js', { protocol })
 })
 
 test('load .js with default type', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/bar.js'
     },
 
     read (filename) {
       if (filename === '/foo.js') {
-        return 'export { default } from \'./bar.js\''
+        return 'export { default } from \'/bar.js\''
       }
 
       if (filename === '/bar.js') {
@@ -122,13 +119,13 @@ test('load .js with default type', (t) => {
     }
   })
 
-  t.is(Module.load('/foo.js', { defaultType: Module.constants.types.MODULE }).exports.default, 42)
+  t.is(Module.load('/foo.js', { protocol, defaultType: Module.constants.types.MODULE }).exports.default, 42)
 })
 
 test('load .cjs', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists () {
       return false
     },
@@ -142,13 +139,13 @@ test('load .cjs', (t) => {
     }
   })
 
-  t.is(Module.load('/index.cjs').exports, 42)
+  t.is(Module.load('/index.cjs', { protocol }).exports, 42)
 })
 
 test('load .cjs with bare specifier require', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/node_modules/foo/index.js'
     },
@@ -166,22 +163,20 @@ test('load .cjs with bare specifier require', (t) => {
     }
   })
 
-  t.is(Module.load('/index.cjs').exports, 42)
+  t.is(Module.load('/index.cjs', { protocol }).exports, 42)
 })
 
 test('load .cjs with .mjs require', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/bar.mjs'
     },
 
     read (filename) {
       if (filename === '/foo.cjs') {
-        return 'const bar = require(\'./bar\')'
+        return 'const bar = require(\'/bar\')'
       }
 
       if (filename === '/bar.mjs') {
@@ -192,13 +187,13 @@ test('load .cjs with .mjs require', (t) => {
     }
   })
 
-  Module.load('/foo.cjs')
+  Module.load('/foo.cjs', { protocol })
 })
 
 test('load .cjs with top-level await', async (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists () {
       return false
     },
@@ -212,22 +207,20 @@ test('load .cjs with top-level await', async (t) => {
     }
   })
 
-  await t.exception.all(() => Module.load('/index.cjs'))
+  await t.exception.all(() => Module.load('/index.cjs', { protocol }))
 })
 
 test('load .cjs with top-level await .mjs require', async (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/bar.mjs'
     },
 
     read (filename) {
       if (filename === '/foo.cjs') {
-        return 'const bar = require(\'./bar\'); bar.default'
+        return 'const bar = require(\'/bar\'); bar.default'
       }
 
       if (filename === '/bar.mjs') {
@@ -238,13 +231,13 @@ test('load .cjs with top-level await .mjs require', async (t) => {
     }
   })
 
-  await t.exception.all(() => Module.load('/foo.cjs'), /cannot access 'default' before initialization/i)
+  await t.exception.all(() => Module.load('/foo.cjs', { protocol }), /cannot access 'default' before initialization/i)
 })
 
 test('load .mjs', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists () {
       return false
     },
@@ -258,22 +251,20 @@ test('load .mjs', (t) => {
     }
   })
 
-  Module.load('/index.mjs')
+  Module.load('/index.mjs', { protocol })
 })
 
 test('load .mjs with import', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/foo.mjs'
     },
 
     read (filename) {
       if (filename === '/index.mjs') {
-        return 'import foo from \'./foo.mjs\''
+        return 'import foo from \'/foo.mjs\''
       }
 
       if (filename === '/foo.mjs') {
@@ -284,22 +275,20 @@ test('load .mjs with import', (t) => {
     }
   })
 
-  Module.load('/index.mjs')
+  Module.load('/index.mjs', { protocol })
 })
 
 test('load .mjs with .cjs import', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/foo.cjs'
     },
 
     read (filename) {
       if (filename === '/index.mjs') {
-        return 'import foo from \'./foo.cjs\''
+        return 'import foo from \'/foo.cjs\''
       }
 
       if (filename === '/foo.cjs') {
@@ -310,22 +299,20 @@ test('load .mjs with .cjs import', (t) => {
     }
   })
 
-  Module.load('/index.mjs')
+  Module.load('/index.mjs', { protocol })
 })
 
 test('load .mjs with .js import', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/foo.js'
     },
 
     read (filename) {
       if (filename === '/index.mjs') {
-        return 'import foo from \'./foo.js\''
+        return 'import foo from \'/foo.js\''
       }
 
       if (filename === '/foo.js') {
@@ -336,15 +323,13 @@ test('load .mjs with .js import', (t) => {
     }
   })
 
-  Module.load('/index.mjs')
+  Module.load('/index.mjs', { protocol })
 })
 
 test('load .mjs with missing import', async (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists () {
       return false
     },
@@ -358,26 +343,24 @@ test('load .mjs with missing import', async (t) => {
     }
   })
 
-  await t.exception(() => Module.load('/index.mjs'), /cannot find module '\.\/foo'/i)
+  await t.exception(() => Module.load('/index.mjs', { protocol }), /cannot find module '\.\/foo'/i)
 })
 
 test('load .mjs with nested import', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/foo.mjs' || filename === '/bar.mjs' || filename === '/baz.mjs'
     },
 
     read (filename) {
       if (filename === '/foo.mjs') {
-        return 'import bar from \'./bar\'; export default 1'
+        return 'import bar from \'/bar\'; export default 1'
       }
 
       if (filename === '/bar.mjs') {
-        return 'import baz from \'./baz\'; export default 2'
+        return 'import baz from \'/baz\'; export default 2'
       }
 
       if (filename === '/baz.mjs') {
@@ -388,39 +371,37 @@ test('load .mjs with nested import', (t) => {
     }
   })
 
-  Module.load('/foo.mjs')
+  Module.load('/foo.mjs', { protocol })
 })
 
 test('load .mjs with cyclic import', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/foo.mjs' || filename === '/bar.mjs'
     },
 
     read (filename) {
       if (filename === '/foo.mjs') {
-        return 'import bar from \'./bar\'; export default 1'
+        return 'import bar from \'/bar\'; export default 1'
       }
 
       if (filename === '/bar.mjs') {
-        return 'import foo from \'./foo\'; export default 2'
+        return 'import foo from \'/foo\'; export default 2'
       }
 
       t.fail()
     }
   })
 
-  Module.load('/foo.mjs')
+  Module.load('/foo.mjs', { protocol })
 })
 
 test('load .mjs with top-level await', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists () {
       return false
     },
@@ -434,22 +415,20 @@ test('load .mjs with top-level await', (t) => {
     }
   })
 
-  Module.load('/index.mjs')
+  Module.load('/index.mjs', { protocol })
 })
 
 test('load .mjs with top-level await .mjs import', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/bar.mjs'
     },
 
     read (filename) {
       if (filename === '/foo.mjs') {
-        return 'import bar from \'./bar\''
+        return 'import bar from \'/bar\''
       }
 
       if (filename === '/bar.mjs') {
@@ -460,13 +439,13 @@ test('load .mjs with top-level await .mjs import', (t) => {
     }
   })
 
-  Module.load('/foo.mjs')
+  Module.load('/foo.mjs', { protocol })
 })
 
 test('load .json', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists () {
       return false
     },
@@ -480,15 +459,13 @@ test('load .json', (t) => {
     }
   })
 
-  t.is(Module.load('/index.json').exports, 42)
+  t.is(Module.load('/index.json', { protocol }).exports, 42)
 })
 
 test('load .bare', async (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists (filename) {
       return (
         filename === '/index.js' ||
@@ -498,22 +475,20 @@ test('load .bare', async (t) => {
 
     read (filename) {
       if (filename === '/index.js') {
-        return 'require(\'./native.bare\')'
+        return 'require(\'/native.bare\')'
       }
 
       t.fail()
     }
   })
 
-  await t.exception(() => Module.load('/index.js'))
+  await t.exception(() => Module.load('/index.js', { protocol }))
 })
 
 test('load .node', async (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists (filename) {
       return (
         filename === '/index.js' ||
@@ -523,14 +498,14 @@ test('load .node', async (t) => {
 
     read (filename) {
       if (filename === '/index.js') {
-        return 'require(\'./native.node\')'
+        return 'require(\'/native.node\')'
       }
 
       t.fail()
     }
   })
 
-  await t.exception(() => Module.load('/index.js'))
+  await t.exception(() => Module.load('/index.js', { protocol }))
 })
 
 test('load .bundle', (t) => {
@@ -593,14 +568,12 @@ test('load specific module within .bundle', (t) => {
   t.teardown(onteardown)
 
   const bundle = new Module.Bundle()
-    .write('/foo.js', 'module.exports = require(\'./bar\')')
+    .write('/foo.js', 'module.exports = require(\'/bar\')')
     .write('/bar.js', 'module.exports = 42')
     .toBuffer()
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
-    exists (filename) {
+  const protocol = new Module.Protocol({
+    exists () {
       return false
     },
 
@@ -613,7 +586,7 @@ test('load specific module within .bundle', (t) => {
     }
   })
 
-  t.is(Module.load('/app.bundle/foo.js').exports, 42)
+  t.is(Module.load('/app.bundle/foo.js', { protocol }).exports, 42)
 })
 
 test('load specific module within nested .bundle', (t) => {
@@ -627,8 +600,8 @@ test('load specific module within nested .bundle', (t) => {
     .write('/bar.bundle', bundleA)
     .toBuffer()
 
-  Module._protocols['file:'] = new Module.Protocol({
-    exists (filename) {
+  const protocol = new Module.Protocol({
+    exists () {
       return false
     },
 
@@ -641,7 +614,7 @@ test('load specific module within nested .bundle', (t) => {
     }
   })
 
-  t.is(Module.load('/foo.bundle/bar.bundle/bar.js').exports, 42)
+  t.is(Module.load('/foo.bundle/bar.bundle/bar.js', { protocol }).exports, 42)
 })
 
 test('load .bundle with type option and no .bundle extension', async (t) => {
@@ -665,8 +638,8 @@ test('resolve specific module within .bundle', (t) => {
     .write('/bar.js', 'module.exports = 42')
     .toBuffer()
 
-  Module._protocols['file:'] = new Module.Protocol({
-    exists (filename) {
+  const protocol = new Module.Protocol({
+    exists () {
       return false
     },
 
@@ -679,7 +652,7 @@ test('resolve specific module within .bundle', (t) => {
     }
   })
 
-  t.is(Module.resolve('/app.bundle/foo'), '/app.bundle/foo.js')
+  t.is(Module.resolve('/app.bundle/foo', { protocol }), '/app.bundle/foo.js')
 })
 
 test('resolve specific module within nested .bundle', (t) => {
@@ -693,8 +666,8 @@ test('resolve specific module within nested .bundle', (t) => {
     .write('/bar.bundle', bundleA)
     .toBuffer()
 
-  Module._protocols['file:'] = new Module.Protocol({
-    exists (filename) {
+  const protocol = new Module.Protocol({
+    exists () {
       return false
     },
 
@@ -707,13 +680,13 @@ test('resolve specific module within nested .bundle', (t) => {
     }
   })
 
-  t.is(Module.resolve('/foo.bundle/bar.bundle/bar'), '/foo.bundle/bar.bundle/bar.js')
+  t.is(Module.resolve('/foo.bundle/bar.bundle/bar', { protocol }), '/foo.bundle/bar.bundle/bar.js')
 })
 
 test('load unknown extension', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists () {
       return false
     },
@@ -727,13 +700,13 @@ test('load unknown extension', (t) => {
     }
   })
 
-  t.is(Module.load('/index.foo').exports, 42)
+  t.is(Module.load('/index.foo', { protocol }).exports, 42)
 })
 
 test('load unknown extension with default type', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists () {
       return false
     },
@@ -747,21 +720,11 @@ test('load unknown extension with default type', (t) => {
     }
   })
 
-  t.is(Module.load('/index.foo', { defaultType: Module.constants.types.JSON }).exports, 42)
+  t.is(Module.load('/index.foo', { protocol, defaultType: Module.constants.types.JSON }).exports, 42)
 })
 
 test('load .cjs with hashbang', (t) => {
   t.teardown(onteardown)
-
-  Module._protocols['file:'] = new Module.Protocol({
-    exists () {
-      return false
-    },
-
-    read () {
-      t.fail()
-    }
-  })
 
   t.execution(() => Module.load('/index.cjs', '#!node'))
 })
@@ -769,32 +732,20 @@ test('load .cjs with hashbang', (t) => {
 test('load .mjs with hashbang', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    exists () {
-      return false
-    },
-
-    read () {
-      t.fail()
-    }
-  })
-
   t.execution(() => Module.load('/index.mjs', '#!node'))
 })
 
 test('load .cjs with dynamic .mjs import', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/bar.mjs'
     },
 
     read (filename) {
       if (filename === '/foo.cjs') {
-        return 'const bar = import(\'./bar\')'
+        return 'const bar = import(\'/bar\')'
       }
 
       if (filename === '/bar.mjs') {
@@ -805,22 +756,20 @@ test('load .cjs with dynamic .mjs import', (t) => {
     }
   })
 
-  Module.load('/foo.cjs')
+  Module.load('/foo.cjs', { protocol })
 })
 
 test('load .cjs with dynamic .cjs import', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/bar.cjs'
     },
 
     read (filename) {
       if (filename === '/foo.cjs') {
-        return 'const bar = import(\'./bar\')'
+        return 'const bar = import(\'/bar\')'
       }
 
       if (filename === '/bar.cjs') {
@@ -831,22 +780,20 @@ test('load .cjs with dynamic .cjs import', (t) => {
     }
   })
 
-  Module.load('/foo.cjs')
+  Module.load('/foo.cjs', { protocol })
 })
 
 test('load .mjs with dynamic .mjs import', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/bar.mjs'
     },
 
     read (filename) {
       if (filename === '/foo.mjs') {
-        return 'const { default: bar } = await import(\'./bar\')'
+        return 'const { default: bar } = await import(\'/bar\')'
       }
 
       if (filename === '/bar.mjs') {
@@ -857,22 +804,20 @@ test('load .mjs with dynamic .mjs import', (t) => {
     }
   })
 
-  Module.load('/foo.mjs')
+  Module.load('/foo.mjs', { protocol })
 })
 
 test('load .mjs with dynamic .cjs import', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/bar.cjs'
     },
 
     read (filename) {
       if (filename === '/foo.mjs') {
-        return 'const { default: bar } = await import(\'./bar\')'
+        return 'const { default: bar } = await import(\'/bar\')'
       }
 
       if (filename === '/bar.cjs') {
@@ -883,13 +828,13 @@ test('load .mjs with dynamic .cjs import', (t) => {
     }
   })
 
-  Module.load('/foo.mjs')
+  Module.load('/foo.mjs', { protocol })
 })
 
 test('load .cjs with bare specifier require and import map', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/bar.cjs'
     },
@@ -908,6 +853,7 @@ test('load .cjs with bare specifier require and import map', (t) => {
   })
 
   Module.load('/foo.cjs', {
+    protocol,
     imports: {
       bar: '/bar.cjs'
     }
@@ -917,7 +863,7 @@ test('load .cjs with bare specifier require and import map', (t) => {
 test('load .mjs with bare specifier import and import map', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/bar.mjs'
     },
@@ -936,72 +882,17 @@ test('load .mjs with bare specifier import and import map', (t) => {
   })
 
   Module.load('/foo.mjs', {
+    protocol,
     imports: {
       bar: '/bar.mjs'
     }
   })
 })
 
-test('load .cjs with explicit file: protocol require', (t) => {
-  t.teardown(onteardown)
-
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve (specifier) {
-      return specifier.replace(/^file:/, '')
-    },
-
-    exists (filename) {
-      return filename === '/bar.cjs'
-    },
-
-    read (filename) {
-      if (filename === '/foo.cjs') {
-        return 'const bar = require(\'file:/bar\')'
-      }
-
-      if (filename === '/bar.cjs') {
-        return 'module.exports = 42'
-      }
-
-      t.fail()
-    }
-  })
-
-  Module.load('/foo.cjs')
-})
-
-test('load .mjs with explicit file: protocol import', (t) => {
-  t.teardown(onteardown)
-
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve (specifier) {
-      return specifier.replace(/^file:/, '')
-    },
-
-    exists (filename) {
-      return filename === '/bar.mjs'
-    },
-
-    read (filename) {
-      if (filename === '/foo.mjs') {
-        return 'import bar from \'file:/bar\''
-      }
-
-      if (filename === '/bar.mjs') {
-        return 'export default 42'
-      }
-
-      t.fail()
-    }
-  })
-
-  Module.load('/foo.mjs')
-})
-
 test('load .cjs with data: protocol require', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     read (filename) {
       if (filename === '/foo.cjs') {
         return `module.exports = require('data:,${encodeURIComponent('module.exports = 42')}')`
@@ -1011,13 +902,13 @@ test('load .cjs with data: protocol require', (t) => {
     }
   })
 
-  t.is(Module.load('/foo.cjs').exports, 42)
+  t.is(Module.load('/foo.cjs', { protocol }).exports, 42)
 })
 
 test('load .mjs with data: protocol import', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     read (filename) {
       if (filename === '/foo.mjs') {
         return `export { default } from 'data:,${encodeURIComponent('export default 42')}'`
@@ -1027,13 +918,13 @@ test('load .mjs with data: protocol import', (t) => {
     }
   })
 
-  t.is(Module.load('/foo.mjs').exports.default, 42)
+  t.is(Module.load('/foo.mjs', { protocol }).exports.default, 42)
 })
 
 test('import map with protocol', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/bar.mjs'
     },
@@ -1052,6 +943,7 @@ test('import map with protocol', (t) => {
   })
 
   Module.load('/foo.mjs', {
+    protocol,
     imports: {
       'proto:bar': '/bar.mjs'
     }
@@ -1061,16 +953,14 @@ test('import map with protocol', (t) => {
 test('require.main', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/bar.js'
     },
 
     read (filename) {
       if (filename === '/foo.js') {
-        return 'module.exports = require.main; require(\'./bar\')'
+        return 'module.exports = require.main; require(\'/bar\')'
       }
 
       if (filename === '/bar.js') {
@@ -1081,8 +971,8 @@ test('require.main', (t) => {
     }
   })
 
-  const foo = Module.load('/foo.js')
-  const bar = Module.load('/bar.js')
+  const foo = Module.load('/foo.js', { protocol })
+  const bar = Module.load('/bar.js', { protocol })
 
   t.is(foo.exports, foo)
   t.is(bar.exports, foo)
@@ -1091,9 +981,7 @@ test('require.main', (t) => {
 test('import.meta', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
-
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/bar.mjs'
     },
@@ -1107,17 +995,17 @@ test('import.meta', (t) => {
     }
   })
 
-  const { default: meta } = Module.load('/foo.mjs').exports
+  const { default: meta } = Module.load('/foo.mjs', { protocol }).exports
 
   t.is(meta.url, '/foo.mjs')
   t.is(meta.main, true)
-  t.is(meta.resolve('./bar'), '/bar.mjs')
+  t.is(meta.resolve('/bar'), '/bar.mjs')
 })
 
 test('import assertions', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/bar'
     },
@@ -1135,14 +1023,19 @@ test('import assertions', (t) => {
     }
   })
 
-  t.alike(Module.load('/foo.mjs').exports.default, { hello: 'world' })
+  t.alike(Module.load('/foo.mjs', { protocol }).exports.default, { hello: 'world' })
 })
 
 test('createRequire', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
+  const protocol = new Module.Protocol({
+    preresolve (specifier, dirname) {
+      t.is(specifier, './bar')
+      t.is(dirname, '/dir')
+
+      return path.resolve(dirname, specifier)
+    },
 
     exists (filename) {
       return filename === '/dir/bar.js'
@@ -1157,16 +1050,21 @@ test('createRequire', (t) => {
     }
   })
 
-  const require = Module.createRequire('/dir/foo.js')
+  const require = Module.createRequire('/dir/foo.js', { protocol })
 
-  t.is(require('./bar.js'), 42)
+  t.is(require('./bar'), 42)
 })
 
 test('createRequire with default type', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
-    preresolve: file.preresolve,
+  const protocol = new Module.Protocol({
+    preresolve (specifier, dirname) {
+      t.is(specifier, './bar')
+      t.is(dirname, '/dir')
+
+      return path.resolve(dirname, specifier)
+    },
 
     exists (filename) {
       return filename === '/dir/bar.js'
@@ -1181,15 +1079,15 @@ test('createRequire with default type', (t) => {
     }
   })
 
-  const require = Module.createRequire('/dir/foo.js', { defaultType: Module.constants.types.MODULE })
+  const require = Module.createRequire('/dir/foo.js', { protocol, defaultType: Module.constants.types.MODULE })
 
-  t.is(require('./bar.js').default, 42)
+  t.is(require('./bar').default, 42)
 })
 
 test('main in package.json', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/package.json' || filename === '/foo.js'
     },
@@ -1203,13 +1101,13 @@ test('main in package.json', (t) => {
     }
   })
 
-  t.is(Module.resolve('/'), '/foo.js')
+  t.is(Module.resolve('/', { protocol }), '/foo.js')
 })
 
 test('exports in package.json', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/package.json' || filename === '/foo.js'
     },
@@ -1223,13 +1121,13 @@ test('exports in package.json', (t) => {
     }
   })
 
-  t.is(Module.resolve('/'), '/foo.js')
+  t.is(Module.resolve('/', { protocol }), '/foo.js')
 })
 
 test('conditional exports in package.json, .cjs before .mjs', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/package.json' || filename === '/foo.cjs' || filename === '/foo.mjs'
     },
@@ -1243,13 +1141,13 @@ test('conditional exports in package.json, .cjs before .mjs', (t) => {
     }
   })
 
-  t.is(Module.resolve('/'), '/foo.cjs')
+  t.is(Module.resolve('/', { protocol }), '/foo.cjs')
 })
 
 test('conditional exports in package.json, .mjs before .cjs', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/package.json' || filename === '/foo.cjs' || filename === '/foo.mjs'
     },
@@ -1263,13 +1161,13 @@ test('conditional exports in package.json, .mjs before .cjs', (t) => {
     }
   })
 
-  t.is(Module.resolve('/'), '/foo.mjs')
+  t.is(Module.resolve('/', { protocol }), '/foo.mjs')
 })
 
 test('exports in node_modules', (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists (filename) {
       return (
         filename === '/node_modules/foo/package.json' ||
@@ -1286,26 +1184,26 @@ test('exports in node_modules', (t) => {
     }
   })
 
-  t.is(Module.resolve('foo', '/'), '/node_modules/foo/foo.js')
+  t.is(Module.resolve('foo', '/', { protocol }), '/node_modules/foo/foo.js')
 })
 
 test('load file that cannot be read', async (t) => {
   t.teardown(onteardown)
 
-  Module._protocols['file:'] = new Module.Protocol({
+  const protocol = new Module.Protocol({
     exists (filename) {
       return filename === '/foo.cjs'
     },
 
-    read (filename) {
-      return file.read(filename)
+    read () {
+      throw new Error('file missing')
     }
   })
 
-  await t.exception(() => Module.load('/foo.cjs'), /no such file or directory/)
+  await t.exception(() => Module.load('/foo.cjs', { protocol }), /file missing/)
 })
 
 function onteardown () {
+  // TODO Provide a public API for clearing the cache.
   Module._cache = Object.create(null)
-  Module._protocols['file:'] = file
 }
