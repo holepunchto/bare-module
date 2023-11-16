@@ -51,6 +51,10 @@ const Module = module.exports = exports = class Module {
     this._exports = value
   }
 
+  get protocol () {
+    return this._protocol
+  }
+
   // For Node.js compatibility
   get id () {
     return this.filename
