@@ -1114,7 +1114,7 @@ test('exports in package.json', (t) => {
 
     read (filename) {
       if (filename === '/package.json') {
-        return '{ "exports": "./foo.js" }'
+        return '{ "exports": "./foo" }'
       }
 
       t.fail()
@@ -1185,6 +1185,156 @@ test('exports in node_modules', (t) => {
   })
 
   t.is(Module.resolve('foo', '/', { protocol }), '/node_modules/foo/foo.js')
+})
+
+test('imports in package.json', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    preresolve (specifier, dirname) {
+      t.is(specifier, './baz')
+      t.is(dirname, '/')
+
+      return path.resolve(dirname, specifier)
+    },
+
+    exists (filename) {
+      return (
+        filename === '/package.json' ||
+        filename === '/baz.js'
+      )
+    },
+
+    read (filename) {
+      if (filename === '/package.json') {
+        return '{ "imports": { "bar": "./baz" } }'
+      }
+
+      if (filename === '/foo.js') {
+        return 'const bar = require(\'bar\')'
+      }
+
+      if (filename === '/baz.js') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/foo.js', { protocol })
+})
+
+test('conditional imports in package.json, .cjs before .mjs', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    preresolve (specifier, dirname) {
+      t.is(specifier, './baz.cjs')
+      t.is(dirname, '/')
+
+      return path.resolve(dirname, specifier)
+    },
+
+    exists (filename) {
+      return (
+        filename === '/package.json' ||
+        filename === '/baz.cjs' ||
+        filename === '/baz.mjs'
+      )
+    },
+
+    read (filename) {
+      if (filename === '/package.json') {
+        return '{ "imports": { "bar": { "require": "./baz.cjs", "import": "./baz.mjs" } } }'
+      }
+
+      if (filename === '/foo.cjs') {
+        return 'const bar = require(\'bar\')'
+      }
+
+      if (filename === '/baz.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/foo.cjs', { protocol })
+})
+
+test('conditional imports in package.json, .mjs before .cjs', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    preresolve (specifier, dirname) {
+      t.is(specifier, './baz.mjs')
+      t.is(dirname, '/')
+
+      return path.resolve(dirname, specifier)
+    },
+
+    exists (filename) {
+      return filename === '/package.json' || filename === '/baz.cjs' || filename === '/baz.mjs'
+    },
+
+    read (filename) {
+      if (filename === '/package.json') {
+        return '{ "imports": { "bar": { "import": "./baz.mjs", "require": "./baz.cjs" } } }'
+      }
+
+      if (filename === '/foo.cjs') {
+        return 'const bar = require(\'bar\')'
+      }
+
+      if (filename === '/baz.mjs') {
+        return 'export default 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/foo.cjs', { protocol })
+})
+
+test('imports in node_modules', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    preresolve (specifier, dirname) {
+      t.is(specifier, './baz')
+      t.is(dirname, '/node_modules/foo')
+
+      return path.resolve(dirname, specifier)
+    },
+
+    exists (filename) {
+      return (
+        filename === '/node_modules/foo/package.json' ||
+        filename === '/node_modules/foo/baz.js'
+      )
+    },
+
+    read (filename) {
+      if (filename === '/node_modules/foo/package.json') {
+        return '{ "imports": { "bar": "./baz" } }'
+      }
+
+      if (filename === '/node_modules/foo/foo.js') {
+        return 'const bar = require(\'bar\')'
+      }
+
+      if (filename === '/node_modules/foo/baz.js') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/node_modules/foo/foo.js', { protocol })
 })
 
 test('load file that cannot be read', async (t) => {

@@ -257,22 +257,8 @@ const Module = module.exports = exports = class Module {
     const module = this._cache[specifier] = new this(specifier)
 
     module._defaultType = defaultType
-
-    let dirname = path.dirname(module._filename)
-    do {
-      const pkg = path.join(dirname, 'package.json')
-
-      if (protocol.exists(pkg)) {
-        try {
-          module._info = this.load(pkg, { protocol })._exports
-        } catch {}
-        break
-      }
-
-      dirname = path.dirname(dirname)
-    } while (dirname !== path.sep && dirname !== '.')
-
     module._main = main || module
+    module._info = this._loadPackageManifest(path.dirname(module._filename), protocol)
 
     let extension = this._extensionFor(type) || path.extname(specifier)
 
@@ -288,6 +274,22 @@ const Module = module.exports = exports = class Module {
     this._extensions[extension].call(this, module, source, referrer, protocol, imports)
 
     return this._transform(module, referrer, dynamic)
+  }
+
+  static _loadPackageManifest (dirname, protocol) {
+    do {
+      const pkg = path.join(dirname, 'package.json')
+
+      if (protocol.exists(pkg)) {
+        try {
+          return this.load(pkg, { protocol })._exports
+        } catch {}
+      }
+
+      dirname = path.dirname(dirname)
+    } while (dirname !== path.sep && dirname !== '.')
+
+    return {}
   }
 
   static resolve (specifier, dirname = os.cwd(), opts = {}) {
@@ -334,7 +336,9 @@ const Module = module.exports = exports = class Module {
   }
 
   static * _resolve (specifier, dirname, protocol, imports) {
-    specifier = this._mapConditionalSpecifier(specifier, specifier, imports, protocol.imports)
+    const info = this._loadPackageManifest(dirname, protocol)
+
+    specifier = this._mapConditionalSpecifier(specifier, specifier, imports, protocol.imports, info.imports)
 
     protocol = this._protocolFor(specifier, protocol)
 
@@ -443,13 +447,13 @@ const Module = module.exports = exports = class Module {
     }
   }
 
-  static _mapConditionalSpecifier (specifier, fallback, ...exportMaps) {
-    const exports = this._flattenSpecifierMaps(exportMaps)
+  static _mapConditionalSpecifier (specifier, fallback, ...specifierMaps) {
+    const specifiers = this._flattenSpecifierMaps(specifierMaps)
 
-    if (specifier in exports) {
-      specifier = search(exports[specifier])
+    if (specifier in specifiers) {
+      specifier = search(specifiers[specifier])
     } else {
-      specifier = search(exports)
+      specifier = search(specifiers)
     }
 
     return specifier || fallback
