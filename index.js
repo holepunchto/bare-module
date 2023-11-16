@@ -87,7 +87,6 @@ const Module = module.exports = exports = class Module {
 
   static _extensions = Object.create(null)
   static _protocols = Object.create(null)
-  static _imports = Object.create(null)
   static _cache = Object.create(null)
   static _bundles = Object.create(null)
   static _modules = new Set()
@@ -171,7 +170,7 @@ const Module = module.exports = exports = class Module {
 
   static createRequire (filename, opts = {}) {
     const {
-      imports = this._imports,
+      imports = null,
       protocol = this._protocolFor(filename, this._protocols['file:']),
       type = constants.types.SCRIPT,
       defaultType = constants.types.SCRIPT
@@ -226,7 +225,7 @@ const Module = module.exports = exports = class Module {
     }
 
     let {
-      imports = this._imports,
+      imports = null,
       protocol = this._protocolFor(specifier, this._protocols['file:']),
       referrer = null,
       dynamic = false,
@@ -298,7 +297,7 @@ const Module = module.exports = exports = class Module {
     }
 
     let {
-      imports = this._imports,
+      imports = null,
       protocol = this._protocols['file:'],
       referrer = null
     } = opts
@@ -335,8 +334,7 @@ const Module = module.exports = exports = class Module {
   }
 
   static * _resolve (specifier, dirname, protocol, imports) {
-    if (specifier in imports) specifier = imports[specifier]
-    else if (specifier in protocol.imports) specifier = protocol.imports[specifier]
+    specifier = this._mapConditionalSpecifier(specifier, specifier, imports, protocol.imports)
 
     protocol = this._protocolFor(specifier, protocol)
 
@@ -384,7 +382,7 @@ const Module = module.exports = exports = class Module {
         let specifier
 
         if (info.exports) {
-          specifier = this._mapConditionalExport('.', dirname, info.exports)
+          specifier = this._mapConditionalSpecifier('.', null, info.exports)
 
           if (specifier) specifier = path.join(dirname, specifier)
           else return
@@ -417,7 +415,7 @@ const Module = module.exports = exports = class Module {
 
           if (info) {
             if (info.exports) {
-              resolved = this._mapConditionalExport(expansion, dirname, info.exports)
+              resolved = this._mapConditionalSpecifier(expansion, null, info.exports)
 
               if (resolved) resolved = path.join(name, resolved)
               else return
@@ -445,8 +443,8 @@ const Module = module.exports = exports = class Module {
     }
   }
 
-  static _mapConditionalExport (specifier, dirname, exports) {
-    if (typeof exports !== 'object') exports = { '.': exports }
+  static _mapConditionalSpecifier (specifier, fallback, ...exportMaps) {
+    const exports = this._flattenSpecifierMaps(exportMaps)
 
     if (specifier in exports) {
       specifier = search(exports[specifier])
@@ -454,29 +452,42 @@ const Module = module.exports = exports = class Module {
       specifier = search(exports)
     }
 
-    if (specifier) specifier = path.join(dirname, specifier)
+    return specifier || fallback
 
-    return specifier
-
-    function search (specifier) {
+    function search (specifiers) {
       while (true) {
-        if (typeof specifier === 'string') return specifier
-        if (specifier === null || typeof specifier !== 'object') return specifier
-        specifier = first(specifier)
+        if (typeof specifiers === 'string') return specifiers
+        if (specifiers === null || typeof specifiers !== 'object') return specifiers
+        specifiers = first(specifiers)
       }
     }
 
-    function first (exports) {
-      for (const key in exports) {
+    function first (specifiers) {
+      for (const key in specifiers) {
         switch (key) {
           case 'require':
           case 'import':
-            return exports[key]
+            return specifiers[key]
         }
       }
 
       return null
     }
+  }
+
+  static _flattenSpecifierMaps (specifierMaps) {
+    const specifiers = Object.create(null)
+
+    for (const map of specifierMaps) {
+      this._mergeSpecifierMaps(typeof map === 'object' ? map : { '.': map }, specifiers)
+    }
+
+    return specifiers
+  }
+
+  static _mergeSpecifierMaps (source, destination) {
+    // TODO Do a deep merge
+    Object.assign(destination, source)
   }
 
   static _extensionFor (type) {
