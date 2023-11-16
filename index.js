@@ -6,7 +6,6 @@ const Protocol = require('./lib/protocol')
 const constants = require('./lib/constants')
 const errors = require('./lib/errors')
 const binding = require('./binding')
-const addon = require.addon.bind(require)
 
 const Module = module.exports = exports = class Module {
   constructor (filename) {
@@ -186,9 +185,10 @@ const Module = module.exports = exports = class Module {
     module._protocol = protocol
 
     const referrer = module
+    const dirname = path.dirname(module._filename)
 
     const resolve = (specifier) => {
-      return this.resolve(specifier, path.dirname(module._filename), {
+      return this.resolve(specifier, dirname, {
         protocol: this._protocolFor(specifier, protocol),
         imports,
         referrer
@@ -205,10 +205,16 @@ const Module = module.exports = exports = class Module {
       return module._exports
     }
 
+    const addon = (specifier = '.') => {
+      return Bare.Addon.load(Bare.Addon.resolve(specifier, dirname, {
+        referrer
+      }))
+    }
+
     require.main = module._main
     require.cache = this._cache
     require.resolve = resolve
-    require.addon = (specifier = path.dirname(module._filename)) => addon(specifier)
+    require.addon = addon
 
     return require
   }
@@ -624,8 +630,10 @@ Module._extensions['.cjs'] = function (module, source, referrer, protocol, impor
 
     referrer = module
 
+    const dirname = path.dirname(module._filename)
+
     const resolve = (specifier) => {
-      return this.resolve(specifier, path.dirname(module._filename), {
+      return this.resolve(specifier, dirname, {
         protocol: this._protocolFor(specifier, protocol),
         imports,
         referrer
@@ -642,12 +650,18 @@ Module._extensions['.cjs'] = function (module, source, referrer, protocol, impor
       return module._exports
     }
 
-    module._exports = {}
+    const addon = (specifier = '.') => {
+      return Bare.Addon.load(Bare.Addon.resolve(specifier, dirname, {
+        referrer
+      }))
+    }
 
     require.main = module._main
     require.cache = this._cache
     require.resolve = resolve
-    require.addon = (specifier = path.dirname(module._filename)) => addon(specifier)
+    require.addon = addon
+
+    module._exports = {}
 
     binding.createFunction(module._filename, ['require', 'module', 'exports', '__filename', '__dirname'], source, 0)(
       require,
@@ -696,7 +710,7 @@ Module._extensions['.bare'] = function (module, source, referrer, protocol, impo
   module._protocol = protocol
   module._imports = imports
 
-  module._exports = addon(module._filename)
+  module._exports = Bare.Addon.load(module._filename)
 }
 
 Module._extensions['.node'] = function (module, source, referrer, protocol, imports) {
@@ -704,7 +718,7 @@ Module._extensions['.node'] = function (module, source, referrer, protocol, impo
   module._protocol = protocol
   module._imports = imports
 
-  module._exports = addon(module._filename)
+  module._exports = Bare.Addon.load(module._filename)
 }
 
 Module._extensions['.bundle'] = function (module, source, referrer, protocol, imports) {
