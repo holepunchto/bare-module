@@ -1361,6 +1361,17 @@ test('imports in node_modules', (t) => {
   Module.load('/node_modules/foo/foo.js', { protocol })
 })
 
+test('builtins', (t) => {
+  t.teardown(onteardown)
+
+  const builtins = {
+    foo: 42
+  }
+
+  t.is(Module.resolve('foo', { builtins }), 'foo')
+  t.is(Module.load('foo', { builtins }).exports, 42)
+})
+
 test('load file that cannot be read', async (t) => {
   t.teardown(onteardown)
 

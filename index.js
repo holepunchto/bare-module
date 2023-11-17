@@ -239,9 +239,10 @@ const Module = module.exports = exports = class Module {
     }
 
     let {
-      imports = null,
-      protocol = this._protocolFor(specifier, this._protocols['file:']),
       referrer = null,
+      protocol = this._protocolFor(specifier, this._protocols['file:']),
+      imports = null,
+      builtins = null,
       dynamic = false,
       main = referrer ? referrer._main : null,
       type = 0,
@@ -270,22 +271,26 @@ const Module = module.exports = exports = class Module {
 
     const module = this._cache[specifier] = new this(specifier)
 
-    module._defaultType = defaultType
-    module._main = main || module
-    module._info = this._loadPackageManifest(path.dirname(module._filename), protocol)
+    if (builtins && specifier in builtins) {
+      module._exports = builtins[specifier]
+    } else {
+      module._defaultType = defaultType
+      module._main = main || module
+      module._info = this._loadPackageManifest(path.dirname(module._filename), protocol)
 
-    let extension = this._extensionFor(type) || path.extname(specifier)
+      let extension = this._extensionFor(type) || path.extname(specifier)
 
-    if (extension in this._extensions === false) {
-      if (defaultType) extension = this._extensionFor(defaultType) || '.js'
-      else extension = '.js'
+      if (extension in this._extensions === false) {
+        if (defaultType) extension = this._extensionFor(defaultType) || '.js'
+        else extension = '.js'
+      }
+
+      if (extension === '.bundle' && path.extname(specifier) !== extension) {
+        throw errors.INVALID_BUNDLE_EXTENSION(`Invalid extension for bundle '${specifier}'`)
+      }
+
+      this._extensions[extension].call(this, module, source, referrer, protocol, imports)
     }
-
-    if (extension === '.bundle' && path.extname(specifier) !== extension) {
-      throw errors.INVALID_BUNDLE_EXTENSION(`Invalid extension for bundle '${specifier}'`)
-    }
-
-    this._extensions[extension].call(this, module, source, referrer, protocol, imports)
 
     return this._transform(module, referrer, dynamic)
   }
@@ -320,9 +325,10 @@ const Module = module.exports = exports = class Module {
     }
 
     let {
-      imports = null,
-      protocol = this._protocols['file:'],
       referrer = null,
+      protocol = this._protocols['file:'],
+      imports = null,
+      builtins = null,
       conditions = ['import', 'require', 'bare', 'node']
     } = opts
 
@@ -344,7 +350,7 @@ const Module = module.exports = exports = class Module {
       })
     }
 
-    const [resolved = null] = this._resolve(specifier, dirname, protocol, imports, conditions)
+    const [resolved = null] = this._resolve(specifier, dirname, protocol, imports, builtins, conditions)
 
     if (resolved === null) {
       let msg = `Cannot find module '${specifier}'`
@@ -357,7 +363,7 @@ const Module = module.exports = exports = class Module {
     return protocol.postresolve(resolved, dirname)
   }
 
-  static * _resolve (specifier, dirname, protocol, imports, conditions) {
+  static * _resolve (specifier, dirname, protocol, imports, builtins, conditions) {
     const info = this._loadPackageManifest(dirname, protocol)
 
     specifier = this._mapConditionalSpecifier(
@@ -371,6 +377,8 @@ const Module = module.exports = exports = class Module {
     specifier = protocol.preresolve(specifier, dirname)
 
     yield * protocol.resolve(specifier, dirname, imports)
+
+    if (builtins && specifier in builtins) yield specifier
 
     if (path.isAbsolute(specifier)) {
       yield * this._resolveFile(specifier, protocol)
@@ -783,7 +791,8 @@ Module._protocols['file:'] = new Protocol({
   },
 
   postresolve (specifier) {
-    return binding.realpath(specifier)
+    if (path.isAbsolute(specifier)) return binding.realpath(specifier)
+    return specifier
   },
 
   exists (filename) {
