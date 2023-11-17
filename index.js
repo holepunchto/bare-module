@@ -151,17 +151,27 @@ const Module = module.exports = exports = class Module {
   static _onmeta (specifier, meta) {
     const module = this._cache[specifier]
 
+    const referrer = module
+    const dirname = path.dirname(module._filename)
+
     const resolve = (specifier) => {
-      return this.resolve(specifier, path.dirname(module._filename), {
+      return this.resolve(specifier, dirname, {
         protocol: this._protocolFor(specifier, module._protocol),
         imports: module._imports,
-        referrer: module
+        referrer
       })
+    }
+
+    const addon = (specifier = '.') => {
+      return Bare.Addon.load(Bare.Addon.resolve(specifier, dirname, {
+        referrer
+      }))
     }
 
     meta.url = module._filename
     meta.main = module._main === module
     meta.resolve = resolve
+    meta.addon = addon
   }
 
   static Protocol = Protocol
