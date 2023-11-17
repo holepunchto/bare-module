@@ -1361,7 +1361,7 @@ test('imports in node_modules', (t) => {
   Module.load('/node_modules/foo/foo.js', { protocol })
 })
 
-test('builtins', (t) => {
+test('resolve and load builtin', (t) => {
   t.teardown(onteardown)
 
   const builtins = {
@@ -1370,6 +1370,46 @@ test('builtins', (t) => {
 
   t.is(Module.resolve('foo', { builtins }), 'foo')
   t.is(Module.load('foo', { builtins }).exports, 42)
+})
+
+test('load builtin from .cjs', (t) => {
+  t.teardown(onteardown)
+
+  const builtins = {
+    bar: 42
+  }
+
+  const protocol = new Module.Protocol({
+    read (filename) {
+      if (filename === '/foo.cjs') {
+        return 'module.exports = require(\'bar\')'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load('/foo.cjs', { protocol, builtins }).exports, 42)
+})
+
+test('load builtin from .mjs', (t) => {
+  t.teardown(onteardown)
+
+  const builtins = {
+    bar: 42
+  }
+
+  const protocol = new Module.Protocol({
+    read (filename) {
+      if (filename === '/foo.mjs') {
+        return 'export { default } from \'bar\''
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load('/foo.mjs', { protocol, builtins }).exports.default, 42)
 })
 
 test('load file that cannot be read', async (t) => {
