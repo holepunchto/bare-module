@@ -280,17 +280,24 @@ const Module = module.exports = exports = class Module {
     return this._transform(module, referrer, dynamic)
   }
 
-  static _loadPackageManifest (dirname, protocol) {
-    do {
-      const pkg = path.join(dirname, 'package.json')
+  static _loadPackageManifest (dirname, protocol, opts = {}) {
+    const {
+      traverse = true
+    } = opts
 
-      if (protocol.exists(pkg)) {
+    do {
+      const specifier = path.join(dirname, 'package.json')
+
+      if (this._cache[specifier]) return this._cache[specifier]._exports
+
+      if (protocol.exists(specifier)) {
         try {
-          return this.load(pkg, { protocol })._exports
+          return this.load(specifier, { protocol })._exports
         } catch {}
       }
 
-      dirname = path.dirname(dirname)
+      if (traverse) dirname = path.dirname(dirname)
+      else break
     } while (dirname !== path.sep && dirname !== '.')
 
     return {}
@@ -378,29 +385,22 @@ const Module = module.exports = exports = class Module {
   }
 
   static * _resolveDirectory (dirname, protocol) {
-    const pkg = path.join(dirname, 'package.json')
+    const info = this._loadPackageManifest(dirname, protocol, { traverse: false })
 
-    if (protocol.exists(pkg)) {
-      let info = null
-      try {
-        info = this.load(pkg, { protocol })._exports
-      } catch {}
+    let specifier = null
 
-      if (info) {
-        let specifier
+    if (info.exports) {
+      specifier = this._mapConditionalSpecifier('.', null, info.exports)
 
-        if (info.exports) {
-          specifier = this._mapConditionalSpecifier('.', null, info.exports)
+      if (specifier) specifier = path.join(dirname, specifier)
+      else return // Unexported
+    } else if (info.main) {
+      specifier = path.join(dirname, info.main)
+    }
 
-          if (specifier) specifier = path.join(dirname, specifier)
-          else return
-        } else if (info.main) {
-          specifier = path.join(dirname, info.main)
-        }
-
-        yield * this._resolveFile(specifier, protocol)
-        yield * this._resolveIndex(specifier, protocol)
-      }
+    if (specifier) {
+      yield * this._resolveFile(specifier, protocol)
+      yield * this._resolveIndex(specifier, protocol)
     }
 
     yield * this._resolveIndex(dirname, protocol)
@@ -413,22 +413,13 @@ const Module = module.exports = exports = class Module {
       let resolved = specifier
 
       if (name) {
-        const pkg = path.join(nodeModules, name, 'package.json')
+        const info = this._loadPackageManifest(path.join(nodeModules, name), protocol, { traverse: false })
 
-        if (protocol.exists(pkg)) {
-          let info = null
-          try {
-            info = this.load(pkg, { protocol })._exports
-          } catch {}
+        if (info.exports) {
+          resolved = this._mapConditionalSpecifier(expansion, null, info.exports)
 
-          if (info) {
-            if (info.exports) {
-              resolved = this._mapConditionalSpecifier(expansion, null, info.exports)
-
-              if (resolved) resolved = path.join(name, resolved)
-              else return
-            }
-          }
+          if (resolved) resolved = path.join(name, resolved)
+          else return // Unexported
         }
       }
 
