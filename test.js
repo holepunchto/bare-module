@@ -1187,7 +1187,7 @@ test('exports in node_modules', (t) => {
   t.is(Module.resolve('foo', '/', { protocol }), '/node_modules/foo/foo.js')
 })
 
-test('import unexported module in node_modules', (t) => {
+test('import unexported module in node_modules', async (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
@@ -1208,7 +1208,7 @@ test('import unexported module in node_modules', (t) => {
     }
   })
 
-  t.exception(() => Module.resolve('foo/bar', '/', { protocol }))
+  await t.exception(() => Module.resolve('foo/bar', '/', { protocol }))
 })
 
 test('imports in package.json', (t) => {
