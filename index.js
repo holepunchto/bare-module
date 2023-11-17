@@ -322,7 +322,8 @@ const Module = module.exports = exports = class Module {
     let {
       imports = null,
       protocol = this._protocols['file:'],
-      referrer = null
+      referrer = null,
+      conditions = ['import', 'require', 'bare', 'node']
     } = opts
 
     const bundle = this._bundleFor(path.dirname(specifier), protocol)
@@ -343,7 +344,7 @@ const Module = module.exports = exports = class Module {
       })
     }
 
-    const [resolved = null] = this._resolve(specifier, dirname, protocol, imports)
+    const [resolved = null] = this._resolve(specifier, dirname, protocol, imports, conditions)
 
     if (resolved === null) {
       let msg = `Cannot find module '${specifier}'`
@@ -356,10 +357,14 @@ const Module = module.exports = exports = class Module {
     return protocol.postresolve(resolved, dirname)
   }
 
-  static * _resolve (specifier, dirname, protocol, imports) {
+  static * _resolve (specifier, dirname, protocol, imports, conditions) {
     const info = this._loadPackageManifest(dirname, protocol)
 
-    specifier = this._mapConditionalSpecifier(specifier, specifier, imports, protocol.imports, info.imports)
+    specifier = this._mapConditionalSpecifier(
+      specifier,
+      conditions,
+      [imports, protocol.imports, info.imports]
+    )
 
     protocol = this._protocolFor(specifier, protocol)
 
@@ -369,10 +374,10 @@ const Module = module.exports = exports = class Module {
 
     if (path.isAbsolute(specifier)) {
       yield * this._resolveFile(specifier, protocol)
-      yield * this._resolveDirectory(specifier, protocol)
+      yield * this._resolveDirectory(specifier, protocol, conditions)
     }
 
-    yield * this._resolveNodeModules(specifier, dirname, protocol)
+    yield * this._resolveNodeModules(specifier, dirname, protocol, conditions)
   }
 
   static * _resolveFile (filename, protocol) {
@@ -394,13 +399,18 @@ const Module = module.exports = exports = class Module {
     yield * this._resolveFile(path.join(dirname, 'index'), protocol)
   }
 
-  static * _resolveDirectory (dirname, protocol) {
+  static * _resolveDirectory (dirname, protocol, conditions) {
     const info = this._loadPackageManifest(dirname, protocol, { traverse: false })
 
     let specifier = null
 
     if (info.exports) {
-      specifier = this._mapConditionalSpecifier('.', null, info.exports)
+      specifier = this._mapConditionalSpecifier(
+        '.',
+        conditions,
+        [info.exports],
+        null // Disable fallback
+      )
 
       if (specifier) specifier = path.join(dirname, specifier)
       else return // Unexported
@@ -416,7 +426,7 @@ const Module = module.exports = exports = class Module {
     yield * this._resolveIndex(dirname, protocol)
   }
 
-  static * _resolveNodeModules (specifier, dirname, protocol) {
+  static * _resolveNodeModules (specifier, dirname, protocol, conditions) {
     const [, name, expansion = '.'] = /^((?:@[^/\\%]+\/)?[^./\\%][^/\\%]*)(\/.*)?$/.exec(specifier) || []
 
     for (const nodeModules of this._resolveNodeModulesPaths(dirname)) {
@@ -426,7 +436,12 @@ const Module = module.exports = exports = class Module {
         const info = this._loadPackageManifest(path.join(nodeModules, name), protocol, { traverse: false })
 
         if (info.exports) {
-          resolved = this._mapConditionalSpecifier(expansion, null, info.exports)
+          resolved = this._mapConditionalSpecifier(
+            expansion,
+            conditions,
+            [info.exports],
+            null // Disable fallback
+          )
 
           if (resolved) resolved = path.join(name, resolved)
           else return // Unexported
@@ -436,7 +451,7 @@ const Module = module.exports = exports = class Module {
       const filename = path.join(nodeModules, resolved)
 
       yield * this._resolveFile(filename, protocol)
-      yield * this._resolveDirectory(filename, protocol)
+      yield * this._resolveDirectory(filename, protocol, conditions)
     }
   }
 
@@ -452,7 +467,7 @@ const Module = module.exports = exports = class Module {
     }
   }
 
-  static _mapConditionalSpecifier (specifier, fallback, ...specifierMaps) {
+  static _mapConditionalSpecifier (specifier, conditions, specifierMaps, fallback = specifier) {
     const specifiers = this._flattenSpecifierMaps(specifierMaps)
 
     if (specifier in specifiers) {
@@ -467,19 +482,15 @@ const Module = module.exports = exports = class Module {
       while (true) {
         if (typeof specifiers === 'string') return specifiers
         if (specifiers === null || typeof specifiers !== 'object') return specifiers
+
         specifiers = first(specifiers)
       }
     }
 
     function first (specifiers) {
       for (const key in specifiers) {
-        switch (key) {
-          case 'require':
-          case 'import':
-          case 'bare':
-          case 'node':
-          case 'default':
-            return specifiers[key]
+        if (key === 'default' || conditions.includes(key)) {
+          return specifiers[key]
         }
       }
 
@@ -490,14 +501,17 @@ const Module = module.exports = exports = class Module {
   static _flattenSpecifierMaps (specifierMaps) {
     const specifiers = Object.create(null)
 
-    for (const map of specifierMaps) {
-      this._mergeSpecifierMaps(typeof map === 'object' ? map : { '.': map }, specifiers)
+    for (let map of specifierMaps) {
+      if (typeof map === 'string') map = { '.': map }
+      if (map === null || typeof map !== 'object') continue
+
+      this._mergeSpecifierMaps(specifiers, map)
     }
 
     return specifiers
   }
 
-  static _mergeSpecifierMaps (source, destination) {
+  static _mergeSpecifierMaps (destination, source) {
     // TODO Do a deep merge
     Object.assign(destination, source)
   }
