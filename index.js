@@ -476,6 +476,9 @@ const Module = module.exports = exports = class Module {
         switch (key) {
           case 'require':
           case 'import':
+          case 'bare':
+          case 'node':
+          case 'default':
             return specifiers[key]
         }
       }
