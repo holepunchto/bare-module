@@ -1187,6 +1187,30 @@ test('exports in node_modules', (t) => {
   t.is(Module.resolve('foo', '/', { protocol }), '/node_modules/foo/foo.js')
 })
 
+test('import unexported module in node_modules', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (filename) {
+      return (
+        filename === '/node_modules/foo/package.json' ||
+        filename === '/node_modules/foo/foo.js' ||
+        filename === '/node_modules/foo/bar.js'
+      )
+    },
+
+    read (filename) {
+      if (filename === '/node_modules/foo/package.json') {
+        return '{ "exports": "./foo.js" }'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.exception(() => Module.resolve('foo/bar', '/', { protocol }))
+})
+
 test('imports in package.json', (t) => {
   t.teardown(onteardown)
 
