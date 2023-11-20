@@ -17,19 +17,11 @@ const Module = module.exports = exports = class Module {
     this._exports = null
     this._imports = null
     this._builtins = null
-    this._info = null
+    this._conditions = null
     this._protocol = null
     this._handle = null
 
     Module._modules.add(this)
-  }
-
-  get type () {
-    return this._type
-  }
-
-  get defaultType () {
-    return this._defaultType
   }
 
   get filename () {
@@ -38,6 +30,14 @@ const Module = module.exports = exports = class Module {
 
   get dirname () {
     return path.dirname(this._filename)
+  }
+
+  get type () {
+    return this._type
+  }
+
+  get defaultType () {
+    return this._defaultType
   }
 
   get main () {
@@ -50,6 +50,18 @@ const Module = module.exports = exports = class Module {
 
   set exports (value) {
     this._exports = value
+  }
+
+  get imports () {
+    return this._imports
+  }
+
+  get builtins () {
+    return this._builtins
+  }
+
+  get conditions () {
+    return Array.from(this._conditions)
   }
 
   get protocol () {
@@ -81,12 +93,15 @@ const Module = module.exports = exports = class Module {
     return {
       __proto__: { constructor: Module },
 
-      type: this.type,
-      defaultType: this.defaultType,
       filename: this.filename,
       dirname: this.dirname,
+      type: this.type,
+      defaultType: this.defaultType,
       main: this.main,
-      exports: this.exports
+      exports: this.exports,
+      imports: this.imports,
+      builtins: this.builtins,
+      conditions: this.conditions
     }
   }
 
@@ -95,6 +110,7 @@ const Module = module.exports = exports = class Module {
   static _cache = Object.create(null)
   static _bundles = Object.create(null)
   static _modules = new Set()
+  static _conditions = ['import', 'require', 'bare', 'node']
 
   static _handle = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
 
@@ -146,29 +162,31 @@ const Module = module.exports = exports = class Module {
   }
 
   static _onmeta (specifier, meta) {
+    const self = Module
+
     const module = this._cache[specifier]
 
     const referrer = module
     const dirname = path.dirname(module._filename)
 
-    const resolve = (specifier) => {
-      return this.resolve(specifier, dirname, {
-        protocol: this._protocolFor(specifier, module._protocol),
+    meta.url = module._filename
+    meta.main = module._main === module
+    meta.resolve = resolve
+    meta.addon = addon
+
+    function resolve (specifier) {
+      return self.resolve(specifier, dirname, {
+        protocol: self._protocolFor(specifier, module._protocol),
         imports: module._imports,
         referrer
       })
     }
 
-    const addon = (specifier = '.') => {
+    function addon (specifier = '.') {
       return Bare.Addon.load(Bare.Addon.resolve(specifier, dirname, {
         referrer
       }))
     }
-
-    meta.url = module._filename
-    meta.main = module._main === module
-    meta.resolve = resolve
-    meta.addon = addon
   }
 
   static Protocol = Protocol
@@ -179,57 +197,77 @@ const Module = module.exports = exports = class Module {
     return this._cache
   }
 
+  // For Node.js compatibility
+  static get builtinModules () {
+    return []
+  }
+
+  // For Node.js compatibility
+  static isBuiltin () {
+    return false
+  }
+
   static createRequire (filename, opts = {}) {
-    const {
-      imports = null,
-      builtins = null,
-      protocol = this._protocolFor(filename, this._protocols['file:']),
-      type = constants.types.SCRIPT,
-      defaultType = constants.types.SCRIPT
+    const self = Module
+
+    let {
+      referrer = null,
+      protocol = self._protocolFor(filename, referrer ? referrer._protocol : self._protocols['file:']),
+      imports = referrer ? referrer._imports : null,
+      builtins = referrer ? referrer._builtins : null,
+      conditions = referrer ? referrer._conditions : self._conditions,
+      main = referrer ? referrer._main : null,
+      defaultType = referrer ? referrer._defaultType : constants.types.SCRIPT,
+      type = constants.types.SCRIPT
     } = opts
 
     const module = new Module(filename)
 
+    module._main = main || module
     module._type = type
     module._defaultType = defaultType
+    module._protocol = protocol
     module._imports = imports
     module._builtins = builtins
-    module._protocol = protocol
+    module._conditions = conditions
 
-    const referrer = module
+    referrer = module
+
     const dirname = path.dirname(module._filename)
 
-    const resolve = (specifier) => {
-      return this.resolve(specifier, dirname, {
-        protocol: this._protocolFor(specifier, protocol),
-        referrer
-      })
-    }
+    require.main = module._main
+    require.cache = self._cache
+    require.resolve = resolve
+    require.addon = addon
 
-    const require = (specifier) => {
-      const module = this.load(resolve(specifier), {
-        protocol: this._protocolFor(specifier, protocol),
+    return require
+
+    function require (specifier) {
+      const module = self.load(resolve(specifier), {
+        protocol: self._protocolFor(specifier, protocol),
         referrer
       })
 
       return module._exports
     }
 
-    const addon = (specifier = '.') => {
+    function resolve (specifier) {
+      return self.resolve(specifier, dirname, {
+        protocol: self._protocolFor(specifier, protocol),
+        referrer
+      })
+    }
+
+    function addon (specifier = '.') {
       return Bare.Addon.load(Bare.Addon.resolve(specifier, dirname, {
         referrer
       }))
     }
-
-    require.main = module._main
-    require.cache = this._cache
-    require.resolve = resolve
-    require.addon = addon
-
-    return require
   }
 
   static load (specifier, source = null, opts = {}) {
+    const self = Module
+
     if (!ArrayBuffer.isView(source) && typeof source !== 'string' && source !== null) {
       opts = source
       source = null
@@ -238,23 +276,24 @@ const Module = module.exports = exports = class Module {
     let {
       dynamic = false,
       referrer = null,
-      protocol = this._protocolFor(specifier, referrer ? referrer._protocol : this._protocols['file:']),
+      protocol = self._protocolFor(specifier, referrer ? referrer._protocol : self._protocols['file:']),
       imports = referrer ? referrer._imports : null,
       builtins = referrer ? referrer._builtins : null,
+      conditions = referrer ? referrer._conditions : self._conditions,
       main = referrer ? referrer._main : null,
       defaultType = referrer ? referrer._defaultType : 0,
       type = 0
     } = opts
 
-    if (this._cache[specifier]) return this._transform(this._cache[specifier], referrer, dynamic)
+    if (self._cache[specifier]) return self._transform(self._cache[specifier], referrer, dynamic)
 
-    const bundle = this._bundleFor(path.dirname(specifier), protocol)
+    const bundle = self._bundleFor(path.dirname(specifier), protocol)
 
     if (bundle) {
       protocol = new Protocol({
         imports: bundle.imports,
 
-        preresolve: this._protocols['file:'].preresolve,
+        preresolve: self._protocols['file:'].preresolve,
 
         exists (filename) {
           return bundle.exists(filename)
@@ -266,7 +305,7 @@ const Module = module.exports = exports = class Module {
       })
     }
 
-    const module = this._cache[specifier] = new this(specifier)
+    const module = self._cache[specifier] = new Module(specifier)
 
     if (builtins && specifier in builtins) {
       module._exports = builtins[specifier]
@@ -276,12 +315,12 @@ const Module = module.exports = exports = class Module {
       module._protocol = protocol
       module._imports = imports
       module._builtins = builtins
-      module._info = this._loadPackageManifest(path.dirname(module._filename), protocol)
+      module._conditions = conditions
 
-      let extension = this._extensionFor(type) || path.extname(specifier)
+      let extension = self._extensionFor(type) || path.extname(specifier)
 
-      if (extension in this._extensions === false) {
-        if (defaultType) extension = this._extensionFor(defaultType) || '.js'
+      if (extension in self._extensions === false) {
+        if (defaultType) extension = self._extensionFor(defaultType) || '.js'
         else extension = '.js'
       }
 
@@ -289,10 +328,57 @@ const Module = module.exports = exports = class Module {
         throw errors.INVALID_BUNDLE_EXTENSION(`Invalid extension for bundle '${specifier}'`)
       }
 
-      this._extensions[extension].call(this, module, source, referrer)
+      self._extensions[extension](module, source, referrer)
     }
 
-    return this._transform(module, referrer, dynamic)
+    return self._transform(module, referrer, dynamic)
+  }
+
+  static resolve (specifier, dirname = os.cwd(), opts = {}) {
+    const self = Module
+
+    if (typeof dirname !== 'string') {
+      opts = dirname
+      dirname = os.cwd()
+    }
+
+    let {
+      referrer = null,
+      protocol = referrer ? referrer._protocol : self._protocols['file:'],
+      imports = referrer ? referrer._imports : null,
+      builtins = referrer ? referrer._builtins : null,
+      conditions = referrer ? referrer._conditions : self._conditions
+    } = opts
+
+    const bundle = self._bundleFor(path.dirname(specifier), protocol)
+
+    if (bundle) {
+      protocol = new Protocol({
+        imports: bundle.imports,
+
+        preresolve: self._protocols['file:'].preresolve,
+
+        exists (filename) {
+          return bundle.exists(filename)
+        },
+
+        read (filename) {
+          return bundle.read(filename)
+        }
+      })
+    }
+
+    const [resolved = null] = self._resolve(specifier, dirname, protocol, imports, builtins, conditions)
+
+    if (resolved === null) {
+      let msg = `Cannot find module '${specifier}'`
+
+      if (referrer) msg += ` imported from '${referrer._filename}'`
+
+      throw errors.MODULE_NOT_FOUND(msg)
+    }
+
+    return protocol.postresolve(resolved, dirname)
   }
 
   static _loadPackageManifest (dirname, protocol, opts = {}) {
@@ -316,51 +402,6 @@ const Module = module.exports = exports = class Module {
     } while (dirname !== path.sep && dirname !== '.')
 
     return {}
-  }
-
-  static resolve (specifier, dirname = os.cwd(), opts = {}) {
-    if (typeof dirname !== 'string') {
-      opts = dirname
-      dirname = os.cwd()
-    }
-
-    let {
-      referrer = null,
-      protocol = referrer ? referrer._protocol : this._protocols['file:'],
-      imports = referrer ? referrer._imports : null,
-      builtins = referrer ? referrer._builtins : null,
-      conditions = ['import', 'require', 'bare', 'node']
-    } = opts
-
-    const bundle = this._bundleFor(path.dirname(specifier), protocol)
-
-    if (bundle) {
-      protocol = new Protocol({
-        imports: bundle.imports,
-
-        preresolve: this._protocols['file:'].preresolve,
-
-        exists (filename) {
-          return bundle.exists(filename)
-        },
-
-        read (filename) {
-          return bundle.read(filename)
-        }
-      })
-    }
-
-    const [resolved = null] = this._resolve(specifier, dirname, protocol, imports, builtins, conditions)
-
-    if (resolved === null) {
-      let msg = `Cannot find module '${specifier}'`
-
-      if (referrer) msg += ` imported from '${referrer._filename}'`
-
-      throw errors.MODULE_NOT_FOUND(msg)
-    }
-
-    return protocol.postresolve(resolved, dirname)
   }
 
   static * _resolve (specifier, dirname, protocol, imports, builtins, conditions) {
@@ -645,23 +686,29 @@ const Module = module.exports = exports = class Module {
 }
 
 Module._extensions['.js'] = function (module, source, referrer) {
+  const self = Module
+
+  const protocol = module._protocol
+
+  const info = self._loadPackageManifest(path.dirname(module._filename), protocol)
+
   const isESM = (
     // The default type is ES modules.
-    (module._defaultType === constants.types.MODULE) ||
+    (constants.types.MODULE === module._defaultType) ||
 
     // The package is explicitly declared as an ES module.
-    (module._info && module._info.type === 'module') ||
+    (info && info.type === 'module') ||
 
     // The source is a data: URI and the referrer is itself an ES module.
-    (module._protocol === this._protocols['data:'] && referrer && referrer._type === constants.types.MODULE)
+    (protocol === self._protocols['data:'] && referrer && referrer._type === constants.types.MODULE)
   )
 
-  const loader = this._extensions[isESM ? '.mjs' : '.cjs']
-
-  return loader.call(this, module, source, referrer)
+  return self._extensions[isESM ? '.mjs' : '.cjs'](module, source, referrer)
 }
 
 Module._extensions['.cjs'] = function (module, source, referrer) {
+  const self = Module
+
   const protocol = module._protocol
 
   module._type = constants.types.SCRIPT
@@ -677,30 +724,8 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
 
     const dirname = path.dirname(module._filename)
 
-    const resolve = (specifier) => {
-      return this.resolve(specifier, dirname, {
-        protocol: this._protocolFor(specifier, protocol),
-        referrer
-      })
-    }
-
-    const require = (specifier) => {
-      const module = this.load(resolve(specifier), {
-        protocol: this._protocolFor(specifier, protocol),
-        referrer
-      })
-
-      return module._exports
-    }
-
-    const addon = (specifier = '.') => {
-      return Bare.Addon.load(Bare.Addon.resolve(specifier, dirname, {
-        referrer
-      }))
-    }
-
     require.main = module._main
-    require.cache = this._cache
+    require.cache = self._cache
     require.resolve = resolve
     require.addon = addon
 
@@ -713,10 +738,34 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
       module._filename,
       path.dirname(module._filename)
     )
+
+    function require (specifier) {
+      const module = self.load(resolve(specifier), {
+        protocol: self._protocolFor(specifier, protocol),
+        referrer
+      })
+
+      return module._exports
+    }
+
+    function resolve (specifier) {
+      return self.resolve(specifier, dirname, {
+        protocol: self._protocolFor(specifier, protocol),
+        referrer
+      })
+    }
+
+    function addon (specifier = '.') {
+      return Bare.Addon.load(Bare.Addon.resolve(specifier, dirname, {
+        referrer
+      }))
+    }
   }
 }
 
 Module._extensions['.mjs'] = function (module, source, referrer) {
+  const self = Module
+
   const protocol = module._protocol
 
   module._type = constants.types.MODULE
@@ -728,7 +777,7 @@ Module._extensions['.mjs'] = function (module, source, referrer) {
 
     if (typeof source !== 'string') source = Buffer.coerce(source).toString()
 
-    module._handle = binding.createModule(module._filename, source, 0, this._handle)
+    module._handle = binding.createModule(module._filename, source, 0, self._handle)
   }
 }
 
@@ -761,6 +810,8 @@ Module._extensions['.node'] = function (module, source, referrer) {
 }
 
 Module._extensions['.bundle'] = function (module, source, referrer) {
+  const self = Module
+
   const protocol = module._protocol
 
   module._type = constants.types.BUNDLE
@@ -769,9 +820,9 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
 
   if (typeof source === 'string') source = Buffer.from(source)
 
-  const bundle = this._bundleFor(module._filename, protocol, source)
+  const bundle = self._bundleFor(module._filename, protocol, source)
 
-  module._exports = this.load(bundle.main, bundle.read(bundle.main), { protocol, referrer })._exports
+  module._exports = self.load(bundle.main, bundle.read(bundle.main), { protocol, referrer })._exports
 }
 
 Module._protocols['file:'] = new Protocol({
