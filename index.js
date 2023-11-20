@@ -117,18 +117,12 @@ const Module = module.exports = exports = class Module {
   static _onimport (specifier, assertions, referrerFilename, dynamic) {
     const referrer = this._cache[referrerFilename]
 
-    let protocol
+    const protocol = this._protocolFor(specifier, referrer._protocol)
 
-    if (referrer) {
-      protocol = this._protocolFor(specifier, referrer._protocol)
-
-      specifier = this.resolve(specifier, path.dirname(referrer._filename), {
-        protocol,
-        referrer
-      })
-    } else {
-      specifier = this.resolve(specifier)
-    }
+    specifier = this.resolve(specifier, path.dirname(referrer._filename), {
+      protocol,
+      referrer
+    })
 
     let type
 
@@ -643,11 +637,11 @@ const Module = module.exports = exports = class Module {
 
   static _transform (module, referrer = null, dynamic = false) {
     if (dynamic) {
-      if (module._type !== constants.types.MODULE) this._synthesize(module)
+      this._synthesize(module)
       this._evaluate(module)
     } else if (referrer) {
       if (referrer._type === constants.types.MODULE) {
-        if (module._type !== constants.types.MODULE) this._synthesize(module)
+        this._synthesize(module)
       } else if (module._type === constants.types.MODULE) {
         this._evaluate(module)
       }
@@ -673,13 +667,15 @@ const Module = module.exports = exports = class Module {
   static _synthesize (module) {
     if ((module._state & constants.states.SYNTHESIZED) !== 0) return
 
-    const names = ['default']
+    if (module._type !== constants.types.MODULE) {
+      const names = ['default']
 
-    for (const key of Object.keys(module._exports)) {
-      if (key !== 'default') names.push(key)
+      for (const key of Object.keys(module._exports)) {
+        if (key !== 'default') names.push(key)
+      }
+
+      module._handle = binding.createSyntheticModule(module._filename, names, this._handle)
     }
-
-    module._handle = binding.createSyntheticModule(module._filename, names, this._handle)
 
     module._state |= constants.states.SYNTHESIZED
   }

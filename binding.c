@@ -596,66 +596,27 @@ err:
 
 static js_value_t *
 init (js_env_t *env, js_value_t *exports) {
-  {
-    js_value_t *fn;
-    js_create_function(env, "init", -1, bare_module_init, NULL, &fn);
-    js_set_named_property(env, exports, "init", fn);
+#define V(name, fn) \
+  { \
+    js_value_t *val; \
+    js_create_function(env, name, -1, fn, NULL, &val); \
+    js_set_named_property(env, exports, name, val); \
   }
-  {
-    js_value_t *fn;
-    js_create_function(env, "destroy", -1, bare_module_destroy, NULL, &fn);
-    js_set_named_property(env, exports, "destroy", fn);
-  }
-  {
-    js_value_t *fn;
-    js_create_function(env, "createFunction", -1, bare_module_create_function, NULL, &fn);
-    js_set_named_property(env, exports, "createFunction", fn);
-  }
-  {
-    js_value_t *fn;
-    js_create_function(env, "createModule", -1, bare_module_create_module, NULL, &fn);
-    js_set_named_property(env, exports, "createModule", fn);
-  }
-  {
-    js_value_t *fn;
-    js_create_function(env, "createSyntheticModule", -1, bare_module_create_synthetic_module, NULL, &fn);
-    js_set_named_property(env, exports, "createSyntheticModule", fn);
-  }
-  {
-    js_value_t *fn;
-    js_create_function(env, "deleteModule", -1, bare_module_delete_module, NULL, &fn);
-    js_set_named_property(env, exports, "deleteModule", fn);
-  }
-  {
-    js_value_t *fn;
-    js_create_function(env, "setExport", -1, bare_module_set_export, NULL, &fn);
-    js_set_named_property(env, exports, "setExport", fn);
-  }
-  {
-    js_value_t *fn;
-    js_create_function(env, "runModule", -1, bare_module_run_module, NULL, &fn);
-    js_set_named_property(env, exports, "runModule", fn);
-  }
-  {
-    js_value_t *fn;
-    js_create_function(env, "getNamespace", -1, bare_module_get_namespace, NULL, &fn);
-    js_set_named_property(env, exports, "getNamespace", fn);
-  }
-  {
-    js_value_t *fn;
-    js_create_function(env, "exists", -1, bare_module_exists, NULL, &fn);
-    js_set_named_property(env, exports, "exists", fn);
-  }
-  {
-    js_value_t *fn;
-    js_create_function(env, "realpath", -1, bare_module_realpath, NULL, &fn);
-    js_set_named_property(env, exports, "realpath", fn);
-  }
-  {
-    js_value_t *fn;
-    js_create_function(env, "read", -1, bare_module_read, NULL, &fn);
-    js_set_named_property(env, exports, "read", fn);
-  }
+  V("init", bare_module_init)
+  V("destroy", bare_module_destroy)
+
+  V("createFunction", bare_module_create_function)
+  V("createModule", bare_module_create_module)
+  V("createSyntheticModule", bare_module_create_synthetic_module)
+  V("deleteModule", bare_module_delete_module)
+  V("setExport", bare_module_set_export)
+  V("runModule", bare_module_run_module)
+  V("getNamespace", bare_module_get_namespace)
+
+  V("exists", bare_module_exists)
+  V("realpath", bare_module_realpath)
+  V("read", bare_module_read)
+#undef V
 
   return exports;
 }
