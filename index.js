@@ -383,11 +383,11 @@ const Module = module.exports = exports = class Module {
     do {
       const specifier = path.join(dirname, 'package.json')
 
-      if (this._cache[specifier]) return this._cache[specifier]._exports
+      if (this._cache[specifier]) return this._cache[specifier]
 
       if (protocol.exists(specifier)) {
         try {
-          return this.load(specifier, { protocol })._exports
+          return this.load(specifier, { protocol })
         } catch {}
       }
 
@@ -395,32 +395,44 @@ const Module = module.exports = exports = class Module {
       else break
     } while (dirname !== path.sep && dirname !== '.')
 
-    return {}
+    return null
   }
 
   static * _resolve (specifier, dirname, protocol, imports, builtins, conditions) {
-    const info = this._loadPackageManifest(dirname, protocol)
+    const pkg = this._loadPackageManifest(dirname, protocol)
 
-    specifier = this._mapConditionalSpecifier(
-      specifier,
-      conditions,
-      [imports, protocol.imports, info.imports]
-    )
+    const info = (pkg && pkg._exports) || {}
 
-    protocol = this._protocolFor(specifier, protocol)
+    let resolved = specifier
 
-    specifier = protocol.preresolve(specifier, dirname)
+    if (info.imports) {
+      resolved = this._mapConditionalSpecifier(resolved, conditions, info.imports)
 
-    yield * protocol.resolve(specifier, dirname, imports)
-
-    if (builtins && specifier in builtins) yield specifier
-
-    if (path.isAbsolute(specifier)) {
-      yield * this._resolveFile(specifier, protocol)
-      yield * this._resolveDirectory(specifier, protocol, conditions)
+      if (resolved) dirname = path.dirname(pkg._filename)
     }
 
-    yield * this._resolveNodeModules(specifier, dirname, protocol, conditions)
+    if (protocol.imports) {
+      resolved = this._mapConditionalSpecifier(resolved, conditions, protocol.imports) || resolved
+    }
+
+    if (imports) {
+      resolved = this._mapConditionalSpecifier(resolved, conditions, imports) || resolved
+    }
+
+    protocol = this._protocolFor(resolved, protocol)
+
+    resolved = protocol.preresolve(resolved, dirname)
+
+    yield * protocol.resolve(resolved, dirname, imports)
+
+    if (builtins && resolved in builtins) yield resolved
+
+    if (path.isAbsolute(resolved)) {
+      yield * this._resolveFile(resolved, protocol)
+      yield * this._resolveDirectory(resolved, protocol, conditions)
+    }
+
+    yield * this._resolveNodeModules(resolved, dirname, protocol, conditions)
   }
 
   static * _resolveFile (filename, protocol) {
@@ -443,27 +455,24 @@ const Module = module.exports = exports = class Module {
   }
 
   static * _resolveDirectory (dirname, protocol, conditions) {
-    const info = this._loadPackageManifest(dirname, protocol, { traverse: false })
+    const pkg = this._loadPackageManifest(dirname, protocol, { traverse: false })
 
-    let specifier = null
+    const info = (pkg && pkg._exports) || {}
+
+    let resolved = null
 
     if (info.exports) {
-      specifier = this._mapConditionalSpecifier(
-        '.',
-        conditions,
-        [info.exports],
-        null // Disable fallback
-      )
+      resolved = this._mapConditionalSpecifier('.', conditions, info.exports)
 
-      if (specifier) specifier = path.join(dirname, specifier)
+      if (resolved) resolved = path.join(dirname, resolved)
       else return // Unexported
     } else if (info.main) {
-      specifier = path.join(dirname, info.main)
+      resolved = path.join(dirname, info.main)
     }
 
-    if (specifier) {
-      yield * this._resolveFile(specifier, protocol)
-      yield * this._resolveIndex(specifier, protocol)
+    if (resolved) {
+      yield * this._resolveFile(resolved, protocol)
+      yield * this._resolveIndex(resolved, protocol)
     }
 
     yield * this._resolveIndex(dirname, protocol)
@@ -476,15 +485,12 @@ const Module = module.exports = exports = class Module {
       let resolved = specifier
 
       if (name) {
-        const info = this._loadPackageManifest(path.join(nodeModules, name), protocol, { traverse: false })
+        const pkg = this._loadPackageManifest(path.join(nodeModules, name), protocol, { traverse: false })
+
+        const info = (pkg && pkg._exports) || {}
 
         if (info.exports) {
-          resolved = this._mapConditionalSpecifier(
-            expansion,
-            conditions,
-            [info.exports],
-            null // Disable fallback
-          )
+          resolved = this._mapConditionalSpecifier(expansion, conditions, info.exports)
 
           if (resolved) resolved = path.join(name, resolved)
           else return // Unexported
@@ -510,16 +516,16 @@ const Module = module.exports = exports = class Module {
     }
   }
 
-  static _mapConditionalSpecifier (specifier, conditions, specifierMaps, fallback = specifier) {
-    const specifiers = this._flattenSpecifierMaps(specifierMaps)
+  static _mapConditionalSpecifier (specifier, conditions, specifierMap) {
+    if (typeof specifierMap === 'string') specifierMap = { '.': specifierMap }
 
-    if (specifier in specifiers) {
-      specifier = search(specifiers[specifier])
+    if (specifier in specifierMap) {
+      specifier = search(specifierMap[specifier])
     } else {
-      specifier = search(specifiers)
+      specifier = search(specifierMap)
     }
 
-    return specifier || fallback
+    return specifier
 
     function search (specifiers) {
       while (true) {
@@ -539,24 +545,6 @@ const Module = module.exports = exports = class Module {
 
       return null
     }
-  }
-
-  static _flattenSpecifierMaps (specifierMaps) {
-    const specifiers = Object.create(null)
-
-    for (let map of specifierMaps) {
-      if (typeof map === 'string') map = { '.': map }
-      if (map === null || typeof map !== 'object') continue
-
-      this._mergeSpecifierMaps(specifiers, map)
-    }
-
-    return specifiers
-  }
-
-  static _mergeSpecifierMaps (destination, source) {
-    // TODO Do a deep merge
-    Object.assign(destination, source)
   }
 
   static _extensionFor (type) {
@@ -686,7 +674,9 @@ Module._extensions['.js'] = function (module, source, referrer) {
 
   const protocol = module._protocol
 
-  const info = self._loadPackageManifest(path.dirname(module._filename), protocol)
+  const pkg = self._loadPackageManifest(path.dirname(module._filename), protocol)
+
+  const info = (pkg && pkg._exports) || {}
 
   const isESM = (
     // The default type is ES modules.
@@ -825,7 +815,7 @@ Module._protocols['file:'] = new Protocol({
   preresolve (specifier, dirname) {
     specifier = specifier.replace(/^file:/, '')
 
-    if (specifier[0] === '.') specifier = path.join(dirname, specifier)
+    if (/^\.(\/|\\)/.test(specifier)) specifier = path.join(dirname, specifier)
     else if (path.isAbsolute(specifier)) specifier = path.normalize(specifier)
 
     return specifier
