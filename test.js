@@ -1249,6 +1249,44 @@ test('imports in package.json', (t) => {
   Module.load('/foo.js', { protocol })
 })
 
+test('imports in package.json, no match', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    preresolve (specifier, dirname) {
+      t.is(specifier, './baz')
+      t.is(dirname, '/')
+
+      return path.resolve(dirname, specifier)
+    },
+
+    exists (filename) {
+      return (
+        filename === '/package.json' ||
+        filename === '/baz.js'
+      )
+    },
+
+    read (filename) {
+      if (filename === '/package.json') {
+        return '{ "imports": { "bar": "./baz" } }'
+      }
+
+      if (filename === '/foo.js') {
+        return 'const bar = require(\'./baz\')'
+      }
+
+      if (filename === '/baz.js') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load('/foo.js', { protocol })
+})
+
 test('conditional imports in package.json, .cjs before .mjs', (t) => {
   t.teardown(onteardown)
 

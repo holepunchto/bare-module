@@ -409,6 +409,7 @@ const Module = module.exports = exports = class Module {
       resolved = this._mapConditionalSpecifier(resolved, conditions, info.imports)
 
       if (resolved) dirname = path.dirname(pkg._filename)
+      else resolved = specifier
     }
 
     if (protocol.imports) {
@@ -815,7 +816,7 @@ Module._protocols['file:'] = new Protocol({
   preresolve (specifier, dirname) {
     specifier = specifier.replace(/^file:/, '')
 
-    if (/^\.(\/|\\)/.test(specifier)) specifier = path.join(dirname, specifier)
+    if (specifier === '.' || specifier.startsWith('./') || specifier.startsWith('.\\')) specifier = path.join(dirname, specifier)
     else if (path.isAbsolute(specifier)) specifier = path.normalize(specifier)
 
     return specifier
