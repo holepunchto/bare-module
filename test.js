@@ -1,5 +1,4 @@
 const test = require('brittle')
-const path = require('bare-path')
 const Module = require('.')
 
 test('resolve bare specifier', (t) => {
