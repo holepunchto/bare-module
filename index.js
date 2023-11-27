@@ -694,8 +694,7 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
 
 Module._protocols['file:'] = new Protocol({
   postresolve (specifier) {
-    if (path.isAbsolute(specifier)) return binding.realpath(specifier)
-    return specifier
+    return binding.realpath(specifier)
   },
 
   exists (filename) {
