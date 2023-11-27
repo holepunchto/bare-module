@@ -1,6 +1,8 @@
 /* global Bare */
 const path = require('bare-path')
 const os = require('bare-os')
+const url = require('bare-url')
+const resolve = require('bare-module-resolve')
 const Bundle = require('bare-bundle')
 const Protocol = require('./lib/protocol')
 const constants = require('./lib/constants')
@@ -171,7 +173,6 @@ const Module = module.exports = exports = class Module {
     function resolve (specifier) {
       return self.resolve(specifier, dirname, {
         protocol: self._protocolFor(specifier, module._protocol),
-        imports: module._imports,
         referrer
       })
     }
@@ -287,8 +288,6 @@ const Module = module.exports = exports = class Module {
       protocol = new Protocol({
         imports: bundle.imports,
 
-        preresolve: self._protocols['file:'].preresolve,
-
         exists (filename) {
           return bundle.exists(filename)
         },
@@ -350,8 +349,6 @@ const Module = module.exports = exports = class Module {
       protocol = new Protocol({
         imports: bundle.imports,
 
-        preresolve: self._protocols['file:'].preresolve,
-
         exists (filename) {
           return bundle.exists(filename)
         },
@@ -362,186 +359,55 @@ const Module = module.exports = exports = class Module {
       })
     }
 
-    const [resolved = null] = self._resolve(specifier, dirname, protocol, imports, builtins, conditions)
+    const resolved = protocol.preresolve(specifier, dirname)
 
-    if (resolved === null) {
-      let msg = `Cannot find module '${specifier}'`
+    const [resolution] = protocol.resolve(specifier, dirname, imports)
 
-      if (referrer) msg += ` imported from '${referrer._filename}'`
-
-      throw errors.MODULE_NOT_FOUND(msg)
-    }
-
-    return protocol.postresolve(resolved, dirname)
-  }
-
-  static _loadPackageManifest (dirname, protocol, opts = {}) {
-    const {
-      traverse = true
-    } = opts
-
-    do {
-      const specifier = path.join(dirname, 'package.json')
-
-      if (this._cache[specifier]) return this._cache[specifier]
-
-      if (protocol.exists(specifier)) {
-        try {
-          return this.load(specifier, { protocol })
-        } catch {}
-      }
-
-      if (traverse) dirname = path.dirname(dirname)
-      else break
-    } while (dirname !== path.sep && dirname !== '.')
-
-    return null
-  }
-
-  static * _resolve (specifier, dirname, protocol, imports, builtins, conditions) {
-    const pkg = this._loadPackageManifest(dirname, protocol)
-
-    const info = (pkg && pkg._exports) || {}
-
-    let resolved = specifier
-
-    if (info.imports) {
-      resolved = this._mapConditionalSpecifier(resolved, conditions, info.imports)
-
-      if (resolved) dirname = path.dirname(pkg._filename)
-      else resolved = specifier
-    }
+    if (resolution) return protocol.postresolve(resolution, dirname)
 
     if (protocol.imports) {
-      resolved = this._mapConditionalSpecifier(resolved, conditions, protocol.imports) || resolved
+      imports = Object.assign(Object.create(null), protocol.imports, imports)
     }
 
-    if (imports) {
-      resolved = this._mapConditionalSpecifier(resolved, conditions, imports) || resolved
-    }
+    const parentURL = url.pathToFileURL(dirname[dirname.length - 1] === path.sep ? dirname : dirname + '/')
 
-    protocol = this._protocolFor(resolved, protocol)
+    for (const resolution of resolve(resolved, parentURL, {
+      conditions,
+      imports,
+      builtins: builtins ? Object.keys(builtins) : [],
+      extensions: [
+        '.js',
+        '.cjs',
+        '.mjs',
+        '.json',
+        '.bare',
+        '.node'
+      ]
+    }, readPackage)) {
+      switch (resolution.protocol) {
+        case 'builtin:': return resolution.pathname
 
-    resolved = protocol.preresolve(resolved, dirname)
+        case 'file:': {
+          const path = url.fileURLToPath(resolution)
 
-    yield * protocol.resolve(resolved, dirname, imports)
-
-    if (builtins && resolved in builtins) yield resolved
-
-    if (path.isAbsolute(resolved)) {
-      yield * this._resolveFile(resolved, protocol)
-      yield * this._resolveDirectory(resolved, protocol, conditions)
-    }
-
-    yield * this._resolveNodeModules(resolved, dirname, protocol, conditions)
-  }
-
-  static * _resolveFile (filename, protocol) {
-    const extensions = [
-      '.js',
-      '.cjs',
-      '.mjs',
-      '.json',
-      '.bare',
-      '.node'
-    ]
-
-    for (const candidate of [filename, ...extensions.map(ext => filename + ext)]) {
-      if (protocol.exists(candidate)) yield candidate
-    }
-  }
-
-  static * _resolveIndex (dirname, protocol) {
-    yield * this._resolveFile(path.join(dirname, 'index'), protocol)
-  }
-
-  static * _resolveDirectory (dirname, protocol, conditions) {
-    const pkg = this._loadPackageManifest(dirname, protocol, { traverse: false })
-
-    const info = (pkg && pkg._exports) || {}
-
-    let resolved = null
-
-    if (info.exports) {
-      resolved = this._mapConditionalSpecifier('.', conditions, info.exports)
-
-      if (resolved) resolved = path.join(dirname, resolved)
-      else return // Unexported
-    } else if (info.main) {
-      resolved = path.join(dirname, info.main)
-    }
-
-    if (resolved) {
-      yield * this._resolveFile(resolved, protocol)
-      yield * this._resolveIndex(resolved, protocol)
-    }
-
-    yield * this._resolveIndex(dirname, protocol)
-  }
-
-  static * _resolveNodeModules (specifier, dirname, protocol, conditions) {
-    const [, name, expansion = '.'] = /^((?:@[^/\\%]+\/)?[^./\\%][^/\\%]*)(\/.*)?$/.exec(specifier) || []
-
-    for (const nodeModules of this._resolveNodeModulesPaths(dirname)) {
-      let resolved = specifier
-
-      if (name) {
-        const pkg = this._loadPackageManifest(path.join(nodeModules, name), protocol, { traverse: false })
-
-        const info = (pkg && pkg._exports) || {}
-
-        if (info.exports) {
-          resolved = this._mapConditionalSpecifier(expansion, conditions, info.exports)
-
-          if (resolved) resolved = path.join(name, resolved)
-          else return // Unexported
+          if (protocol.exists(path)) {
+            return protocol.postresolve(resolution.pathname, dirname)
+          }
         }
       }
-
-      const filename = path.join(nodeModules, resolved)
-
-      yield * this._resolveFile(filename, protocol)
-      yield * this._resolveDirectory(filename, protocol, conditions)
-    }
-  }
-
-  static * _resolveNodeModulesPaths (start) {
-    if (start === path.sep) return yield path.join(start, 'node_modules')
-
-    const parts = start.split(path.sep)
-
-    for (let i = parts.length - 1; i >= 0; i--) {
-      if (parts[i] !== 'node_modules') {
-        yield path.join(parts.slice(0, i + 1).join(path.sep), 'node_modules')
-      }
-    }
-  }
-
-  static _mapConditionalSpecifier (specifier, conditions, specifierMap) {
-    if (typeof specifierMap === 'string') specifierMap = { '.': specifierMap }
-
-    if (specifier in specifierMap) {
-      specifier = search(specifierMap[specifier])
-    } else {
-      specifier = search(specifierMap)
     }
 
-    return specifier
+    let msg = `Cannot find module '${specifier}'`
 
-    function search (specifiers) {
-      while (true) {
-        if (typeof specifiers === 'string') return specifiers
-        if (specifiers === null || typeof specifiers !== 'object') return specifiers
+    if (referrer) msg += ` imported from '${referrer._filename}'`
 
-        specifiers = first(specifiers)
-      }
-    }
+    throw errors.MODULE_NOT_FOUND(msg)
 
-    function first (specifiers) {
-      for (const key in specifiers) {
-        if (key === 'default' || conditions.includes(key)) {
-          return specifiers[key]
-        }
+    function readPackage (packageURL) {
+      const path = url.fileURLToPath(packageURL)
+
+      if (protocol.exists(path)) {
+        return Module.load(path, { protocol })._exports
       }
 
       return null
@@ -604,8 +470,6 @@ const Module = module.exports = exports = class Module {
     if (parent) {
       protocol = new Protocol({
         imports: parent.imports,
-
-        preresolve: this._protocols['file:'].preresolve,
 
         exists (filename) {
           return parent.exists(filename)
@@ -675,7 +539,23 @@ Module._extensions['.js'] = function (module, source, referrer) {
 
   const protocol = module._protocol
 
-  const pkg = self._loadPackageManifest(path.dirname(module._filename), protocol)
+  let pkg
+  let dirname = path.dirname(module._filename)
+  do {
+    const specifier = path.join(dirname, 'package.json')
+
+    if (self._cache[specifier]) {
+      pkg = self._cache[specifier]
+      break
+    }
+
+    if (protocol.exists(specifier)) {
+      pkg = self.load(specifier, { protocol })
+      break
+    }
+
+    dirname = path.dirname(dirname)
+  } while (dirname !== path.sep && dirname !== '.')
 
   const info = (pkg && pkg._exports) || {}
 
@@ -813,15 +693,6 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
 }
 
 Module._protocols['file:'] = new Protocol({
-  preresolve (specifier, dirname) {
-    specifier = specifier.replace(/^file:/, '')
-
-    if (specifier === '.' || specifier.startsWith('./') || specifier.startsWith('.\\')) specifier = path.join(dirname, specifier)
-    else if (path.isAbsolute(specifier)) specifier = path.normalize(specifier)
-
-    return specifier
-  },
-
   postresolve (specifier) {
     if (path.isAbsolute(specifier)) return binding.realpath(specifier)
     return specifier
