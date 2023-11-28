@@ -391,7 +391,7 @@ const Module = module.exports = exports = class Module {
           const path = url.fileURLToPath(resolution)
 
           if (protocol.exists(path)) {
-            return protocol.postresolve(resolution.pathname, dirname)
+            return protocol.postresolve(path, dirname)
           }
         }
       }
