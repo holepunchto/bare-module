@@ -502,7 +502,7 @@ const Module = module.exports = exports = class Module {
     return protocol
   }
 
-  static _bundleFor (specifier, protocol, source = null) {
+  static _bundleFor (specifier, protocol) {
     let name = specifier
     do {
       if (path.extname(name) === '.bundle') {
@@ -514,7 +514,7 @@ const Module = module.exports = exports = class Module {
 
     if (path.extname(name) !== '.bundle') return null
 
-    return Module.load(name, specifier === name ? source : null, { protocol })._bundle
+    return Module.load(name, { protocol })._bundle
   }
 }
 
