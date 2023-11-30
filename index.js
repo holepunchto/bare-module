@@ -21,6 +21,7 @@ const Module = module.exports = exports = class Module {
     this._builtins = null
     this._conditions = null
     this._protocol = null
+    this._bundle = null
     this._handle = null
 
     Module._modules.add(this)
@@ -163,7 +164,6 @@ const Module = module.exports = exports = class Module {
   static _extensions = Object.create(null)
   static _protocols = Object.create(null)
   static _cache = Object.create(null)
-  static _bundles = Object.create(null)
   static _modules = new Set()
   static _conditions = ['import', 'require', 'bare', 'node']
 
@@ -514,31 +514,7 @@ const Module = module.exports = exports = class Module {
 
     if (path.extname(name) !== '.bundle') return null
 
-    let bundle = this._bundles[name]
-
-    if (bundle) return bundle
-
-    const parent = this._bundleFor(path.dirname(name), protocol)
-
-    if (parent) {
-      protocol = new Protocol({
-        imports: parent.imports,
-
-        exists (filename) {
-          return parent.exists(filename)
-        },
-
-        read (filename) {
-          return parent.read(filename)
-        }
-      })
-    }
-
-    if (source === null || name !== specifier) source = protocol.read(name)
-
-    bundle = this._bundles[name] = Bundle.from(source).mount(name)
-
-    return bundle
+    return Module.load(name, specifier === name ? source : null, { protocol })._bundle
   }
 }
 
@@ -695,9 +671,11 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
 
   if (typeof source === 'string') source = Buffer.from(source)
 
-  const bundle = self._bundleFor(module._filename, protocol, source)
+  const bundle = module._bundle = Bundle.from(source).mount(module._filename)
 
-  module._exports = self.load(bundle.main, bundle.read(bundle.main), { protocol, referrer })._exports
+  if (bundle.main) {
+    module._exports = self.load(bundle.main, bundle.read(bundle.main), { protocol, referrer })._exports
+  }
 }
 
 Module._protocols['file:'] = new Protocol({

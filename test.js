@@ -1470,5 +1470,4 @@ test('load file that cannot be read', async (t) => {
 function onteardown () {
   // TODO Provide a public API for clearing the cache.
   Module._cache = Object.create(null)
-  Module._bundles = Object.create(null)
 }
