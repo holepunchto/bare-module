@@ -91,6 +91,59 @@ const Module = module.exports = exports = class Module {
     Module._modules.delete(this)
   }
 
+  _transform (referrer = null, dynamic = false) {
+    if (dynamic) {
+      this._synthesize()
+      this._evaluate()
+
+      return this
+    }
+
+    if (referrer) {
+      if (referrer._type === constants.types.MODULE) {
+        this._synthesize()
+      } else if (this._type === constants.types.MODULE) {
+        this._evaluate()
+      }
+
+      return this
+    }
+
+    if (this._type === constants.types.MODULE) {
+      this._evaluate()
+    }
+
+    return this
+  }
+
+  _evaluate () {
+    if ((this._state & constants.states.EVALUATED) !== 0) return
+
+    binding.runModule(this._handle, Module._handle)
+
+    if (this._type === constants.types.MODULE) {
+      this._exports = binding.getNamespace(this._handle)
+    }
+
+    this._state |= constants.states.EVALUATED
+  }
+
+  _synthesize () {
+    if ((this._state & constants.states.SYNTHESIZED) !== 0) return
+
+    if (this._type !== constants.types.MODULE) {
+      const names = ['default']
+
+      for (const key of Object.keys(this._exports)) {
+        if (key !== 'default') names.push(key)
+      }
+
+      this._handle = binding.createSyntheticModule(this._filename, names, Module._handle)
+    }
+
+    this._state |= constants.states.SYNTHESIZED
+  }
+
   [Symbol.for('bare.inspect')] () {
     return {
       __proto__: { constructor: Module },
@@ -280,7 +333,7 @@ const Module = module.exports = exports = class Module {
       type = 0
     } = opts
 
-    if (self._cache[specifier]) return self._transform(self._cache[specifier], referrer, dynamic)
+    if (self._cache[specifier]) return self._cache[specifier]._transform(referrer, dynamic)
 
     const bundle = self._bundleFor(path.dirname(specifier), protocol)
 
@@ -324,7 +377,7 @@ const Module = module.exports = exports = class Module {
       self._extensions[extension](module, source, referrer)
     }
 
-    return self._transform(module, referrer, dynamic)
+    return module._transform(referrer, dynamic)
   }
 
   static resolve (specifier, dirname = os.cwd(), opts = {}) {
@@ -486,51 +539,6 @@ const Module = module.exports = exports = class Module {
     bundle = this._bundles[name] = Bundle.from(source).mount(name)
 
     return bundle
-  }
-
-  static _transform (module, referrer = null, dynamic = false) {
-    if (dynamic) {
-      this._synthesize(module)
-      this._evaluate(module)
-    } else if (referrer) {
-      if (referrer._type === constants.types.MODULE) {
-        this._synthesize(module)
-      } else if (module._type === constants.types.MODULE) {
-        this._evaluate(module)
-      }
-    } else if (module._type === constants.types.MODULE) {
-      this._evaluate(module)
-    }
-
-    return module
-  }
-
-  static _evaluate (module) {
-    if ((module._state & constants.states.EVALUATED) !== 0) return
-
-    binding.runModule(module._handle, this._handle)
-
-    if (module._type === constants.types.MODULE) {
-      module._exports = binding.getNamespace(module._handle)
-    }
-
-    module._state |= constants.states.EVALUATED
-  }
-
-  static _synthesize (module) {
-    if ((module._state & constants.states.SYNTHESIZED) !== 0) return
-
-    if (module._type !== constants.types.MODULE) {
-      const names = ['default']
-
-      for (const key of Object.keys(module._exports)) {
-        if (key !== 'default') names.push(key)
-      }
-
-      module._handle = binding.createSyntheticModule(module._filename, names, this._handle)
-    }
-
-    module._state |= constants.states.SYNTHESIZED
   }
 }
 
