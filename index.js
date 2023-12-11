@@ -316,6 +316,10 @@ const Module = module.exports = exports = class Module {
   static load (specifier, source = null, opts = {}) {
     const self = Module
 
+    if (typeof specifier !== 'string') {
+      throw new TypeError(`Specifier must be a string. Received type ${typeof specifier} (${specifier})`)
+    }
+
     if (!ArrayBuffer.isView(source) && typeof source !== 'string' && source !== null) {
       opts = source
       source = null
@@ -382,6 +386,10 @@ const Module = module.exports = exports = class Module {
 
   static resolve (specifier, dirname = os.cwd(), opts = {}) {
     const self = Module
+
+    if (typeof specifier !== 'string') {
+      throw new TypeError(`Specifier must be a string. Received type ${typeof specifier} (${specifier})`)
+    }
 
     if (typeof dirname !== 'string') {
       opts = dirname
