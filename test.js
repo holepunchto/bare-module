@@ -1008,6 +1008,22 @@ test('require.main', (t) => {
   t.is(bar.exports, foo)
 })
 
+test('require.addon.host', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    read (filename) {
+      if (filename === '/foo.js') {
+        return 'module.exports = require.addon.host'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.comment(Module.load('/foo.js', { protocol }).exports)
+})
+
 test('import.meta', (t) => {
   t.teardown(onteardown)
 
@@ -1030,6 +1046,7 @@ test('import.meta', (t) => {
   t.is(meta.url, '/foo.mjs')
   t.is(meta.main, true)
   t.is(meta.resolve('/bar'), '/bar.mjs')
+  t.comment(meta.addon.host)
 })
 
 test('import assertions', (t) => {

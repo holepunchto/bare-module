@@ -218,6 +218,8 @@ const Module = module.exports = exports = class Module {
     const referrer = module
     const dirname = path.dirname(module._filename)
 
+    addon.host = Bare.Addon.host
+
     meta.url = module._filename
     meta.main = module._main === module
     meta.resolve = resolve
@@ -282,6 +284,8 @@ const Module = module.exports = exports = class Module {
     referrer = module
 
     const dirname = path.dirname(module._filename)
+
+    addon.host = Bare.Addon.host
 
     require.main = module._main
     require.cache = self._cache
@@ -582,6 +586,8 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
     referrer = module
 
     const dirname = path.dirname(module._filename)
+
+    addon.host = Bare.Addon.host
 
     require.main = module._main
     require.cache = self._cache
