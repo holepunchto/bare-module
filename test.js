@@ -660,6 +660,20 @@ test('load .bundle with type option and no .bundle extension', async (t) => {
   )
 })
 
+test('load .bundle with builtin require', (t) => {
+  t.teardown(onteardown)
+
+  const builtins = {
+    bar: 42
+  }
+
+  const bundle = new Module.Bundle()
+    .write('/foo.js', 'module.exports = require(\'bar\')', { main: true })
+    .toBuffer()
+
+  Module.load('/app.bundle', bundle, { builtins })
+})
+
 test('resolve specific module within .bundle', (t) => {
   t.teardown(onteardown)
 

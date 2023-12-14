@@ -685,6 +685,8 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
 
   if (typeof source === 'string') source = Buffer.from(source)
 
+  referrer = module
+
   const bundle = module._bundle = Bundle.from(source).mount(module._filename)
 
   if (bundle.main) {
