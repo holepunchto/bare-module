@@ -18,6 +18,7 @@ const Module = module.exports = exports = class Module {
     this._main = null
     this._exports = null
     this._imports = null
+    this._resolutions = null
     this._builtins = null
     this._conditions = null
     this._protocol = null
@@ -57,6 +58,10 @@ const Module = module.exports = exports = class Module {
 
   get imports () {
     return this._imports
+  }
+
+  get resolutions () {
+    return this._resolutions
   }
 
   get builtins () {
@@ -156,6 +161,7 @@ const Module = module.exports = exports = class Module {
       main: this.main,
       exports: this.exports,
       imports: this.imports,
+      resolutions: this.resolutions,
       builtins: this.builtins,
       conditions: this.conditions
     }
@@ -174,10 +180,7 @@ const Module = module.exports = exports = class Module {
 
     const protocol = this._protocolFor(specifier, referrer._protocol)
 
-    specifier = this.resolve(specifier, path.dirname(referrer._filename), {
-      protocol,
-      referrer
-    })
+    specifier = this.resolve(specifier, { protocol, referrer })
 
     let type
 
@@ -216,7 +219,6 @@ const Module = module.exports = exports = class Module {
     const module = this._cache[specifier]
 
     const referrer = module
-    const dirname = path.dirname(module._filename)
 
     addon.host = Bare.Addon.host
 
@@ -226,16 +228,14 @@ const Module = module.exports = exports = class Module {
     meta.addon = addon
 
     function resolve (specifier) {
-      return self.resolve(specifier, dirname, {
+      return self.resolve(specifier, {
         protocol: self._protocolFor(specifier, module._protocol),
         referrer
       })
     }
 
     function addon (specifier = '.') {
-      return Bare.Addon.load(Bare.Addon.resolve(specifier, dirname, {
-        referrer
-      }))
+      return Bare.Addon.load(Bare.Addon.resolve(specifier, { referrer }))
     }
   }
 
@@ -264,6 +264,7 @@ const Module = module.exports = exports = class Module {
       referrer = null,
       protocol = self._protocolFor(filename, referrer ? referrer._protocol : self._protocols['file:']),
       imports = referrer ? referrer._imports : null,
+      resolutions = referrer ? referrer._resolutions : null,
       builtins = referrer ? referrer._builtins : null,
       conditions = referrer ? referrer._conditions : self._conditions,
       main = referrer ? referrer._main : null,
@@ -278,12 +279,11 @@ const Module = module.exports = exports = class Module {
     module._defaultType = defaultType
     module._protocol = protocol
     module._imports = imports
+    module._resolutions = resolutions
     module._builtins = builtins
     module._conditions = conditions
 
     referrer = module
-
-    const dirname = path.dirname(module._filename)
 
     addon.host = Bare.Addon.host
 
@@ -304,16 +304,14 @@ const Module = module.exports = exports = class Module {
     }
 
     function resolve (specifier) {
-      return self.resolve(specifier, dirname, {
+      return self.resolve(specifier, {
         protocol: self._protocolFor(specifier, protocol),
         referrer
       })
     }
 
     function addon (specifier = '.') {
-      return Bare.Addon.load(Bare.Addon.resolve(specifier, dirname, {
-        referrer
-      }))
+      return Bare.Addon.load(Bare.Addon.resolve(specifier, { referrer }))
     }
   }
 
@@ -332,32 +330,21 @@ const Module = module.exports = exports = class Module {
     let {
       dynamic = false,
       referrer = null,
+      type = 0,
+      defaultType = referrer ? referrer._defaultType : 0,
+      main = referrer ? referrer._main : null,
       protocol = self._protocolFor(specifier, referrer ? referrer._protocol : self._protocols['file:']),
       imports = referrer ? referrer._imports : null,
+      resolutions = referrer ? referrer._resolutions : null,
       builtins = referrer ? referrer._builtins : null,
-      conditions = referrer ? referrer._conditions : self._conditions,
-      main = referrer ? referrer._main : null,
-      defaultType = referrer ? referrer._defaultType : 0,
-      type = 0
+      conditions = referrer ? referrer._conditions : self._conditions
     } = opts
 
     if (self._cache[specifier]) return self._cache[specifier]._transform(referrer, dynamic)
 
     const bundle = self._bundleFor(path.dirname(specifier), protocol)
 
-    if (bundle) {
-      protocol = new Protocol({
-        imports: bundle.imports,
-
-        exists (filename) {
-          return bundle.exists(filename)
-        },
-
-        read (filename) {
-          return bundle.read(filename)
-        }
-      })
-    }
+    if (bundle) protocol = bundle._protocol
 
     const module = self._cache[specifier] = new Module(specifier)
 
@@ -368,6 +355,7 @@ const Module = module.exports = exports = class Module {
       module._defaultType = defaultType
       module._protocol = protocol
       module._imports = imports
+      module._resolutions = resolutions
       module._builtins = builtins
       module._conditions = conditions
 
@@ -388,7 +376,7 @@ const Module = module.exports = exports = class Module {
     return module._transform(referrer, dynamic)
   }
 
-  static resolve (specifier, dirname = os.cwd(), opts = {}) {
+  static resolve (specifier, dirname = null, opts = {}) {
     const self = Module
 
     if (typeof specifier !== 'string') {
@@ -397,32 +385,24 @@ const Module = module.exports = exports = class Module {
 
     if (typeof dirname !== 'string') {
       opts = dirname
-      dirname = os.cwd()
+      dirname = null
     }
 
     let {
       referrer = null,
       protocol = referrer ? referrer._protocol : self._protocols['file:'],
       imports = referrer ? referrer._imports : null,
+      resolutions = referrer ? referrer._resolutions : null,
       builtins = referrer ? referrer._builtins : null,
       conditions = referrer ? referrer._conditions : self._conditions
     } = opts
 
+    if (referrer) dirname = path.dirname(referrer._filename)
+    else if (typeof dirname !== 'string') dirname = os.cwd()
+
     const bundle = self._bundleFor(path.dirname(specifier), protocol)
 
-    if (bundle) {
-      protocol = new Protocol({
-        imports: bundle.imports,
-
-        exists (filename) {
-          return bundle.exists(filename)
-        },
-
-        read (filename) {
-          return bundle.read(filename)
-        }
-      })
-    }
+    if (bundle) protocol = bundle._protocol
 
     const resolved = protocol.preresolve(specifier, dirname)
 
@@ -430,15 +410,28 @@ const Module = module.exports = exports = class Module {
 
     if (resolution) return protocol.postresolve(resolution, dirname)
 
-    if (protocol.imports) {
-      imports = Object.assign(Object.create(null), protocol.imports, imports)
-    }
+    const parentURL = url.pathToFileURL(
+      referrer
+        ? referrer._filename
+        : dirname[dirname.length - 1] === path.sep
+          ? dirname
+          : dirname + path.sep
+    )
 
-    const parentURL = url.pathToFileURL(dirname[dirname.length - 1] === path.sep ? dirname : dirname + '/')
+    if (resolutions) {
+      const entries = Object.entries(resolutions)
+
+      resolutions = Object.create(null)
+
+      for (const [path, imports] of entries) {
+        resolutions[url.pathToFileURL(path).href] = imports
+      }
+    }
 
     for (const resolution of resolve(resolved, parentURL, {
       conditions,
       imports,
+      resolutions,
       builtins: builtins ? Object.keys(builtins) : [],
       extensions: [
         '.js',
@@ -526,7 +519,7 @@ const Module = module.exports = exports = class Module {
 
     if (path.extname(name) !== '.bundle') return null
 
-    return Module.load(name, { protocol })._bundle
+    return Module.load(name, { protocol })
   }
 }
 
@@ -585,8 +578,6 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
 
     referrer = module
 
-    const dirname = path.dirname(module._filename)
-
     addon.host = Bare.Addon.host
 
     require.main = module._main
@@ -614,16 +605,14 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
     }
 
     function resolve (specifier) {
-      return self.resolve(specifier, dirname, {
+      return self.resolve(specifier, {
         protocol: self._protocolFor(specifier, protocol),
         referrer
       })
     }
 
     function addon (specifier = '.') {
-      return Bare.Addon.load(Bare.Addon.resolve(specifier, dirname, {
-        referrer
-      }))
+      return Bare.Addon.load(Bare.Addon.resolve(specifier, { referrer }))
     }
   }
 }
@@ -689,8 +678,21 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
 
   const bundle = module._bundle = Bundle.from(source).mount(module._filename)
 
+  module._imports = bundle.imports
+  module._resolutions = bundle.resolutions
+
+  module._protocol = new Protocol({
+    exists (filename) {
+      return bundle.exists(filename)
+    },
+
+    read (filename) {
+      return bundle.read(filename)
+    }
+  })
+
   if (bundle.main) {
-    module._exports = self.load(bundle.main, bundle.read(bundle.main), { protocol, referrer })._exports
+    module._exports = self.load(bundle.main, bundle.read(bundle.main), { referrer })._exports
   }
 }
 

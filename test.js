@@ -674,6 +674,36 @@ test('load .bundle with builtin require', (t) => {
   Module.load('/app.bundle', bundle, { builtins })
 })
 
+test('load .bundle with resolutions map', (t) => {
+  t.teardown(onteardown)
+
+  const bundle = new Module.Bundle()
+    .write('/dir/foo.js', 'module.exports = require(\'./bar\')', { main: true })
+    .write('/dir/bar/index.js', 'module.exports = 42')
+
+  bundle.resolutions = {
+    '/dir/foo.js': {
+      './bar': '/dir/bar/index.js'
+    }
+  }
+
+  Module.load('/app.bundle', bundle.toBuffer())
+})
+
+test('load .bundle with resolutions map, missing entry', async (t) => {
+  t.teardown(onteardown)
+
+  const bundle = new Module.Bundle()
+    .write('/dir/foo.js', 'module.exports = require(\'./bar\')', { main: true })
+    .write('/dir/bar/index.js', 'module.exports = 42')
+
+  bundle.resolutions = {
+    '/dir/foo.js': {}
+  }
+
+  await t.exception(() => Module.load('/app.bundle', bundle.toBuffer()))
+})
+
 test('resolve specific module within .bundle', (t) => {
   t.teardown(onteardown)
 
