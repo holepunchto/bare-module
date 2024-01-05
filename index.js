@@ -383,7 +383,7 @@ const Module = module.exports = exports = class Module {
       throw new TypeError(`Specifier must be a string. Received type ${typeof specifier} (${specifier})`)
     }
 
-    if (typeof dirname !== 'string') {
+    if (typeof dirname !== 'string' && dirname !== null) {
       opts = dirname
       dirname = null
     }
