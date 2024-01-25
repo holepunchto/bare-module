@@ -1201,7 +1201,7 @@ test('exports in package.json', (t) => {
   t.is(Module.resolve('/', { protocol }), '/foo.js')
 })
 
-test('conditional exports in package.json, .cjs before .mjs', (t) => {
+test('conditional exports in package.json', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
@@ -1219,29 +1219,10 @@ test('conditional exports in package.json, .cjs before .mjs', (t) => {
   })
 
   t.is(Module.resolve('/', { protocol }), '/foo.cjs')
+  t.is(Module.resolve('/', { isImport: true, protocol }), '/foo.mjs')
 })
 
-test('conditional exports in package.json, .mjs before .cjs', (t) => {
-  t.teardown(onteardown)
-
-  const protocol = new Module.Protocol({
-    exists (filename) {
-      return filename === '/package.json' || filename === '/foo.cjs' || filename === '/foo.mjs'
-    },
-
-    read (filename) {
-      if (filename === '/package.json') {
-        return '{ "exports": { "import": "./foo.mjs", "require": "./foo.cjs" } }'
-      }
-
-      t.fail()
-    }
-  })
-
-  t.is(Module.resolve('/', { protocol }), '/foo.mjs')
-})
-
-test('conditional exports in package.json, array of conditions, .mjs before .cjs', (t) => {
+test('conditional exports in package.json, array of conditions', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
@@ -1258,7 +1239,8 @@ test('conditional exports in package.json, array of conditions, .mjs before .cjs
     }
   })
 
-  t.is(Module.resolve('/', { protocol }), '/foo.mjs')
+  t.is(Module.resolve('/', { protocol }), '/foo.cjs')
+  t.is(Module.resolve('/', { isImport: true, protocol }), '/foo.mjs')
 })
 
 test('exports in node_modules', (t) => {
@@ -1370,7 +1352,7 @@ test('imports in package.json, no match', (t) => {
   Module.load('/foo.js', { protocol })
 })
 
-test('conditional imports in package.json, .cjs before .mjs', (t) => {
+test('conditional imports in package.json, require', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
@@ -1402,7 +1384,7 @@ test('conditional imports in package.json, .cjs before .mjs', (t) => {
   Module.load('/foo.cjs', { protocol })
 })
 
-test('conditional imports in package.json, .mjs before .cjs', (t) => {
+test('conditional imports in package.json, import', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
@@ -1412,11 +1394,11 @@ test('conditional imports in package.json, .mjs before .cjs', (t) => {
 
     read (filename) {
       if (filename === '/package.json') {
-        return '{ "imports": { "bar": { "import": "./baz.mjs", "require": "./baz.cjs" } } }'
+        return '{ "imports": { "bar": { "require": "./baz.cjs", "import": "./baz.mjs" } } }'
       }
 
-      if (filename === '/foo.cjs') {
-        return 'const bar = require(\'bar\')'
+      if (filename === '/foo.mjs') {
+        return 'import bar from \'bar\''
       }
 
       if (filename === '/baz.mjs') {
@@ -1427,7 +1409,7 @@ test('conditional imports in package.json, .mjs before .cjs', (t) => {
     }
   })
 
-  Module.load('/foo.cjs', { protocol })
+  Module.load('/foo.mjs', { protocol })
 })
 
 test('imports in node_modules', (t) => {

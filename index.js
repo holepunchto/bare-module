@@ -97,25 +97,13 @@ const Module = module.exports = exports = class Module {
     Module._modules.delete(this)
   }
 
-  _transform (referrer = null, dynamic = false) {
-    if (dynamic) {
+  _transform (isImport, isDynamicImport) {
+    if (isDynamicImport) {
       this._synthesize()
       this._evaluate()
-
-      return this
-    }
-
-    if (referrer) {
-      if (referrer._type === constants.types.MODULE) {
-        this._synthesize()
-      } else if (this._type === constants.types.MODULE) {
-        this._evaluate()
-      }
-
-      return this
-    }
-
-    if (this._type === constants.types.MODULE) {
+    } else if (isImport) {
+      this._synthesize()
+    } else if (this._type === constants.types.MODULE) {
       this._evaluate()
     }
 
@@ -171,16 +159,20 @@ const Module = module.exports = exports = class Module {
   static _protocols = Object.create(null)
   static _cache = Object.create(null)
   static _modules = new Set()
-  static _conditions = ['import', 'require', 'bare', 'node']
+  static _conditions = ['bare', 'node']
 
   static _handle = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
 
-  static _onimport (specifier, assertions, referrerFilename, dynamic) {
+  static _onimport (specifier, assertions, referrerFilename, isDynamicImport) {
     const referrer = this._cache[referrerFilename]
 
     const protocol = this._protocolFor(specifier, referrer._protocol)
 
-    specifier = this.resolve(specifier, { protocol, referrer })
+    specifier = this.resolve(specifier, {
+      isImport: true,
+      protocol,
+      referrer
+    })
 
     let type
 
@@ -194,9 +186,10 @@ const Module = module.exports = exports = class Module {
     }
 
     const module = this.load(specifier, {
+      isImport: true,
+      isDynamicImport,
       protocol: this._protocolFor(specifier, protocol),
       referrer,
-      dynamic,
       type
     })
 
@@ -328,7 +321,9 @@ const Module = module.exports = exports = class Module {
     }
 
     let {
-      dynamic = false,
+      isImport = false,
+      isDynamicImport = false,
+
       referrer = null,
       type = 0,
       defaultType = referrer ? referrer._defaultType : 0,
@@ -340,7 +335,7 @@ const Module = module.exports = exports = class Module {
       conditions = referrer ? referrer._conditions : self._conditions
     } = opts
 
-    if (self._cache[specifier]) return self._cache[specifier]._transform(referrer, dynamic)
+    if (self._cache[specifier]) return self._cache[specifier]._transform(isImport, isDynamicImport)
 
     const bundle = self._bundleFor(path.dirname(specifier), protocol)
 
@@ -373,7 +368,7 @@ const Module = module.exports = exports = class Module {
       self._extensions[extension](module, source, referrer)
     }
 
-    return module._transform(referrer, dynamic)
+    return module._transform(isImport, isDynamicImport)
   }
 
   static resolve (specifier, dirname = null, opts = {}) {
@@ -389,6 +384,8 @@ const Module = module.exports = exports = class Module {
     }
 
     let {
+      isImport = false,
+
       referrer = null,
       protocol = referrer ? referrer._protocol : self._protocols['file:'],
       imports = referrer ? referrer._imports : null,
@@ -429,7 +426,7 @@ const Module = module.exports = exports = class Module {
     }
 
     for (const resolution of resolve(resolved, parentURL, {
-      conditions,
+      conditions: isImport ? ['import', ...conditions] : ['require', ...conditions],
       imports,
       resolutions,
       builtins: builtins ? Object.keys(builtins) : [],
