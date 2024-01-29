@@ -560,13 +560,13 @@ Module._extensions['.json'] = function (module, source, referrer) {
 Module._extensions['.bare'] = function (module, source, referrer) {
   module._type = constants.types.ADDON
 
-  module._exports = Bare.Addon.load(module._url)
+  module._exports = Bare.Addon.load(url.fileURLToPath(module._url))
 }
 
 Module._extensions['.node'] = function (module, source, referrer) {
   module._type = constants.types.ADDON
 
-  module._exports = Bare.Addon.load(module._url)
+  module._exports = Bare.Addon.load(url.fileURLToPath(module._url))
 }
 
 Module._extensions['.bundle'] = function (module, source, referrer) {
