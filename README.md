@@ -22,7 +22,7 @@ const Module = require('bare-module')
 
 #### `Module.cache`
 
-#### `const resolved = Module.resolve(specifier[, dirname][, options])`
+#### `const url = Module.resolve(specifier, parentURL[, options])`
 
 Options include:
 
@@ -31,7 +31,7 @@ Options include:
 }
 ```
 
-#### `const module = Module.load(specifier[, source][, options])`
+#### `const module = Module.load(url[, source][, options])`
 
 Options include:
 
@@ -39,6 +39,8 @@ Options include:
 {
 }
 ```
+
+#### `module.url`
 
 #### `module.filename`
 
@@ -64,7 +66,7 @@ Options include:
 
 ### Custom `require()`
 
-#### `const require = Module.createRequire(filename[, options])`
+#### `const require = Module.createRequire(url[, options])`
 
 ### Protocols
 

@@ -1,6 +1,5 @@
 /* global Bare */
 const path = require('bare-path')
-const os = require('bare-os')
 const url = require('bare-url')
 const resolve = require('bare-module-resolve')
 const Bundle = require('bare-bundle')
@@ -10,8 +9,8 @@ const errors = require('./lib/errors')
 const binding = require('./binding')
 
 const Module = module.exports = exports = class Module {
-  constructor (filename) {
-    this._filename = filename
+  constructor (url) {
+    this._url = url
     this._state = 0
     this._type = 0
     this._defaultType = this._type
@@ -28,12 +27,16 @@ const Module = module.exports = exports = class Module {
     Module._modules.add(this)
   }
 
+  get url () {
+    return this._url
+  }
+
   get filename () {
-    return this._filename
+    return url.fileURLToPath(this._url)
   }
 
   get dirname () {
-    return path.dirname(this._filename)
+    return path.dirname(url.fileURLToPath(this._url))
   }
 
   get type () {
@@ -132,7 +135,7 @@ const Module = module.exports = exports = class Module {
         if (key !== 'default') names.push(key)
       }
 
-      this._handle = binding.createSyntheticModule(this._filename, names, Module._handle)
+      this._handle = binding.createSyntheticModule(this._url.href, names, Module._handle)
     }
 
     this._state |= constants.states.SYNTHESIZED
@@ -142,8 +145,7 @@ const Module = module.exports = exports = class Module {
     return {
       __proto__: { constructor: Module },
 
-      filename: this.filename,
-      dirname: this.dirname,
+      url: this.url,
       type: this.type,
       defaultType: this.defaultType,
       main: this.main,
@@ -163,14 +165,11 @@ const Module = module.exports = exports = class Module {
 
   static _handle = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
 
-  static _onimport (specifier, assertions, referrerFilename, isDynamicImport) {
-    const referrer = this._cache[referrerFilename]
+  static _onimport (specifier, assertions, referrerURL, isDynamicImport) {
+    const referrer = this._cache[referrerURL]
 
-    const protocol = this._protocolFor(specifier, referrer._protocol)
-
-    specifier = this.resolve(specifier, {
+    const url = this.resolve(specifier, referrer._url, {
       isImport: true,
-      protocol,
       referrer
     })
 
@@ -185,10 +184,9 @@ const Module = module.exports = exports = class Module {
         break
     }
 
-    const module = this.load(specifier, {
+    const module = this.load(url, {
       isImport: true,
       isDynamicImport,
-      protocol: this._protocolFor(specifier, protocol),
       referrer,
       type
     })
@@ -215,16 +213,13 @@ const Module = module.exports = exports = class Module {
 
     addon.host = Bare.Addon.host
 
-    meta.url = module._filename
+    meta.url = module._url.href
     meta.main = module._main === module
     meta.resolve = resolve
     meta.addon = addon
 
     function resolve (specifier) {
-      return self.resolve(specifier, {
-        protocol: self._protocolFor(specifier, module._protocol),
-        referrer
-      })
+      return self.resolve(specifier, referrer._url, { referrer }).href
     }
 
     function addon (specifier = '.') {
@@ -250,12 +245,14 @@ const Module = module.exports = exports = class Module {
     return false
   }
 
-  static createRequire (filename, opts = {}) {
+  static createRequire (url, opts = {}) {
     const self = Module
+
+    if (typeof url === 'string') url = new URL(url, 'file:///')
 
     let {
       referrer = null,
-      protocol = self._protocolFor(filename, referrer ? referrer._protocol : self._protocols['file:']),
+      protocol = referrer ? referrer._protocol : self._protocols['file:'],
       imports = referrer ? referrer._imports : null,
       resolutions = referrer ? referrer._resolutions : null,
       builtins = referrer ? referrer._builtins : null,
@@ -265,7 +262,7 @@ const Module = module.exports = exports = class Module {
       type = constants.types.SCRIPT
     } = opts
 
-    const module = new Module(filename)
+    const module = new Module(url)
 
     module._main = main || module
     module._type = type
@@ -288,19 +285,15 @@ const Module = module.exports = exports = class Module {
     return require
 
     function require (specifier) {
-      const module = self.load(resolve(specifier), {
-        protocol: self._protocolFor(specifier, protocol),
-        referrer
-      })
+      const url = self.resolve(specifier, referrer._url, { referrer })
+
+      const module = self.load(url, { referrer })
 
       return module._exports
     }
 
     function resolve (specifier) {
-      return self.resolve(specifier, {
-        protocol: self._protocolFor(specifier, protocol),
-        referrer
-      })
+      return self.resolve(specifier, referrer._url, { referrer }).pathname
     }
 
     function addon (specifier = '.') {
@@ -308,19 +301,15 @@ const Module = module.exports = exports = class Module {
     }
   }
 
-  static load (specifier, source = null, opts = {}) {
+  static load (url, source = null, opts = {}) {
     const self = Module
-
-    if (typeof specifier !== 'string') {
-      throw new TypeError(`Specifier must be a string. Received type ${typeof specifier} (${specifier})`)
-    }
 
     if (!ArrayBuffer.isView(source) && typeof source !== 'string' && source !== null) {
       opts = source
       source = null
     }
 
-    let {
+    const {
       isImport = false,
       isDynamicImport = false,
 
@@ -328,62 +317,53 @@ const Module = module.exports = exports = class Module {
       type = 0,
       defaultType = referrer ? referrer._defaultType : 0,
       main = referrer ? referrer._main : null,
-      protocol = self._protocolFor(specifier, referrer ? referrer._protocol : self._protocols['file:']),
+      protocol = referrer ? referrer._protocol : self._protocols['file:'],
       imports = referrer ? referrer._imports : null,
       resolutions = referrer ? referrer._resolutions : null,
       builtins = referrer ? referrer._builtins : null,
       conditions = referrer ? referrer._conditions : self._conditions
     } = opts
 
-    if (self._cache[specifier]) return self._cache[specifier]._transform(isImport, isDynamicImport)
+    if (self._cache[url.href]) return self._cache[url.href]._transform(isImport, isDynamicImport)
 
-    const bundle = self._bundleFor(path.dirname(specifier), protocol)
+    const module = self._cache[url.href] = new Module(url)
 
-    if (bundle) protocol = bundle._protocol
+    switch (url.protocol) {
+      case 'builtin:':
+        module._exports = builtins[url.pathname]
+        break
 
-    const module = self._cache[specifier] = new Module(specifier)
+      default: {
+        module._main = main || module
+        module._defaultType = defaultType
+        module._protocol = protocol
+        module._imports = imports
+        module._resolutions = resolutions
+        module._builtins = builtins
+        module._conditions = conditions
 
-    if (builtins && specifier in builtins) {
-      module._exports = builtins[specifier]
-    } else {
-      module._main = main || module
-      module._defaultType = defaultType
-      module._protocol = protocol
-      module._imports = imports
-      module._resolutions = resolutions
-      module._builtins = builtins
-      module._conditions = conditions
+        let extension = self._extensionFor(type) || path.extname(url.pathname)
 
-      let extension = self._extensionFor(type) || path.extname(specifier)
+        if (extension in self._extensions === false) {
+          if (defaultType) extension = self._extensionFor(defaultType) || '.js'
+          else extension = '.js'
+        }
 
-      if (extension in self._extensions === false) {
-        if (defaultType) extension = self._extensionFor(defaultType) || '.js'
-        else extension = '.js'
+        self._extensions[extension](module, source, referrer)
       }
-
-      if (extension === '.bundle' && path.extname(specifier) !== extension) {
-        throw errors.INVALID_BUNDLE_EXTENSION(`Invalid extension for bundle '${specifier}'`)
-      }
-
-      self._extensions[extension](module, source, referrer)
     }
 
     return module._transform(isImport, isDynamicImport)
   }
 
-  static resolve (specifier, dirname = null, opts = {}) {
+  static resolve (specifier, parentURL, opts = {}) {
     const self = Module
 
     if (typeof specifier !== 'string') {
       throw new TypeError(`Specifier must be a string. Received type ${typeof specifier} (${specifier})`)
     }
 
-    if (typeof dirname !== 'string' && dirname !== null) {
-      opts = dirname
-      dirname = null
-    }
-
-    let {
+    const {
       isImport = false,
 
       referrer = null,
@@ -394,36 +374,11 @@ const Module = module.exports = exports = class Module {
       conditions = referrer ? referrer._conditions : self._conditions
     } = opts
 
-    if (referrer) dirname = path.dirname(referrer._filename)
-    else if (typeof dirname !== 'string') dirname = os.cwd()
+    const resolved = protocol.preresolve(specifier, parentURL)
 
-    const bundle = self._bundleFor(path.dirname(specifier), protocol)
+    const [resolution] = protocol.resolve(specifier, parentURL, imports)
 
-    if (bundle) protocol = bundle._protocol
-
-    const resolved = protocol.preresolve(specifier, dirname)
-
-    const [resolution] = protocol.resolve(specifier, dirname, imports)
-
-    if (resolution) return protocol.postresolve(resolution, dirname)
-
-    const parentURL = url.pathToFileURL(
-      referrer
-        ? referrer._filename
-        : dirname[dirname.length - 1] === path.sep
-          ? dirname
-          : dirname + path.sep
-    )
-
-    if (resolutions) {
-      const entries = Object.entries(resolutions)
-
-      resolutions = Object.create(null)
-
-      for (const [path, imports] of entries) {
-        resolutions[url.pathToFileURL(path).href] = imports
-      }
-    }
+    if (resolution) return protocol.postresolve(resolution, parentURL)
 
     for (const resolution of resolve(resolved, parentURL, {
       conditions: isImport ? ['import', ...conditions] : ['require', ...conditions],
@@ -440,13 +395,11 @@ const Module = module.exports = exports = class Module {
       ]
     }, readPackage)) {
       switch (resolution.protocol) {
-        case 'builtin:': return resolution.pathname
+        case 'builtin:': return resolution
 
         case 'file:': {
-          const path = url.fileURLToPath(resolution)
-
-          if (protocol.exists(path)) {
-            return protocol.postresolve(path, dirname)
+          if (protocol.exists(resolution)) {
+            return protocol.postresolve(resolution, parentURL)
           }
         }
       }
@@ -454,15 +407,13 @@ const Module = module.exports = exports = class Module {
 
     let msg = `Cannot find module '${specifier}'`
 
-    if (referrer) msg += ` imported from '${referrer._filename}'`
+    if (referrer) msg += ` imported from '${referrer._url.href}'`
 
     throw errors.MODULE_NOT_FOUND(msg)
 
     function readPackage (packageURL) {
-      const path = url.fileURLToPath(packageURL)
-
-      if (protocol.exists(path)) {
-        return Module.load(path, { protocol })._exports
+      if (protocol.exists(packageURL)) {
+        return Module.load(packageURL, { protocol })._exports
       }
 
       return null
@@ -485,39 +436,6 @@ const Module = module.exports = exports = class Module {
         return null
     }
   }
-
-  static _protocolFor (specifier, fallback = null) {
-    let protocol = fallback
-
-    const i = specifier.indexOf(':')
-
-    if (i >= 2) { // Allow drive letters in Windows paths
-      const name = specifier.slice(0, i + 1)
-
-      protocol = this._protocols[name] || fallback
-
-      if (protocol === null) {
-        throw errors.UNKNOWN_PROTOCOL(`Unknown protocol '${name}' in specifier '${specifier}'`)
-      }
-    }
-
-    return protocol
-  }
-
-  static _bundleFor (specifier, protocol) {
-    let name = specifier
-    do {
-      if (path.extname(name) === '.bundle') {
-        break
-      }
-
-      name = path.dirname(name)
-    } while (name !== path.sep && name !== '.')
-
-    if (path.extname(name) !== '.bundle') return null
-
-    return Module.load(name, { protocol })
-  }
 }
 
 Module._extensions['.js'] = function (module, source, referrer) {
@@ -526,22 +444,18 @@ Module._extensions['.js'] = function (module, source, referrer) {
   const protocol = module._protocol
 
   let pkg
-  let dirname = path.dirname(module._filename)
-  do {
-    const specifier = path.join(dirname, 'package.json')
 
-    if (self._cache[specifier]) {
-      pkg = self._cache[specifier]
+  for (const packageURL of resolve.lookupPackageScope(module._url)) {
+    if (self._cache[packageURL.href]) {
+      pkg = self._cache[packageURL.href]
       break
     }
 
-    if (protocol.exists(specifier)) {
-      pkg = self.load(specifier, { protocol })
+    if (protocol.exists(packageURL)) {
+      pkg = self.load(packageURL, { protocol })
       break
     }
-
-    dirname = path.dirname(dirname)
-  } while (dirname !== path.sep && dirname !== '.')
+  }
 
   const info = (pkg && pkg._exports) || {}
 
@@ -550,10 +464,7 @@ Module._extensions['.js'] = function (module, source, referrer) {
     (constants.types.MODULE === module._defaultType) ||
 
     // The package is explicitly declared as an ES module.
-    (info && info.type === 'module') ||
-
-    // The source is a data: URI and the referrer is itself an ES module.
-    (protocol === self._protocols['data:'] && referrer && referrer._type === constants.types.MODULE)
+    (info && info.type === 'module')
   )
 
   return self._extensions[isESM ? '.mjs' : '.cjs'](module, source, referrer)
@@ -567,9 +478,9 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
   module._type = constants.types.SCRIPT
 
   if (protocol.load) {
-    module._exports = protocol.load(module._filename)
+    module._exports = protocol.load(module._url)
   } else {
-    if (source === null) source = protocol.read(module._filename)
+    if (source === null) source = protocol.read(module._url)
 
     if (typeof source !== 'string') source = Buffer.coerce(source).toString()
 
@@ -584,28 +495,26 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
 
     module._exports = {}
 
-    binding.createFunction(module._filename, ['require', 'module', 'exports', '__filename', '__dirname'], source, 0)(
+    const filename = url.fileURLToPath(module._url)
+
+    binding.createFunction(module._url.href, ['require', 'module', 'exports', '__filename', '__dirname'], source, 0)(
       require,
       module,
       module._exports,
-      module._filename,
-      path.dirname(module._filename)
+      filename,
+      path.dirname(filename)
     )
 
     function require (specifier) {
-      const module = self.load(resolve(specifier), {
-        protocol: self._protocolFor(specifier, protocol),
-        referrer
-      })
+      const url = self.resolve(specifier, referrer._url, { referrer })
+
+      const module = self.load(url, { referrer })
 
       return module._exports
     }
 
     function resolve (specifier) {
-      return self.resolve(specifier, {
-        protocol: self._protocolFor(specifier, protocol),
-        referrer
-      })
+      return self.resolve(specifier, referrer._url, { referrer }).pathname
     }
 
     function addon (specifier = '.') {
@@ -622,13 +531,13 @@ Module._extensions['.mjs'] = function (module, source, referrer) {
   module._type = constants.types.MODULE
 
   if (protocol.load) {
-    module._exports = protocol.load(module._filename)
+    module._exports = protocol.load(module._url)
   } else {
-    if (source === null) source = protocol.read(module._filename)
+    if (source === null) source = protocol.read(module._url)
 
     if (typeof source !== 'string') source = Buffer.coerce(source).toString()
 
-    module._handle = binding.createModule(module._filename, source, 0, self._handle)
+    module._handle = binding.createModule(module._url.href, source, 0, self._handle)
   }
 }
 
@@ -638,9 +547,9 @@ Module._extensions['.json'] = function (module, source, referrer) {
   module._type = constants.types.JSON
 
   if (protocol.load) {
-    module._exports = protocol.load(module._filename)
+    module._exports = protocol.load(module._url)
   } else {
-    if (source === null) source = protocol.read(module._filename)
+    if (source === null) source = protocol.read(module._url)
 
     if (typeof source !== 'string') source = Buffer.coerce(source).toString()
 
@@ -651,13 +560,13 @@ Module._extensions['.json'] = function (module, source, referrer) {
 Module._extensions['.bare'] = function (module, source, referrer) {
   module._type = constants.types.ADDON
 
-  module._exports = Bare.Addon.load(module._filename)
+  module._exports = Bare.Addon.load(module._url)
 }
 
 Module._extensions['.node'] = function (module, source, referrer) {
   module._type = constants.types.ADDON
 
-  module._exports = Bare.Addon.load(module._filename)
+  module._exports = Bare.Addon.load(module._url)
 }
 
 Module._extensions['.bundle'] = function (module, source, referrer) {
@@ -667,55 +576,43 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
 
   module._type = constants.types.BUNDLE
 
-  if (source === null) source = protocol.read(module._filename)
+  if (source === null) source = protocol.read(module._url)
 
   if (typeof source === 'string') source = Buffer.from(source)
 
   referrer = module
 
-  const bundle = module._bundle = Bundle.from(source).mount(module._filename)
+  const bundle = module._bundle = Bundle.from(source).mount(module._url.href + '/')
 
   module._imports = bundle.imports
   module._resolutions = bundle.resolutions
 
   module._protocol = new Protocol({
-    exists (filename) {
-      return bundle.exists(filename)
+    exists (url) {
+      return bundle.exists(url.href)
     },
 
-    read (filename) {
-      return bundle.read(filename)
+    read (url) {
+      return bundle.read(url.href)
     }
   })
 
   if (bundle.main) {
-    module._exports = self.load(bundle.main, bundle.read(bundle.main), { referrer })._exports
+    module._exports = self.load(new URL(bundle.main), bundle.read(bundle.main), { referrer })._exports
   }
 }
 
 Module._protocols['file:'] = new Protocol({
-  postresolve (specifier) {
-    return binding.realpath(specifier)
+  postresolve (fileURL) {
+    return url.pathToFileURL(binding.realpath(url.fileURLToPath(fileURL)))
   },
 
-  exists (filename) {
-    return binding.exists(filename)
+  exists (fileURL) {
+    return binding.exists(url.fileURLToPath(fileURL))
   },
 
-  read (filename) {
-    return Buffer.from(binding.read(filename))
-  }
-})
-
-Module._protocols['data:'] = new Protocol({
-  * resolve (specifier) {
-    yield specifier
-  },
-
-  read (specifier) {
-    const [, , , base64, data] = specifier.match(/data:(?:([^/]+\/[^;,]+)(;[^=]+=[^;,]+)*)?(;base64)?,(.*)/)
-
-    return Buffer.from(decodeURIComponent(data), base64 ? 'base64' : 'ascii')
+  read (fileURL) {
+    return Buffer.from(binding.read(url.fileURLToPath(fileURL)))
   }
 })
 
