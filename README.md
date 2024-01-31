@@ -66,7 +66,7 @@ Options include:
 
 ### Custom `require()`
 
-#### `const require = Module.createRequire(url[, options])`
+#### `const require = Module.createRequire(parentURL[, options])`
 
 ### Protocols
 

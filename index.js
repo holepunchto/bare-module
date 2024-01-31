@@ -219,11 +219,20 @@ const Module = module.exports = exports = class Module {
     meta.addon = addon
 
     function resolve (specifier) {
-      return self.resolve(specifier, referrer._url, { referrer }).href
+      const resolved = self.resolve(specifier, referrer._url, { referrer })
+
+      switch (resolved.protocol) {
+        case 'builtin:': return resolved.pathname
+        default: return resolved.href
+      }
     }
 
     function addon (specifier = '.') {
-      return Bare.Addon.load(Bare.Addon.resolve(specifier, referrer._url, { referrer })).exports
+      const resolved = Bare.Addon.resolve(specifier, referrer._url, { referrer })
+
+      const addon = Bare.Addon.load(resolved)
+
+      return addon._exports
     }
   }
 
@@ -245,10 +254,10 @@ const Module = module.exports = exports = class Module {
     return false
   }
 
-  static createRequire (url, opts = {}) {
+  static createRequire (parentURL, opts = {}) {
     const self = Module
 
-    if (typeof url === 'string') url = new URL(url, 'file:///')
+    if (typeof parentURL === 'string') parentURL = url.pathToFileURL(parentURL)
 
     let {
       referrer = null,
@@ -262,7 +271,7 @@ const Module = module.exports = exports = class Module {
       type = constants.types.SCRIPT
     } = opts
 
-    const module = new Module(url)
+    const module = new Module(parentURL)
 
     module._main = main || module
     module._type = type
@@ -285,19 +294,28 @@ const Module = module.exports = exports = class Module {
     return require
 
     function require (specifier) {
-      const url = self.resolve(specifier, referrer._url, { referrer })
+      const resolved = self.resolve(specifier, referrer._url, { referrer })
 
-      const module = self.load(url, { referrer })
+      const module = self.load(resolved, { referrer })
 
       return module._exports
     }
 
     function resolve (specifier) {
-      return self.resolve(specifier, referrer._url, { referrer }).pathname
+      const resolved = self.resolve(specifier, referrer._url, { referrer })
+
+      switch (resolved.protocol) {
+        case 'builtin:': return resolved.pathname
+        default: return url.fileURLToPath(resolved)
+      }
     }
 
     function addon (specifier = '.') {
-      return Bare.Addon.load(Bare.Addon.resolve(specifier, referrer._url, { referrer })).exports
+      const resolved = Bare.Addon.resolve(specifier, referrer._url, { referrer })
+
+      const addon = Bare.Addon.load(resolved)
+
+      return addon._exports
     }
   }
 
@@ -396,12 +414,10 @@ const Module = module.exports = exports = class Module {
     }, readPackage)) {
       switch (resolution.protocol) {
         case 'builtin:': return resolution
-
-        case 'file:': {
+        default:
           if (protocol.exists(resolution)) {
             return protocol.postresolve(resolution, parentURL)
           }
-        }
       }
     }
 
@@ -506,19 +522,28 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
     )
 
     function require (specifier) {
-      const url = self.resolve(specifier, referrer._url, { referrer })
+      const resolved = self.resolve(specifier, referrer._url, { referrer })
 
-      const module = self.load(url, { referrer })
+      const module = self.load(resolved, { referrer })
 
       return module._exports
     }
 
     function resolve (specifier) {
-      return self.resolve(specifier, referrer._url, { referrer }).pathname
+      const resolved = self.resolve(specifier, referrer._url, { referrer })
+
+      switch (resolved.protocol) {
+        case 'builtin:': return resolved.pathname
+        default: url.fileURLToPath(resolved)
+      }
     }
 
     function addon (specifier = '.') {
-      return Bare.Addon.load(Bare.Addon.resolve(specifier, referrer._url, { referrer })).exports
+      const resolved = Bare.Addon.resolve(specifier, referrer._url, { referrer })
+
+      const addon = Bare.Addon.load(resolved)
+
+      return addon._exports
     }
   }
 }
