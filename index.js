@@ -14,6 +14,7 @@ const Module = module.exports = exports = class Module {
     this._state = 0
     this._type = 0
     this._defaultType = this._type
+    this._cache = null
     this._main = null
     this._exports = null
     this._imports = null
@@ -45,6 +46,10 @@ const Module = module.exports = exports = class Module {
 
   get defaultType () {
     return this._defaultType
+  }
+
+  get cache () {
+    return this._cache
   }
 
   get main () {
@@ -159,7 +164,7 @@ const Module = module.exports = exports = class Module {
 
   static _extensions = Object.create(null)
   static _protocols = Object.create(null)
-  static _cache = Object.create(null)
+  static _cache = module.cache || Object.create(null)
   static _modules = new Set()
   static _conditions = ['bare', 'node']
 
@@ -223,6 +228,7 @@ const Module = module.exports = exports = class Module {
 
     meta.url = module._url.href
     meta.main = module._main === module
+    meta.cache = module._cache
     meta.resolve = resolve
     meta.addon = addon
 
@@ -267,6 +273,7 @@ const Module = module.exports = exports = class Module {
       referrer = null,
       type = 0,
       defaultType = referrer ? referrer._defaultType : 0,
+      cache = referrer ? referrer._cache : self._cache,
       main = referrer ? referrer._main : null,
       protocol = referrer ? referrer._protocol : self._protocols['file:'],
       imports = referrer ? referrer._imports : null,
@@ -285,8 +292,9 @@ const Module = module.exports = exports = class Module {
         break
 
       default: {
-        module._main = main || module
         module._defaultType = defaultType
+        module._cache = cache
+        module._main = main || module
         module._protocol = protocol
         module._imports = imports
         module._resolutions = resolutions
@@ -428,7 +436,7 @@ exports.createRequire = function createRequire (parentURL, opts = {}) {
   addon.host = Bare.Addon.host
 
   require.main = module._main
-  require.cache = self._cache
+  require.cache = module._cache
   require.resolve = resolve
   require.addon = addon
 
@@ -511,7 +519,7 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
     addon.host = Bare.Addon.host
 
     require.main = module._main
-    require.cache = self._cache
+    require.cache = module._cache
     require.resolve = resolve
     require.addon = addon
 
