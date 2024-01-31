@@ -244,81 +244,6 @@ const Module = module.exports = exports = class Module {
     return this._cache
   }
 
-  // For Node.js compatibility
-  static get builtinModules () {
-    return []
-  }
-
-  // For Node.js compatibility
-  static isBuiltin () {
-    return false
-  }
-
-  static createRequire (parentURL, opts = {}) {
-    const self = Module
-
-    if (typeof parentURL === 'string') parentURL = new URL(parentURL, 'file:')
-
-    let {
-      referrer = null,
-      protocol = referrer ? referrer._protocol : self._protocols['file:'],
-      imports = referrer ? referrer._imports : null,
-      resolutions = referrer ? referrer._resolutions : null,
-      builtins = referrer ? referrer._builtins : null,
-      conditions = referrer ? referrer._conditions : self._conditions,
-      main = referrer ? referrer._main : null,
-      defaultType = referrer ? referrer._defaultType : constants.types.SCRIPT,
-      type = constants.types.SCRIPT
-    } = opts
-
-    const module = new Module(parentURL)
-
-    module._main = main || module
-    module._type = type
-    module._defaultType = defaultType
-    module._protocol = protocol
-    module._imports = imports
-    module._resolutions = resolutions
-    module._builtins = builtins
-    module._conditions = conditions
-
-    referrer = module
-
-    addon.host = Bare.Addon.host
-
-    require.main = module._main
-    require.cache = self._cache
-    require.resolve = resolve
-    require.addon = addon
-
-    return require
-
-    function require (specifier) {
-      const resolved = self.resolve(specifier, referrer._url, { referrer })
-
-      const module = self.load(resolved, { referrer })
-
-      return module._exports
-    }
-
-    function resolve (specifier) {
-      const resolved = self.resolve(specifier, referrer._url, { referrer })
-
-      switch (resolved.protocol) {
-        case 'builtin:': return resolved.pathname
-        default: return url.fileURLToPath(resolved)
-      }
-    }
-
-    function addon (specifier = '.') {
-      const resolved = Bare.Addon.resolve(specifier, referrer._url, { referrer })
-
-      const addon = Bare.Addon.load(resolved)
-
-      return addon._exports
-    }
-  }
-
   static load (url, source = null, opts = {}) {
     const self = Module
 
@@ -451,6 +376,79 @@ const Module = module.exports = exports = class Module {
       default:
         return null
     }
+  }
+}
+
+// For Node.js compatibility
+exports.builtinModules = []
+
+// For Node.js compatibility
+exports.isBuiltin = function isBuiltin () {
+  return false
+}
+
+exports.createRequire = function createRequire (parentURL, opts = {}) {
+  const self = Module
+
+  if (typeof parentURL === 'string') parentURL = new URL(parentURL, 'file:')
+
+  let {
+    referrer = null,
+    protocol = referrer ? referrer._protocol : self._protocols['file:'],
+    imports = referrer ? referrer._imports : null,
+    resolutions = referrer ? referrer._resolutions : null,
+    builtins = referrer ? referrer._builtins : null,
+    conditions = referrer ? referrer._conditions : self._conditions,
+    main = referrer ? referrer._main : null,
+    defaultType = referrer ? referrer._defaultType : constants.types.SCRIPT,
+    type = constants.types.SCRIPT
+  } = opts
+
+  const module = new Module(parentURL)
+
+  module._main = main || module
+  module._type = type
+  module._defaultType = defaultType
+  module._protocol = protocol
+  module._imports = imports
+  module._resolutions = resolutions
+  module._builtins = builtins
+  module._conditions = conditions
+
+  referrer = module
+
+  addon.host = Bare.Addon.host
+
+  require.main = module._main
+  require.cache = self._cache
+  require.resolve = resolve
+  require.addon = addon
+
+  return require
+
+  function require (specifier) {
+    const resolved = self.resolve(specifier, referrer._url, { referrer })
+
+    const module = self.load(resolved, { referrer })
+
+    return module._exports
+  }
+
+  function resolve (specifier) {
+    const resolved = self.resolve(specifier, referrer._url, { referrer })
+
+    switch (resolved.protocol) {
+      case 'builtin:': return resolved.pathname
+      default: return url.fileURLToPath(resolved)
+    }
+  }
+
+  function addon (specifier = '.') {
+    const resolved = Bare.Addon.resolve(specifier, referrer._url, { referrer })
+
+    const addon = Bare.Addon.load(resolved)
+
+    return addon._exports
   }
 }
 
