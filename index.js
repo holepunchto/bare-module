@@ -223,7 +223,7 @@ const Module = module.exports = exports = class Module {
     }
 
     function addon (specifier = '.') {
-      return Bare.Addon.load(Bare.Addon.resolve(specifier, referrer._url, { referrer }))
+      return Bare.Addon.load(Bare.Addon.resolve(specifier, referrer._url, { referrer })).exports
     }
   }
 
@@ -297,7 +297,7 @@ const Module = module.exports = exports = class Module {
     }
 
     function addon (specifier = '.') {
-      return Bare.Addon.load(Bare.Addon.resolve(specifier, referrer._url, { referrer }))
+      return Bare.Addon.load(Bare.Addon.resolve(specifier, referrer._url, { referrer })).exports
     }
   }
 
@@ -518,7 +518,7 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
     }
 
     function addon (specifier = '.') {
-      return Bare.Addon.load(Bare.Addon.resolve(specifier, referrer._url, { referrer }))
+      return Bare.Addon.load(Bare.Addon.resolve(specifier, referrer._url, { referrer })).exports
     }
   }
 }
@@ -560,13 +560,13 @@ Module._extensions['.json'] = function (module, source, referrer) {
 Module._extensions['.bare'] = function (module, source, referrer) {
   module._type = constants.types.ADDON
 
-  module._exports = Bare.Addon.load(module._url)
+  module._exports = Bare.Addon.load(module._url).exports
 }
 
 Module._extensions['.node'] = function (module, source, referrer) {
   module._type = constants.types.ADDON
 
-  module._exports = Bare.Addon.load(module._url)
+  module._exports = Bare.Addon.load(module._url).exports
 }
 
 Module._extensions['.bundle'] = function (module, source, referrer) {
