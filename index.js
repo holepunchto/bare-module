@@ -410,21 +410,23 @@ exports.createRequire = function createRequire (parentURL, opts = {}) {
 
   let {
     referrer = null,
+    type = constants.types.SCRIPT,
+    defaultType = referrer ? referrer._defaultType : constants.types.SCRIPT,
+    cache = referrer ? referrer._cache : self._cache,
+    main = referrer ? referrer._main : null,
     protocol = referrer ? referrer._protocol : self._protocols['file:'],
     imports = referrer ? referrer._imports : null,
     resolutions = referrer ? referrer._resolutions : null,
     builtins = referrer ? referrer._builtins : null,
-    conditions = referrer ? referrer._conditions : self._conditions,
-    main = referrer ? referrer._main : null,
-    defaultType = referrer ? referrer._defaultType : constants.types.SCRIPT,
-    type = constants.types.SCRIPT
+    conditions = referrer ? referrer._conditions : self._conditions
   } = opts
 
   const module = new Module(parentURL)
 
-  module._main = main || module
   module._type = type
   module._defaultType = defaultType
+  module._cache = cache
+  module._main = main || module
   module._protocol = protocol
   module._imports = imports
   module._resolutions = resolutions
