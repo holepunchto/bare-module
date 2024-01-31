@@ -166,7 +166,15 @@ const Module = module.exports = exports = class Module {
   static _handle = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
 
   static _onimport (specifier, assertions, referrerURL, isDynamicImport) {
-    const referrer = this._cache[referrerURL]
+    const referrer = this._cache[referrerURL] || null
+
+    if (referrer === null) {
+      let msg = `Cannot find referrer for module '${specifier}'`
+
+      if (referrerURL) msg += ` imported from '${referrerURL}'`
+
+      throw errors.REFERRER_MISSING(msg)
+    }
 
     const url = this.resolve(specifier, referrer._url, {
       isImport: true,
