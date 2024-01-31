@@ -257,7 +257,7 @@ const Module = module.exports = exports = class Module {
   static createRequire (parentURL, opts = {}) {
     const self = Module
 
-    if (typeof parentURL === 'string') parentURL = url.pathToFileURL(parentURL)
+    if (typeof parentURL === 'string') parentURL = new URL(parentURL, 'file:')
 
     let {
       referrer = null,
