@@ -8,6 +8,8 @@ const constants = require('./lib/constants')
 const errors = require('./lib/errors')
 const binding = require('./binding')
 
+const { startsWithWindowsDriveLetter } = resolve
+
 const Module = module.exports = exports = class Module {
   constructor (url) {
     this._url = url
@@ -414,7 +416,13 @@ exports.isBuiltin = function isBuiltin () {
 exports.createRequire = function createRequire (parentURL, opts = {}) {
   const self = Module
 
-  if (typeof parentURL === 'string') parentURL = new URL(parentURL, 'file:')
+  if (typeof parentURL === 'string') {
+    if (startsWithWindowsDriveLetter(parentURL)) {
+      parentURL = '/' + parentURL
+    }
+
+    parentURL = new URL(parentURL, 'file:')
+  }
 
   let {
     referrer = null,
