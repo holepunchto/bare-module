@@ -170,18 +170,18 @@ const Module = module.exports = exports = class Module {
 
   static _handle = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
 
-  static _onimport (specifier, assertions, referrerURL, isDynamicImport) {
-    const referrer = this._cache[referrerURL] || null
+  static _onimport (href, assertions, referrerHref, isDynamicImport) {
+    const referrer = this._cache[referrerHref] || null
 
     if (referrer === null) {
-      let msg = `Cannot find referrer for module '${specifier}'`
+      let msg = `Cannot find referrer for module '${href}'`
 
-      if (referrerURL) msg += ` imported from '${referrerURL}'`
+      if (referrerHref) msg += ` imported from '${referrerHref}'`
 
-      throw errors.REFERRER_MISSING(msg)
+      throw errors.MODULE_NOT_FOUND(msg)
     }
 
-    const url = this.resolve(specifier, referrer._url, {
+    const url = this.resolve(href, referrer._url, {
       isImport: true,
       referrer
     })
@@ -207,8 +207,12 @@ const Module = module.exports = exports = class Module {
     return module._handle
   }
 
-  static _onevaluate (specifier) {
-    const module = this._cache[specifier]
+  static _onevaluate (href) {
+    const module = this._cache[href] || null
+
+    if (module === null) {
+      throw errors.MODULE_NOT_FOUND(`Cannot find module '${href}'`)
+    }
 
     binding.setExport(module._handle, 'default', module._exports)
 
@@ -217,10 +221,14 @@ const Module = module.exports = exports = class Module {
     }
   }
 
-  static _onmeta (specifier, meta) {
+  static _onmeta (href, meta) {
     const self = Module
 
-    const module = this._cache[specifier]
+    const module = this._cache[href] || null
+
+    if (module === null) {
+      throw errors.MODULE_NOT_FOUND(`Cannot find module '${href}'`)
+    }
 
     const referrer = module
 
@@ -282,9 +290,9 @@ const Module = module.exports = exports = class Module {
       conditions = referrer ? referrer._conditions : self._conditions
     } = opts
 
-    if (self._cache[url.href]) return self._cache[url.href]._transform(isImport, isDynamicImport)
+    if (cache[url.href]) return cache[url.href]._transform(isImport, isDynamicImport)
 
-    const module = self._cache[url.href] = new Module(url)
+    const module = cache[url.href] = new Module(url)
 
     switch (url.protocol) {
       case 'builtin:':
