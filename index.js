@@ -254,7 +254,7 @@ const Module = module.exports = exports = class Module {
     function addon (specifier = '.') {
       const resolved = Bare.Addon.resolve(specifier, referrer._url, { referrer })
 
-      const addon = Bare.Addon.load(resolved)
+      const addon = Bare.Addon.load(resolved, { referrer })
 
       return addon._exports
     }
@@ -480,7 +480,7 @@ exports.createRequire = function createRequire (parentURL, opts = {}) {
   function addon (specifier = '.') {
     const resolved = Bare.Addon.resolve(specifier, referrer._url, { referrer })
 
-    const addon = Bare.Addon.load(resolved)
+    const addon = Bare.Addon.load(resolved, { referrer })
 
     return addon._exports
   }
@@ -573,7 +573,7 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
     function addon (specifier = '.') {
       const resolved = Bare.Addon.resolve(specifier, referrer._url, { referrer })
 
-      const addon = Bare.Addon.load(resolved)
+      const addon = Bare.Addon.load(resolved, { referrer })
 
       return addon._exports
     }
@@ -617,13 +617,17 @@ Module._extensions['.json'] = function (module, source, referrer) {
 Module._extensions['.bare'] = function (module, source, referrer) {
   module._type = constants.types.ADDON
 
-  module._exports = Bare.Addon.load(module._url).exports
+  referrer = module
+
+  module._exports = Bare.Addon.load(module._url, { referrer }).exports
 }
 
 Module._extensions['.node'] = function (module, source, referrer) {
   module._type = constants.types.ADDON
 
-  module._exports = Bare.Addon.load(module._url).exports
+  referrer = module
+
+  module._exports = Bare.Addon.load(module._url, { referrer }).exports
 }
 
 Module._extensions['.bundle'] = function (module, source, referrer) {
