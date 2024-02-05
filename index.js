@@ -490,10 +490,11 @@ Module._extensions['.js'] = function (module, source, referrer) {
   const self = Module
 
   const protocol = module._protocol
+  const resolutions = module._resolutions
 
   let pkg
 
-  for (const packageURL of resolve.lookupPackageScope(module._url)) {
+  for (const packageURL of resolve.lookupPackageScope(module._url, { resolutions })) {
     if (self._cache[packageURL.href]) {
       pkg = self._cache[packageURL.href]
       break
