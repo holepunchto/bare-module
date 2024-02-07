@@ -35,11 +35,11 @@ const Module = module.exports = exports = class Module {
   }
 
   get filename () {
-    return url.fileURLToPath(this._url)
+    return urlToPath(this._url)
   }
 
   get dirname () {
-    return path.dirname(url.fileURLToPath(this._url))
+    return urlToDirname(this._url)
   }
 
   get type () {
@@ -473,7 +473,7 @@ exports.createRequire = function createRequire (parentURL, opts = {}) {
 
     switch (resolved.protocol) {
       case 'builtin:': return resolved.pathname
-      default: return url.fileURLToPath(resolved)
+      default: return urlToPath(resolved)
     }
   }
 
@@ -544,7 +544,7 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
 
     module._exports = {}
 
-    const filename = url.fileURLToPath(module._url)
+    const filename = urlToPath(module._url)
 
     binding.createFunction(module._url.href, ['require', 'module', 'exports', '__filename', '__dirname'], source, 0)(
       require,
@@ -567,7 +567,7 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
 
       switch (resolved.protocol) {
         case 'builtin:': return resolved.pathname
-        default: url.fileURLToPath(resolved)
+        default: urlToPath(resolved)
       }
     }
 
@@ -686,3 +686,15 @@ Bare
 
     binding.destroy(Module._handle)
   })
+
+function urlToPath (u) {
+  return u.protocol === 'file:'
+    ? url.fileURLToPath(u)
+    : decodeURIComponent(u.pathname)
+}
+
+function urlToDirname (u) {
+  return u.protocol === 'file:'
+    ? path.dirname(url.fileURLToPath(u))
+    : decodeURIComponent((new URL('.', u)).pathname).replace(/\/$/, '')
+}
