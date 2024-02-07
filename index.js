@@ -696,5 +696,5 @@ function urlToPath (u) {
 function urlToDirname (u) {
   return u.protocol === 'file:'
     ? path.dirname(url.fileURLToPath(u))
-    : decodeURI((new URL('.', u)).pathname).replace(/[^/]$/, '')
+    : decodeURIComponent((new URL('.', u)).pathname).replace(/\/$/, '')
 }
