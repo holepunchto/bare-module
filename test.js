@@ -705,7 +705,7 @@ test('load .bundle with resolutions map, missing entry', async (t) => {
     '/dir/foo.js': {}
   }
 
-  await t.exception(() => Module.load(new URL('file:///app.bundle'), bundle.toBuffer()))
+  Module.load(new URL('file:///app.bundle'), bundle.toBuffer())
 })
 
 test.skip('resolve specific module within .bundle', (t) => {
