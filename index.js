@@ -690,7 +690,7 @@ Bare
 function urlToPath (u) {
   return u.protocol === 'file:'
     ? url.fileURLToPath(u)
-    : decodeURI(u.pathname)
+    : decodeURIComponent(u.pathname)
 }
 
 function urlToDirname (u) {
