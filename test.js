@@ -1526,6 +1526,20 @@ test('load file that cannot be read', async (t) => {
   await t.exception(() => Module.load(new URL('file:///foo.cjs'), { protocol }), /file missing/)
 })
 
+test('resolve already valid URL', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      t.is(url.href, 'file:///bar.js')
+
+      return true
+    }
+  })
+
+  Module.resolve('file:///bar.js', new URL('file:///foo.js'), { protocol })
+})
+
 function onteardown () {
   // TODO Provide a public API for clearing the cache.
   Module._cache = Object.create(null)
