@@ -8,6 +8,8 @@ const constants = require('./lib/constants')
 const errors = require('./lib/errors')
 const binding = require('./binding')
 
+const isWindows = Bare.platform === 'win32'
+
 const { startsWithWindowsDriveLetter } = resolve
 
 const Module = module.exports = exports = class Module {
@@ -544,14 +546,12 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
 
     module._exports = {}
 
-    const filename = urlToPath(module._url)
-
     binding.createFunction(module._url.href, ['require', 'module', 'exports', '__filename', '__dirname'], source, 0)(
       require,
       module,
       module._exports,
-      filename,
-      path.dirname(filename)
+      urlToPath(module._url),
+      urlToDirname(module._url)
     )
 
     function require (specifier) {
@@ -688,13 +688,33 @@ Bare
   })
 
 function urlToPath (u) {
-  return u.protocol === 'file:'
-    ? url.fileURLToPath(u)
-    : decodeURIComponent(u.pathname)
+  if (u.protocol) return url.fileURLToPath(u)
+
+  if (isWindows) {
+    if (/%2f|%5c/i.test(u.pathname)) {
+      throw errors.INVALID_URL_PATH('The URL path must not include encoded \\ or / characters')
+    }
+  } else {
+    if (/%2f/i.test(u.pathname)) {
+      throw errors.INVALID_URL_PATH('The URL path must not include encoded / characters')
+    }
+  }
+
+  return decodeURIComponent(u.pathname)
 }
 
 function urlToDirname (u) {
-  return u.protocol === 'file:'
-    ? path.dirname(url.fileURLToPath(u))
-    : decodeURIComponent((new URL('.', u)).pathname).replace(/\/$/, '')
+  if (u.protocol) return path.dirname(url.fileURLToPath(u))
+
+  if (isWindows) {
+    if (/%2f|%5c/i.test(u.pathname)) {
+      throw errors.INVALID_URL_PATH('The URL path must not include encoded \\ or / characters')
+    }
+  } else {
+    if (/%2f/i.test(u.pathname)) {
+      throw errors.INVALID_URL_PATH('The URL path must not include encoded / characters')
+    }
+  }
+
+  return decodeURIComponent((new URL('.', u)).pathname).replace(/\/$/, '')
 }

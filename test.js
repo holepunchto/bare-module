@@ -1,5 +1,10 @@
+/* global Bare */
 const test = require('brittle')
 const Module = require('.')
+
+const isWindows = Bare.platform === 'win32'
+
+const root = isWindows ? 'file:///c:' : 'file://'
 
 test('resolve bare specifier', (t) => {
   t.teardown(onteardown)
@@ -7,13 +12,13 @@ test('resolve bare specifier', (t) => {
   const protocol = new Module.Protocol({
     exists (url) {
       return (
-        url.href === 'file:///node_modules/foo/package.json' ||
-        url.href === 'file:///node_modules/foo/index.js'
+        url.href === root + '/node_modules/foo/package.json' ||
+        url.href === root + '/node_modules/foo/index.js'
       )
     },
 
     read (url) {
-      if (url.href === 'file:///node_modules/foo/package.json') {
+      if (url.href === root + '/node_modules/foo/package.json') {
         return '{}'
       }
 
@@ -21,7 +26,7 @@ test('resolve bare specifier', (t) => {
     }
   })
 
-  t.is(Module.resolve('foo', new URL('file:///'), { protocol }).href, 'file:///node_modules/foo/index.js')
+  t.is(Module.resolve('foo', new URL(root + '/'), { protocol }).href, root + '/node_modules/foo/index.js')
 })
 
 test('load resolved bare specifier', (t) => {
@@ -30,17 +35,17 @@ test('load resolved bare specifier', (t) => {
   const protocol = new Module.Protocol({
     exists (url) {
       return (
-        url.href === 'file:///node_modules/foo/package.json' ||
-        url.href === 'file:///node_modules/foo/index.js'
+        url.href === root + '/node_modules/foo/package.json' ||
+        url.href === root + '/node_modules/foo/index.js'
       )
     },
 
     read (url) {
-      if (url.href === 'file:///node_modules/foo/package.json') {
+      if (url.href === root + '/node_modules/foo/package.json') {
         return '{}'
       }
 
-      if (url.href === 'file:///node_modules/foo/index.js') {
+      if (url.href === root + '/node_modules/foo/index.js') {
         return 'module.exports = 42'
       }
 
@@ -48,7 +53,7 @@ test('load resolved bare specifier', (t) => {
     }
   })
 
-  t.is(Module.load(Module.resolve('foo', new URL('file:///'), { protocol }), { protocol }).exports, 42)
+  t.is(Module.load(Module.resolve('foo', new URL(root + '/'), { protocol }), { protocol }).exports, 42)
 })
 
 test('load resolved bare specifier with source', (t) => {
@@ -57,13 +62,13 @@ test('load resolved bare specifier with source', (t) => {
   const protocol = new Module.Protocol({
     exists (url) {
       return (
-        url.href === 'file:///node_modules/foo/package.json' ||
-        url.href === 'file:///node_modules/foo/index.js'
+        url.href === root + '/node_modules/foo/package.json' ||
+        url.href === root + '/node_modules/foo/index.js'
       )
     },
 
     read (url) {
-      if (url.href === 'file:///node_modules/foo/package.json') {
+      if (url.href === root + '/node_modules/foo/package.json') {
         return '{}'
       }
 
@@ -71,7 +76,7 @@ test('load resolved bare specifier with source', (t) => {
     }
   })
 
-  t.is(Module.load(Module.resolve('foo', new URL('file:///'), { protocol }), 'module.exports = 42').exports, 42)
+  t.is(Module.load(Module.resolve('foo', new URL(root + '/'), { protocol }), 'module.exports = 42').exports, 42)
 })
 
 test('load .js', (t) => {
@@ -83,7 +88,7 @@ test('load .js', (t) => {
     },
 
     read (url) {
-      if (url.href === 'file:///index.js') {
+      if (url.href === root + '/index.js') {
         return 'module.exports = 42'
       }
 
@@ -91,7 +96,7 @@ test('load .js', (t) => {
     }
   })
 
-  t.is(Module.load(new URL('file:///index.js'), { protocol }).exports, 42)
+  t.is(Module.load(new URL(root + '/index.js'), { protocol }).exports, 42)
 })
 
 test('load .js with pkg.type module', (t) => {
@@ -99,15 +104,15 @@ test('load .js with pkg.type module', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///package.json'
+      return url.href === root + '/package.json'
     },
 
     read (url) {
-      if (url.href === 'file:///index.js') {
+      if (url.href === root + '/index.js') {
         return 'export default 42'
       }
 
-      if (url.href === 'file:///package.json') {
+      if (url.href === root + '/package.json') {
         return '{ "type": "module" }'
       }
 
@@ -115,7 +120,7 @@ test('load .js with pkg.type module', (t) => {
     }
   })
 
-  Module.load(new URL('file:///index.js'), { protocol })
+  Module.load(new URL(root + '/index.js'), { protocol })
 })
 
 test('load .js with default type', (t) => {
@@ -123,15 +128,15 @@ test('load .js with default type', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///bar.js'
+      return url.href === root + '/bar.js'
     },
 
     read (url) {
-      if (url.href === 'file:///foo.js') {
+      if (url.href === root + '/foo.js') {
         return 'export { default } from \'/bar.js\''
       }
 
-      if (url.href === 'file:///bar.js') {
+      if (url.href === root + '/bar.js') {
         return 'export default 42'
       }
 
@@ -139,7 +144,7 @@ test('load .js with default type', (t) => {
     }
   })
 
-  t.is(Module.load(new URL('file:///foo.js'), { protocol, defaultType: Module.constants.types.MODULE }).exports.default, 42)
+  t.is(Module.load(new URL(root + '/foo.js'), { protocol, defaultType: Module.constants.types.MODULE }).exports.default, 42)
 })
 
 test('load .cjs', (t) => {
@@ -151,7 +156,7 @@ test('load .cjs', (t) => {
     },
 
     read (url) {
-      if (url.href === 'file:///index.cjs') {
+      if (url.href === root + '/index.cjs') {
         return 'module.exports = 42'
       }
 
@@ -159,7 +164,7 @@ test('load .cjs', (t) => {
     }
   })
 
-  t.is(Module.load(new URL('file:///index.cjs'), { protocol }).exports, 42)
+  t.is(Module.load(new URL(root + '/index.cjs'), { protocol }).exports, 42)
 })
 
 test('load .cjs with bare specifier require', (t) => {
@@ -168,21 +173,21 @@ test('load .cjs with bare specifier require', (t) => {
   const protocol = new Module.Protocol({
     exists (url) {
       return (
-        url.href === 'file:///node_modules/foo/package.json' ||
-        url.href === 'file:///node_modules/foo/index.js'
+        url.href === root + '/node_modules/foo/package.json' ||
+        url.href === root + '/node_modules/foo/index.js'
       )
     },
 
     read (url) {
-      if (url.href === 'file:///index.cjs') {
+      if (url.href === root + '/index.cjs') {
         return 'module.exports = require(\'foo\')'
       }
 
-      if (url.href === 'file:///node_modules/foo/package.json') {
+      if (url.href === root + '/node_modules/foo/package.json') {
         return '{}'
       }
 
-      if (url.href === 'file:///node_modules/foo/index.js') {
+      if (url.href === root + '/node_modules/foo/index.js') {
         return 'module.exports = 42'
       }
 
@@ -190,7 +195,7 @@ test('load .cjs with bare specifier require', (t) => {
     }
   })
 
-  t.is(Module.load(new URL('file:///index.cjs'), { protocol }).exports, 42)
+  t.is(Module.load(new URL(root + '/index.cjs'), { protocol }).exports, 42)
 })
 
 test('load .cjs with .mjs require', (t) => {
@@ -198,15 +203,15 @@ test('load .cjs with .mjs require', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///bar.mjs'
+      return url.href === root + '/bar.mjs'
     },
 
     read (url) {
-      if (url.href === 'file:///foo.cjs') {
+      if (url.href === root + '/foo.cjs') {
         return 'const bar = require(\'/bar\')'
       }
 
-      if (url.href === 'file:///bar.mjs') {
+      if (url.href === root + '/bar.mjs') {
         return 'export default 42'
       }
 
@@ -214,7 +219,7 @@ test('load .cjs with .mjs require', (t) => {
     }
   })
 
-  Module.load(new URL('file:///foo.cjs'), { protocol })
+  Module.load(new URL(root + '/foo.cjs'), { protocol })
 })
 
 test('load .cjs with top-level await', async (t) => {
@@ -226,7 +231,7 @@ test('load .cjs with top-level await', async (t) => {
     },
 
     read (url) {
-      if (url.href === 'file:///index.cjs') {
+      if (url.href === root + '/index.cjs') {
         return 'await 42'
       }
 
@@ -234,7 +239,7 @@ test('load .cjs with top-level await', async (t) => {
     }
   })
 
-  await t.exception.all(() => Module.load(new URL('file:///index.cjs'), { protocol }))
+  await t.exception.all(() => Module.load(new URL(root + '/index.cjs'), { protocol }))
 })
 
 test('load .cjs with top-level await .mjs require', async (t) => {
@@ -242,15 +247,15 @@ test('load .cjs with top-level await .mjs require', async (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///bar.mjs'
+      return url.href === root + '/bar.mjs'
     },
 
     read (url) {
-      if (url.href === 'file:///foo.cjs') {
+      if (url.href === root + '/foo.cjs') {
         return 'const bar = require(\'/bar\'); bar.default'
       }
 
-      if (url.href === 'file:///bar.mjs') {
+      if (url.href === root + '/bar.mjs') {
         return 'export default await 42'
       }
 
@@ -258,7 +263,7 @@ test('load .cjs with top-level await .mjs require', async (t) => {
     }
   })
 
-  await t.exception.all(() => Module.load(new URL('file:///foo.cjs'), { protocol }), /cannot access 'default' before initialization/i)
+  await t.exception.all(() => Module.load(new URL(root + '/foo.cjs'), { protocol }), /cannot access 'default' before initialization/i)
 })
 
 test('load .mjs', (t) => {
@@ -270,7 +275,7 @@ test('load .mjs', (t) => {
     },
 
     read (url) {
-      if (url.href === 'file:///index.mjs') {
+      if (url.href === root + '/index.mjs') {
         return 'export default 42'
       }
 
@@ -278,7 +283,7 @@ test('load .mjs', (t) => {
     }
   })
 
-  Module.load(new URL('file:///index.mjs'), { protocol })
+  Module.load(new URL(root + '/index.mjs'), { protocol })
 })
 
 test('load .mjs with import', (t) => {
@@ -286,15 +291,15 @@ test('load .mjs with import', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///foo.mjs'
+      return url.href === root + '/foo.mjs'
     },
 
     read (url) {
-      if (url.href === 'file:///index.mjs') {
+      if (url.href === root + '/index.mjs') {
         return 'import foo from \'/foo.mjs\''
       }
 
-      if (url.href === 'file:///foo.mjs') {
+      if (url.href === root + '/foo.mjs') {
         return 'export default 42'
       }
 
@@ -302,7 +307,7 @@ test('load .mjs with import', (t) => {
     }
   })
 
-  Module.load(new URL('file:///index.mjs'), { protocol })
+  Module.load(new URL(root + '/index.mjs'), { protocol })
 })
 
 test('load .mjs with .cjs import', (t) => {
@@ -310,15 +315,15 @@ test('load .mjs with .cjs import', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///foo.cjs'
+      return url.href === root + '/foo.cjs'
     },
 
     read (url) {
-      if (url.href === 'file:///index.mjs') {
+      if (url.href === root + '/index.mjs') {
         return 'import foo from \'/foo.cjs\''
       }
 
-      if (url.href === 'file:///foo.cjs') {
+      if (url.href === root + '/foo.cjs') {
         return 'module.exports = 42'
       }
 
@@ -326,7 +331,7 @@ test('load .mjs with .cjs import', (t) => {
     }
   })
 
-  Module.load(new URL('file:///index.mjs'), { protocol })
+  Module.load(new URL(root + '/index.mjs'), { protocol })
 })
 
 test('load .mjs with .js import', (t) => {
@@ -334,15 +339,15 @@ test('load .mjs with .js import', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///foo.js'
+      return url.href === root + '/foo.js'
     },
 
     read (url) {
-      if (url.href === 'file:///index.mjs') {
+      if (url.href === root + '/index.mjs') {
         return 'import foo from \'/foo.js\''
       }
 
-      if (url.href === 'file:///foo.js') {
+      if (url.href === root + '/foo.js') {
         return 'module.exports = 42'
       }
 
@@ -350,7 +355,7 @@ test('load .mjs with .js import', (t) => {
     }
   })
 
-  Module.load(new URL('file:///index.mjs'), { protocol })
+  Module.load(new URL(root + '/index.mjs'), { protocol })
 })
 
 test('load .mjs with missing import', async (t) => {
@@ -362,7 +367,7 @@ test('load .mjs with missing import', async (t) => {
     },
 
     read (url) {
-      if (url.href === 'file:///index.mjs') {
+      if (url.href === root + '/index.mjs') {
         return 'import foo from \'./foo\''
       }
 
@@ -370,7 +375,7 @@ test('load .mjs with missing import', async (t) => {
     }
   })
 
-  await t.exception(() => Module.load(new URL('file:///index.mjs'), { protocol }), /cannot find module '\.\/foo'/i)
+  await t.exception(() => Module.load(new URL(root + '/index.mjs'), { protocol }), /cannot find module '\.\/foo'/i)
 })
 
 test('load .mjs with nested import', (t) => {
@@ -379,22 +384,22 @@ test('load .mjs with nested import', (t) => {
   const protocol = new Module.Protocol({
     exists (url) {
       return (
-        url.href === 'file:///foo.mjs' ||
-        url.href === 'file:///bar.mjs' ||
-        url.href === 'file:///baz.mjs'
+        url.href === root + '/foo.mjs' ||
+        url.href === root + '/bar.mjs' ||
+        url.href === root + '/baz.mjs'
       )
     },
 
     read (url) {
-      if (url.href === 'file:///foo.mjs') {
+      if (url.href === root + '/foo.mjs') {
         return 'import bar from \'/bar\'; export default 1'
       }
 
-      if (url.href === 'file:///bar.mjs') {
+      if (url.href === root + '/bar.mjs') {
         return 'import baz from \'/baz\'; export default 2'
       }
 
-      if (url.href === 'file:///baz.mjs') {
+      if (url.href === root + '/baz.mjs') {
         return 'export default 3'
       }
 
@@ -402,7 +407,7 @@ test('load .mjs with nested import', (t) => {
     }
   })
 
-  Module.load(new URL('file:///foo.mjs'), { protocol })
+  Module.load(new URL(root + '/foo.mjs'), { protocol })
 })
 
 test('load .mjs with cyclic import', (t) => {
@@ -410,15 +415,15 @@ test('load .mjs with cyclic import', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///foo.mjs' || url.href === 'file:///bar.mjs'
+      return url.href === root + '/foo.mjs' || url.href === root + '/bar.mjs'
     },
 
     read (url) {
-      if (url.href === 'file:///foo.mjs') {
+      if (url.href === root + '/foo.mjs') {
         return 'import bar from \'/bar\'; export default 1'
       }
 
-      if (url.href === 'file:///bar.mjs') {
+      if (url.href === root + '/bar.mjs') {
         return 'import foo from \'/foo\'; export default 2'
       }
 
@@ -426,7 +431,7 @@ test('load .mjs with cyclic import', (t) => {
     }
   })
 
-  Module.load(new URL('file:///foo.mjs'), { protocol })
+  Module.load(new URL(root + '/foo.mjs'), { protocol })
 })
 
 test('load .mjs with top-level await', (t) => {
@@ -438,7 +443,7 @@ test('load .mjs with top-level await', (t) => {
     },
 
     read (url) {
-      if (url.href === 'file:///index.mjs') {
+      if (url.href === root + '/index.mjs') {
         return 'await 42'
       }
 
@@ -446,7 +451,7 @@ test('load .mjs with top-level await', (t) => {
     }
   })
 
-  Module.load(new URL('file:///index.mjs'), { protocol })
+  Module.load(new URL(root + '/index.mjs'), { protocol })
 })
 
 test('load .mjs with top-level await .mjs import', (t) => {
@@ -454,15 +459,15 @@ test('load .mjs with top-level await .mjs import', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///bar.mjs'
+      return url.href === root + '/bar.mjs'
     },
 
     read (url) {
-      if (url.href === 'file:///foo.mjs') {
+      if (url.href === root + '/foo.mjs') {
         return 'import bar from \'/bar\''
       }
 
-      if (url.href === 'file:///bar.mjs') {
+      if (url.href === root + '/bar.mjs') {
         return 'export default await 42'
       }
 
@@ -470,7 +475,7 @@ test('load .mjs with top-level await .mjs import', (t) => {
     }
   })
 
-  Module.load(new URL('file:///foo.mjs'), { protocol })
+  Module.load(new URL(root + '/foo.mjs'), { protocol })
 })
 
 test('load .json', (t) => {
@@ -482,7 +487,7 @@ test('load .json', (t) => {
     },
 
     read (url) {
-      if (url.href === 'file:///index.json') {
+      if (url.href === root + '/index.json') {
         return '42'
       }
 
@@ -490,7 +495,7 @@ test('load .json', (t) => {
     }
   })
 
-  t.is(Module.load(new URL('file:///index.json'), { protocol }).exports, 42)
+  t.is(Module.load(new URL(root + '/index.json'), { protocol }).exports, 42)
 })
 
 test('load .bare', async (t) => {
@@ -499,13 +504,13 @@ test('load .bare', async (t) => {
   const protocol = new Module.Protocol({
     exists (url) {
       return (
-        url.href === 'file:///index.js' ||
-        url.href === 'file:///native.bare'
+        url.href === root + '/index.js' ||
+        url.href === root + '/native.bare'
       )
     },
 
     read (url) {
-      if (url.href === 'file:///index.js') {
+      if (url.href === root + '/index.js') {
         return 'require(\'/native.bare\')'
       }
 
@@ -513,7 +518,7 @@ test('load .bare', async (t) => {
     }
   })
 
-  await t.exception(() => Module.load(new URL('file:///index.js'), { protocol }))
+  await t.exception(() => Module.load(new URL(root + '/index.js'), { protocol }))
 })
 
 test('load .node', async (t) => {
@@ -522,13 +527,13 @@ test('load .node', async (t) => {
   const protocol = new Module.Protocol({
     exists (url) {
       return (
-        url.href === 'file:///index.js' ||
-        url.href === 'file:///native.node'
+        url.href === root + '/index.js' ||
+        url.href === root + '/native.node'
       )
     },
 
     read (url) {
-      if (url.href === 'file:///index.js') {
+      if (url.href === root + '/index.js') {
         return 'require(\'/native.node\')'
       }
 
@@ -536,7 +541,7 @@ test('load .node', async (t) => {
     }
   })
 
-  await t.exception(() => Module.load(new URL('file:///index.js'), { protocol }))
+  await t.exception(() => Module.load(new URL(root + '/index.js'), { protocol }))
 })
 
 test('load .bundle', (t) => {
@@ -547,7 +552,7 @@ test('load .bundle', (t) => {
     .write('/bar.js', 'module.exports = 42')
     .toBuffer()
 
-  Module.load(new URL('file:///app.bundle'), bundle)
+  Module.load(new URL(root + '/app.bundle'), bundle)
 })
 
 test('load .bundle with .mjs', (t) => {
@@ -558,7 +563,7 @@ test('load .bundle with .mjs', (t) => {
     .write('/bar.mjs', 'export default 42')
     .toBuffer()
 
-  Module.load(new URL('file:///app.bundle'), bundle)
+  Module.load(new URL(root + '/app.bundle'), bundle)
 })
 
 test('load .bundle with bare specifier', (t) => {
@@ -570,7 +575,7 @@ test('load .bundle with bare specifier', (t) => {
     .write('/node_modules/bar/index.js', 'module.exports = 42')
     .toBuffer()
 
-  Module.load(new URL('file:///app.bundle'), bundle)
+  Module.load(new URL(root + '/app.bundle'), bundle)
 })
 
 test('load .bundle with bare specifier, nested', (t) => {
@@ -584,7 +589,7 @@ test('load .bundle with bare specifier, nested', (t) => {
     .write('/node_modules/baz/index.js', 'module.exports = 42')
     .toBuffer()
 
-  Module.load(new URL('file:///app.bundle'), bundle)
+  Module.load(new URL(root + '/app.bundle'), bundle)
 })
 
 test('load .bundle with bare specifier and import map', (t) => {
@@ -595,7 +600,7 @@ test('load .bundle with bare specifier and import map', (t) => {
     .write('/bar.js', 'module.exports = 42', { alias: 'baz' })
     .toBuffer()
 
-  t.is(Module.load(new URL('file:///app.bundle'), bundle).exports, 42)
+  t.is(Module.load(new URL(root + '/app.bundle'), bundle).exports, 42)
 })
 
 test.skip('load specific module within .bundle', (t) => {
@@ -612,7 +617,7 @@ test.skip('load specific module within .bundle', (t) => {
     },
 
     read (url) {
-      if (url.href === 'file:///app.bundle') {
+      if (url.href === root + '/app.bundle') {
         return bundle
       }
 
@@ -620,7 +625,7 @@ test.skip('load specific module within .bundle', (t) => {
     }
   })
 
-  t.is(Module.load(new URL('file:///app.bundle/foo.js'), { protocol }).exports, 42)
+  t.is(Module.load(new URL(root + '/app.bundle/foo.js'), { protocol }).exports, 42)
 })
 
 test.skip('load specific module within nested .bundle', (t) => {
@@ -640,7 +645,7 @@ test.skip('load specific module within nested .bundle', (t) => {
     },
 
     read (url) {
-      if (url.href === 'file:///foo.bundle') {
+      if (url.href === root + '/foo.bundle') {
         return bundleB
       }
 
@@ -648,7 +653,7 @@ test.skip('load specific module within nested .bundle', (t) => {
     }
   })
 
-  t.is(Module.load(new URL('file:///foo.bundle/bar.bundle/bar.js'), { protocol }).exports, 42)
+  t.is(Module.load(new URL(root + '/foo.bundle/bar.bundle/bar.js'), { protocol }).exports, 42)
 })
 
 test.skip('load .bundle with type option and no .bundle extension', async (t) => {
@@ -659,7 +664,7 @@ test.skip('load .bundle with type option and no .bundle extension', async (t) =>
     .toBuffer()
 
   await t.exception(
-    () => Module.load(new URL('file:///app'), bundle, { type: Module.constants.types.BUNDLE }),
+    () => Module.load(new URL(root + '/app'), bundle, { type: Module.constants.types.BUNDLE }),
     /invalid extension for bundle '\/app'/i
   )
 })
@@ -675,7 +680,7 @@ test('load .bundle with builtin require', (t) => {
     .write('/foo.js', 'module.exports = require(\'bar\')', { main: true })
     .toBuffer()
 
-  Module.load(new URL('file:///app.bundle'), bundle, { builtins })
+  Module.load(new URL(root + '/app.bundle'), bundle, { builtins })
 })
 
 test('load .bundle with resolutions map', (t) => {
@@ -691,7 +696,7 @@ test('load .bundle with resolutions map', (t) => {
     }
   }
 
-  Module.load(new URL('file:///app.bundle'), bundle.toBuffer())
+  Module.load(new URL(root + '/app.bundle'), bundle.toBuffer())
 })
 
 test('load .bundle with resolutions map, missing entry', async (t) => {
@@ -705,7 +710,7 @@ test('load .bundle with resolutions map, missing entry', async (t) => {
     '/dir/foo.js': {}
   }
 
-  Module.load(new URL('file:///app.bundle'), bundle.toBuffer())
+  Module.load(new URL(root + '/app.bundle'), bundle.toBuffer())
 })
 
 test.skip('resolve specific module within .bundle', (t) => {
@@ -722,7 +727,7 @@ test.skip('resolve specific module within .bundle', (t) => {
     },
 
     read (url) {
-      if (url.href === 'file:///app.bundle') {
+      if (url.href === root + '/app.bundle') {
         return bundle
       }
 
@@ -730,7 +735,7 @@ test.skip('resolve specific module within .bundle', (t) => {
     }
   })
 
-  t.is(Module.resolve('/app.bundle/foo', new URL('file:///'), { protocol }).href, 'file:///app.bundle/foo.js')
+  t.is(Module.resolve('/app.bundle/foo', new URL(root + '/'), { protocol }).href, root + '/app.bundle/foo.js')
 })
 
 test.skip('resolve specific module within nested .bundle', (t) => {
@@ -750,7 +755,7 @@ test.skip('resolve specific module within nested .bundle', (t) => {
     },
 
     read (url) {
-      if (url.href === 'file:///foo.bundle') {
+      if (url.href === root + '/foo.bundle') {
         return bundleB
       }
 
@@ -758,7 +763,7 @@ test.skip('resolve specific module within nested .bundle', (t) => {
     }
   })
 
-  t.is(Module.resolve('/foo.bundle/bar.bundle/bar', new URL('file:///'), { protocol }).href, 'file:///foo.bundle/bar.bundle/bar.js')
+  t.is(Module.resolve('/foo.bundle/bar.bundle/bar', new URL(root + '/'), { protocol }).href, root + '/foo.bundle/bar.bundle/bar.js')
 })
 
 test('load unknown extension', (t) => {
@@ -770,7 +775,7 @@ test('load unknown extension', (t) => {
     },
 
     read (url) {
-      if (url.href === 'file:///index.foo') {
+      if (url.href === root + '/index.foo') {
         return 'module.exports = 42'
       }
 
@@ -778,7 +783,7 @@ test('load unknown extension', (t) => {
     }
   })
 
-  t.is(Module.load(new URL('file:///index.foo'), { protocol }).exports, 42)
+  t.is(Module.load(new URL(root + '/index.foo'), { protocol }).exports, 42)
 })
 
 test('load unknown extension with default type', (t) => {
@@ -790,7 +795,7 @@ test('load unknown extension with default type', (t) => {
     },
 
     read (url) {
-      if (url.href === 'file:///index.foo') {
+      if (url.href === root + '/index.foo') {
         return '42'
       }
 
@@ -798,19 +803,19 @@ test('load unknown extension with default type', (t) => {
     }
   })
 
-  t.is(Module.load(new URL('file:///index.foo'), { protocol, defaultType: Module.constants.types.JSON }).exports, 42)
+  t.is(Module.load(new URL(root + '/index.foo'), { protocol, defaultType: Module.constants.types.JSON }).exports, 42)
 })
 
 test('load .cjs with hashbang', (t) => {
   t.teardown(onteardown)
 
-  t.execution(() => Module.load(new URL('file:///index.cjs'), '#!node'))
+  t.execution(() => Module.load(new URL(root + '/index.cjs'), '#!node'))
 })
 
 test('load .mjs with hashbang', (t) => {
   t.teardown(onteardown)
 
-  t.execution(() => Module.load(new URL('file:///index.mjs'), '#!node'))
+  t.execution(() => Module.load(new URL(root + '/index.mjs'), '#!node'))
 })
 
 test('load .cjs with dynamic .mjs import', (t) => {
@@ -818,15 +823,15 @@ test('load .cjs with dynamic .mjs import', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///bar.mjs'
+      return url.href === root + '/bar.mjs'
     },
 
     read (url) {
-      if (url.href === 'file:///foo.cjs') {
+      if (url.href === root + '/foo.cjs') {
         return 'const bar = import(\'/bar\')'
       }
 
-      if (url.href === 'file:///bar.mjs') {
+      if (url.href === root + '/bar.mjs') {
         return 'export default 42'
       }
 
@@ -834,7 +839,7 @@ test('load .cjs with dynamic .mjs import', (t) => {
     }
   })
 
-  Module.load(new URL('file:///foo.cjs'), { protocol })
+  Module.load(new URL(root + '/foo.cjs'), { protocol })
 })
 
 test('load .cjs with dynamic .cjs import', (t) => {
@@ -842,15 +847,15 @@ test('load .cjs with dynamic .cjs import', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///bar.cjs'
+      return url.href === root + '/bar.cjs'
     },
 
     read (url) {
-      if (url.href === 'file:///foo.cjs') {
+      if (url.href === root + '/foo.cjs') {
         return 'const bar = import(\'/bar\')'
       }
 
-      if (url.href === 'file:///bar.cjs') {
+      if (url.href === root + '/bar.cjs') {
         return 'module.exports = 42'
       }
 
@@ -858,7 +863,7 @@ test('load .cjs with dynamic .cjs import', (t) => {
     }
   })
 
-  Module.load(new URL('file:///foo.cjs'), { protocol })
+  Module.load(new URL(root + '/foo.cjs'), { protocol })
 })
 
 test('load .mjs with dynamic .mjs import', (t) => {
@@ -866,15 +871,15 @@ test('load .mjs with dynamic .mjs import', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///bar.mjs'
+      return url.href === root + '/bar.mjs'
     },
 
     read (url) {
-      if (url.href === 'file:///foo.mjs') {
+      if (url.href === root + '/foo.mjs') {
         return 'const { default: bar } = await import(\'/bar\')'
       }
 
-      if (url.href === 'file:///bar.mjs') {
+      if (url.href === root + '/bar.mjs') {
         return 'export default 42'
       }
 
@@ -882,7 +887,7 @@ test('load .mjs with dynamic .mjs import', (t) => {
     }
   })
 
-  Module.load(new URL('file:///foo.mjs'), { protocol })
+  Module.load(new URL(root + '/foo.mjs'), { protocol })
 })
 
 test('load .mjs with dynamic .cjs import', (t) => {
@@ -890,15 +895,15 @@ test('load .mjs with dynamic .cjs import', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///bar.cjs'
+      return url.href === root + '/bar.cjs'
     },
 
     read (url) {
-      if (url.href === 'file:///foo.mjs') {
+      if (url.href === root + '/foo.mjs') {
         return 'const { default: bar } = await import(\'/bar\')'
       }
 
-      if (url.href === 'file:///bar.cjs') {
+      if (url.href === root + '/bar.cjs') {
         return 'module.exports = 42'
       }
 
@@ -906,7 +911,7 @@ test('load .mjs with dynamic .cjs import', (t) => {
     }
   })
 
-  Module.load(new URL('file:///foo.mjs'), { protocol })
+  Module.load(new URL(root + '/foo.mjs'), { protocol })
 })
 
 test('load .cjs with bare specifier require and import map', (t) => {
@@ -914,15 +919,15 @@ test('load .cjs with bare specifier require and import map', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///bar.cjs'
+      return url.href === root + '/bar.cjs'
     },
 
     read (url) {
-      if (url.href === 'file:///foo.cjs') {
+      if (url.href === root + '/foo.cjs') {
         return 'const bar = require(\'bar\')'
       }
 
-      if (url.href === 'file:///bar.cjs') {
+      if (url.href === root + '/bar.cjs') {
         return 'module.exports = 42'
       }
 
@@ -930,7 +935,7 @@ test('load .cjs with bare specifier require and import map', (t) => {
     }
   })
 
-  Module.load(new URL('file:///foo.cjs'), {
+  Module.load(new URL(root + '/foo.cjs'), {
     protocol,
     imports: {
       bar: '/bar.cjs'
@@ -943,15 +948,15 @@ test('load .mjs with bare specifier import and import map', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///bar.mjs'
+      return url.href === root + '/bar.mjs'
     },
 
     read (url) {
-      if (url.href === 'file:///foo.mjs') {
+      if (url.href === root + '/foo.mjs') {
         return 'import bar from \'bar\''
       }
 
-      if (url.href === 'file:///bar.mjs') {
+      if (url.href === root + '/bar.mjs') {
         return 'export default 42'
       }
 
@@ -959,7 +964,7 @@ test('load .mjs with bare specifier import and import map', (t) => {
     }
   })
 
-  Module.load(new URL('file:///foo.mjs'), {
+  Module.load(new URL(root + '/foo.mjs'), {
     protocol,
     imports: {
       bar: '/bar.mjs'
@@ -972,7 +977,7 @@ test.skip('load .cjs with data: protocol require', (t) => {
 
   const protocol = new Module.Protocol({
     read (url) {
-      if (url.href === 'file:///foo.cjs') {
+      if (url.href === root + '/foo.cjs') {
         return `module.exports = require('data:,${encodeURIComponent('module.exports = 42')}')`
       }
 
@@ -980,7 +985,7 @@ test.skip('load .cjs with data: protocol require', (t) => {
     }
   })
 
-  t.is(Module.load(new URL('file:///foo.cjs'), { protocol }).exports, 42)
+  t.is(Module.load(new URL(root + '/foo.cjs'), { protocol }).exports, 42)
 })
 
 test.skip('load .mjs with data: protocol import', (t) => {
@@ -988,7 +993,7 @@ test.skip('load .mjs with data: protocol import', (t) => {
 
   const protocol = new Module.Protocol({
     read (url) {
-      if (url.href === 'file:///foo.mjs') {
+      if (url.href === root + '/foo.mjs') {
         return `export { default } from 'data:,${encodeURIComponent('export default 42')}'`
       }
 
@@ -996,7 +1001,7 @@ test.skip('load .mjs with data: protocol import', (t) => {
     }
   })
 
-  t.is(Module.load(new URL('file:///foo.mjs'), { protocol }).exports.default, 42)
+  t.is(Module.load(new URL(root + '/foo.mjs'), { protocol }).exports.default, 42)
 })
 
 test('import map with protocol', (t) => {
@@ -1004,15 +1009,15 @@ test('import map with protocol', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///bar.mjs'
+      return url.href === root + '/bar.mjs'
     },
 
     read (url) {
-      if (url.href === 'file:///foo.mjs') {
+      if (url.href === root + '/foo.mjs') {
         return 'import bar from \'proto:bar\''
       }
 
-      if (url.href === 'file:///bar.mjs') {
+      if (url.href === root + '/bar.mjs') {
         return 'export default 42'
       }
 
@@ -1020,7 +1025,7 @@ test('import map with protocol', (t) => {
     }
   })
 
-  Module.load(new URL('file:///foo.mjs'), {
+  Module.load(new URL(root + '/foo.mjs'), {
     protocol,
     imports: {
       'proto:bar': '/bar.mjs'
@@ -1033,15 +1038,15 @@ test('require.main', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///bar.js'
+      return url.href === root + '/bar.js'
     },
 
     read (url) {
-      if (url.href === 'file:///foo.js') {
+      if (url.href === root + '/foo.js') {
         return 'module.exports = require.main; require(\'/bar\')'
       }
 
-      if (url.href === 'file:///bar.js') {
+      if (url.href === root + '/bar.js') {
         return 'module.exports = require.main'
       }
 
@@ -1049,8 +1054,8 @@ test('require.main', (t) => {
     }
   })
 
-  const foo = Module.load(new URL('file:///foo.js'), { protocol })
-  const bar = Module.load(new URL('file:///bar.js'), { protocol })
+  const foo = Module.load(new URL(root + '/foo.js'), { protocol })
+  const bar = Module.load(new URL(root + '/bar.js'), { protocol })
 
   t.is(foo.exports, foo)
   t.is(bar.exports, foo)
@@ -1061,7 +1066,7 @@ test('require.addon.host', (t) => {
 
   const protocol = new Module.Protocol({
     read (url) {
-      if (url.href === 'file:///foo.js') {
+      if (url.href === root + '/foo.js') {
         return 'module.exports = require.addon.host'
       }
 
@@ -1069,7 +1074,7 @@ test('require.addon.host', (t) => {
     }
   })
 
-  t.comment(Module.load(new URL('file:///foo.js'), { protocol }).exports)
+  t.comment(Module.load(new URL(root + '/foo.js'), { protocol }).exports)
 })
 
 test('import.meta', (t) => {
@@ -1077,11 +1082,11 @@ test('import.meta', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///bar.mjs'
+      return url.href === root + '/bar.mjs'
     },
 
     read (url) {
-      if (url.href === 'file:///foo.mjs') {
+      if (url.href === root + '/foo.mjs') {
         return 'export default import.meta'
       }
 
@@ -1089,11 +1094,11 @@ test('import.meta', (t) => {
     }
   })
 
-  const { default: meta } = Module.load(new URL('file:///foo.mjs'), { protocol }).exports
+  const { default: meta } = Module.load(new URL(root + '/foo.mjs'), { protocol }).exports
 
-  t.is(meta.url, 'file:///foo.mjs')
+  t.is(meta.url, root + '/foo.mjs')
   t.is(meta.main, true)
-  t.is(meta.resolve('/bar'), 'file:///bar.mjs')
+  t.is(meta.resolve('/bar'), root + '/bar.mjs')
   t.comment(meta.addon.host)
 })
 
@@ -1102,15 +1107,15 @@ test('import assertions', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///bar'
+      return url.href === root + '/bar'
     },
 
     read (url) {
-      if (url.href === 'file:///foo.mjs') {
+      if (url.href === root + '/foo.mjs') {
         return 'export { default } from \'/bar\' assert { type: \'json\' }'
       }
 
-      if (url.href === 'file:///bar') {
+      if (url.href === root + '/bar') {
         return '{ "hello": "world" }'
       }
 
@@ -1118,7 +1123,7 @@ test('import assertions', (t) => {
     }
   })
 
-  t.alike(Module.load(new URL('file:///foo.mjs'), { protocol }).exports.default, { hello: 'world' })
+  t.alike(Module.load(new URL(root + '/foo.mjs'), { protocol }).exports.default, { hello: 'world' })
 })
 
 test('createRequire', (t) => {
@@ -1126,11 +1131,11 @@ test('createRequire', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///dir/bar.js'
+      return url.href === root + '/dir/bar.js'
     },
 
     read (url) {
-      if (url.href === 'file:///dir/bar.js') {
+      if (url.href === root + '/dir/bar.js') {
         return 'module.exports = 42'
       }
 
@@ -1138,7 +1143,7 @@ test('createRequire', (t) => {
     }
   })
 
-  const require = Module.createRequire('/dir/foo.js', { protocol })
+  const require = Module.createRequire(root + '/dir/foo.js', { protocol })
 
   t.is(require('./bar'), 42)
 })
@@ -1148,11 +1153,11 @@ test('createRequire with default type', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///dir/bar.js'
+      return url.href === root + '/dir/bar.js'
     },
 
     read (url) {
-      if (url.href === 'file:///dir/bar.js') {
+      if (url.href === root + '/dir/bar.js') {
         return 'export default 42'
       }
 
@@ -1160,7 +1165,7 @@ test('createRequire with default type', (t) => {
     }
   })
 
-  const require = Module.createRequire('/dir/foo.js', { protocol, defaultType: Module.constants.types.MODULE })
+  const require = Module.createRequire(root + '/dir/foo.js', { protocol, defaultType: Module.constants.types.MODULE })
 
   t.is(require('./bar').default, 42)
 })
@@ -1170,11 +1175,11 @@ test('main in package.json', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///package.json' || url.href === 'file:///foo.js'
+      return url.href === root + '/package.json' || url.href === root + '/foo.js'
     },
 
     read (url) {
-      if (url.href === 'file:///package.json') {
+      if (url.href === root + '/package.json') {
         return '{ "main": "foo.js" }'
       }
 
@@ -1182,7 +1187,7 @@ test('main in package.json', (t) => {
     }
   })
 
-  t.is(Module.resolve('/', new URL('file:///'), { protocol }).href, 'file:///foo.js')
+  t.is(Module.resolve('/', new URL(root + '/'), { protocol }).href, root + '/foo.js')
 })
 
 test('exports in package.json', (t) => {
@@ -1190,11 +1195,11 @@ test('exports in package.json', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///package.json' || url.href === 'file:///foo.js'
+      return url.href === root + '/package.json' || url.href === root + '/foo.js'
     },
 
     read (url) {
-      if (url.href === 'file:///package.json') {
+      if (url.href === root + '/package.json') {
         return '{ "exports": "./foo.js" }'
       }
 
@@ -1202,7 +1207,7 @@ test('exports in package.json', (t) => {
     }
   })
 
-  t.is(Module.resolve('/', new URL('file:///'), { protocol }).href, 'file:///foo.js')
+  t.is(Module.resolve('/', new URL(root + '/'), { protocol }).href, root + '/foo.js')
 })
 
 test('conditional exports in package.json', (t) => {
@@ -1211,14 +1216,14 @@ test('conditional exports in package.json', (t) => {
   const protocol = new Module.Protocol({
     exists (url) {
       return (
-        url.href === 'file:///package.json' ||
-        url.href === 'file:///foo.cjs' ||
-        url.href === 'file:///foo.mjs'
+        url.href === root + '/package.json' ||
+        url.href === root + '/foo.cjs' ||
+        url.href === root + '/foo.mjs'
       )
     },
 
     read (url) {
-      if (url.href === 'file:///package.json') {
+      if (url.href === root + '/package.json') {
         return '{ "exports": { "require": "./foo.cjs", "import": "./foo.mjs" } }'
       }
 
@@ -1226,8 +1231,8 @@ test('conditional exports in package.json', (t) => {
     }
   })
 
-  t.is(Module.resolve('/', new URL('file:///'), { protocol }).href, 'file:///foo.cjs')
-  t.is(Module.resolve('/', new URL('file:///'), { isImport: true, protocol }).href, 'file:///foo.mjs')
+  t.is(Module.resolve('/', new URL(root + '/'), { protocol }).href, root + '/foo.cjs')
+  t.is(Module.resolve('/', new URL(root + '/'), { isImport: true, protocol }).href, root + '/foo.mjs')
 })
 
 test('conditional exports in package.json, array of conditions', (t) => {
@@ -1236,14 +1241,14 @@ test('conditional exports in package.json, array of conditions', (t) => {
   const protocol = new Module.Protocol({
     exists (url) {
       return (
-        url.href === 'file:///package.json' ||
-        url.href === 'file:///foo.cjs' ||
-        url.href === 'file:///foo.mjs'
+        url.href === root + '/package.json' ||
+        url.href === root + '/foo.cjs' ||
+        url.href === root + '/foo.mjs'
       )
     },
 
     read (url) {
-      if (url.href === 'file:///package.json') {
+      if (url.href === root + '/package.json') {
         return '{ "exports": [{ "import": "./foo.mjs" }, { "require": "./foo.cjs" }] }'
       }
 
@@ -1251,8 +1256,8 @@ test('conditional exports in package.json, array of conditions', (t) => {
     }
   })
 
-  t.is(Module.resolve('/', new URL('file:///'), { protocol }).href, 'file:///foo.cjs')
-  t.is(Module.resolve('/', new URL('file:///'), { isImport: true, protocol }).href, 'file:///foo.mjs')
+  t.is(Module.resolve('/', new URL(root + '/'), { protocol }).href, root + '/foo.cjs')
+  t.is(Module.resolve('/', new URL(root + '/'), { isImport: true, protocol }).href, root + '/foo.mjs')
 })
 
 test('exports in node_modules', (t) => {
@@ -1261,13 +1266,13 @@ test('exports in node_modules', (t) => {
   const protocol = new Module.Protocol({
     exists (url) {
       return (
-        url.href === 'file:///node_modules/foo/package.json' ||
-        url.href === 'file:///node_modules/foo/foo.js'
+        url.href === root + '/node_modules/foo/package.json' ||
+        url.href === root + '/node_modules/foo/foo.js'
       )
     },
 
     read (url) {
-      if (url.href === 'file:///node_modules/foo/package.json') {
+      if (url.href === root + '/node_modules/foo/package.json') {
         return '{ "exports": "./foo.js" }'
       }
 
@@ -1275,7 +1280,7 @@ test('exports in node_modules', (t) => {
     }
   })
 
-  t.is(Module.resolve('foo', new URL('file:///'), { protocol }).href, 'file:///node_modules/foo/foo.js')
+  t.is(Module.resolve('foo', new URL(root + '/'), { protocol }).href, root + '/node_modules/foo/foo.js')
 })
 
 test('import unexported module in node_modules', async (t) => {
@@ -1284,14 +1289,14 @@ test('import unexported module in node_modules', async (t) => {
   const protocol = new Module.Protocol({
     exists (url) {
       return (
-        url.href === 'file:///node_modules/foo/package.json' ||
-        url.href === 'file:///node_modules/foo/foo.js' ||
-        url.href === 'file:///node_modules/foo/bar.js'
+        url.href === root + '/node_modules/foo/package.json' ||
+        url.href === root + '/node_modules/foo/foo.js' ||
+        url.href === root + '/node_modules/foo/bar.js'
       )
     },
 
     read (url) {
-      if (url.href === 'file:///node_modules/foo/package.json') {
+      if (url.href === root + '/node_modules/foo/package.json') {
         return '{ "exports": "./foo.js" }'
       }
 
@@ -1299,7 +1304,7 @@ test('import unexported module in node_modules', async (t) => {
     }
   })
 
-  await t.exception(() => Module.resolve('foo/bar', new URL('file:///'), { protocol }))
+  await t.exception(() => Module.resolve('foo/bar', new URL(root + '/'), { protocol }))
 })
 
 test('imports in package.json', (t) => {
@@ -1308,21 +1313,21 @@ test('imports in package.json', (t) => {
   const protocol = new Module.Protocol({
     exists (url) {
       return (
-        url.href === 'file:///package.json' ||
-        url.href === 'file:///baz.js'
+        url.href === root + '/package.json' ||
+        url.href === root + '/baz.js'
       )
     },
 
     read (url) {
-      if (url.href === 'file:///package.json') {
+      if (url.href === root + '/package.json') {
         return '{ "imports": { "bar": "./baz.js" } }'
       }
 
-      if (url.href === 'file:///foo.js') {
+      if (url.href === root + '/foo.js') {
         return 'const bar = require(\'bar\')'
       }
 
-      if (url.href === 'file:///baz.js') {
+      if (url.href === root + '/baz.js') {
         return 'module.exports = 42'
       }
 
@@ -1330,7 +1335,7 @@ test('imports in package.json', (t) => {
     }
   })
 
-  Module.load(new URL('file:///foo.js'), { protocol })
+  Module.load(new URL(root + '/foo.js'), { protocol })
 })
 
 test('imports in package.json, no match', (t) => {
@@ -1339,21 +1344,21 @@ test('imports in package.json, no match', (t) => {
   const protocol = new Module.Protocol({
     exists (url) {
       return (
-        url.href === 'file:///package.json' ||
-        url.href === 'file:///baz.js'
+        url.href === root + '/package.json' ||
+        url.href === root + '/baz.js'
       )
     },
 
     read (url) {
-      if (url.href === 'file:///package.json') {
+      if (url.href === root + '/package.json') {
         return '{ "imports": { "bar": "./baz.js" } }'
       }
 
-      if (url.href === 'file:///foo.js') {
+      if (url.href === root + '/foo.js') {
         return 'const bar = require(\'./baz\')'
       }
 
-      if (url.href === 'file:///baz.js') {
+      if (url.href === root + '/baz.js') {
         return 'module.exports = 42'
       }
 
@@ -1361,7 +1366,7 @@ test('imports in package.json, no match', (t) => {
     }
   })
 
-  Module.load(new URL('file:///foo.js'), { protocol })
+  Module.load(new URL(root + '/foo.js'), { protocol })
 })
 
 test('conditional imports in package.json, require', (t) => {
@@ -1370,22 +1375,22 @@ test('conditional imports in package.json, require', (t) => {
   const protocol = new Module.Protocol({
     exists (url) {
       return (
-        url.href === 'file:///package.json' ||
-        url.href === 'file:///baz.cjs' ||
-        url.href === 'file:///baz.mjs'
+        url.href === root + '/package.json' ||
+        url.href === root + '/baz.cjs' ||
+        url.href === root + '/baz.mjs'
       )
     },
 
     read (url) {
-      if (url.href === 'file:///package.json') {
+      if (url.href === root + '/package.json') {
         return '{ "imports": { "bar": { "require": "./baz.cjs", "import": "./baz.mjs" } } }'
       }
 
-      if (url.href === 'file:///foo.cjs') {
+      if (url.href === root + '/foo.cjs') {
         return 'const bar = require(\'bar\')'
       }
 
-      if (url.href === 'file:///baz.cjs') {
+      if (url.href === root + '/baz.cjs') {
         return 'module.exports = 42'
       }
 
@@ -1393,7 +1398,7 @@ test('conditional imports in package.json, require', (t) => {
     }
   })
 
-  Module.load(new URL('file:///foo.cjs'), { protocol })
+  Module.load(new URL(root + '/foo.cjs'), { protocol })
 })
 
 test('conditional imports in package.json, import', (t) => {
@@ -1402,22 +1407,22 @@ test('conditional imports in package.json, import', (t) => {
   const protocol = new Module.Protocol({
     exists (url) {
       return (
-        url.href === 'file:///package.json' ||
-        url.href === 'file:///baz.cjs' ||
-        url.href === 'file:///baz.mjs'
+        url.href === root + '/package.json' ||
+        url.href === root + '/baz.cjs' ||
+        url.href === root + '/baz.mjs'
       )
     },
 
     read (url) {
-      if (url.href === 'file:///package.json') {
+      if (url.href === root + '/package.json') {
         return '{ "imports": { "bar": { "require": "./baz.cjs", "import": "./baz.mjs" } } }'
       }
 
-      if (url.href === 'file:///foo.mjs') {
+      if (url.href === root + '/foo.mjs') {
         return 'import bar from \'bar\''
       }
 
-      if (url.href === 'file:///baz.mjs') {
+      if (url.href === root + '/baz.mjs') {
         return 'export default 42'
       }
 
@@ -1425,7 +1430,7 @@ test('conditional imports in package.json, import', (t) => {
     }
   })
 
-  Module.load(new URL('file:///foo.mjs'), { protocol })
+  Module.load(new URL(root + '/foo.mjs'), { protocol })
 })
 
 test('imports in node_modules', (t) => {
@@ -1434,21 +1439,21 @@ test('imports in node_modules', (t) => {
   const protocol = new Module.Protocol({
     exists (url) {
       return (
-        url.href === 'file:///node_modules/foo/package.json' ||
-        url.href === 'file:///node_modules/foo/baz.js'
+        url.href === root + '/node_modules/foo/package.json' ||
+        url.href === root + '/node_modules/foo/baz.js'
       )
     },
 
     read (url) {
-      if (url.href === 'file:///node_modules/foo/package.json') {
+      if (url.href === root + '/node_modules/foo/package.json') {
         return '{ "imports": { "bar": "./baz.js" } }'
       }
 
-      if (url.href === 'file:///node_modules/foo/foo.js') {
+      if (url.href === root + '/node_modules/foo/foo.js') {
         return 'const bar = require(\'bar\')'
       }
 
-      if (url.href === 'file:///node_modules/foo/baz.js') {
+      if (url.href === root + '/node_modules/foo/baz.js') {
         return 'module.exports = 42'
       }
 
@@ -1456,7 +1461,7 @@ test('imports in node_modules', (t) => {
     }
   })
 
-  Module.load(new URL('file:///node_modules/foo/foo.js'), { protocol })
+  Module.load(new URL(root + '/node_modules/foo/foo.js'), { protocol })
 })
 
 test('resolve and load builtin', (t) => {
@@ -1466,7 +1471,7 @@ test('resolve and load builtin', (t) => {
     foo: 42
   }
 
-  t.is(Module.resolve('foo', new URL('file:///'), { builtins }).href, 'builtin:foo')
+  t.is(Module.resolve('foo', new URL(root + '/'), { builtins }).href, 'builtin:foo')
   t.is(Module.load(new URL('builtin:foo'), { builtins }).exports, 42)
 })
 
@@ -1479,7 +1484,7 @@ test('load builtin from .cjs', (t) => {
 
   const protocol = new Module.Protocol({
     read (url) {
-      if (url.href === 'file:///foo.cjs') {
+      if (url.href === root + '/foo.cjs') {
         return 'module.exports = require(\'bar\')'
       }
 
@@ -1487,7 +1492,7 @@ test('load builtin from .cjs', (t) => {
     }
   })
 
-  t.is(Module.load(new URL('file:///foo.cjs'), { protocol, builtins }).exports, 42)
+  t.is(Module.load(new URL(root + '/foo.cjs'), { protocol, builtins }).exports, 42)
 })
 
 test('load builtin from .mjs', (t) => {
@@ -1499,7 +1504,7 @@ test('load builtin from .mjs', (t) => {
 
   const protocol = new Module.Protocol({
     read (url) {
-      if (url.href === 'file:///foo.mjs') {
+      if (url.href === root + '/foo.mjs') {
         return 'export { default } from \'bar\''
       }
 
@@ -1507,7 +1512,7 @@ test('load builtin from .mjs', (t) => {
     }
   })
 
-  t.is(Module.load(new URL('file:///foo.mjs'), { protocol, builtins }).exports.default, 42)
+  t.is(Module.load(new URL(root + '/foo.mjs'), { protocol, builtins }).exports.default, 42)
 })
 
 test('load file that cannot be read', async (t) => {
@@ -1515,7 +1520,7 @@ test('load file that cannot be read', async (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return url.href === 'file:///foo.cjs'
+      return url.href === root + '/foo.cjs'
     },
 
     read () {
@@ -1523,7 +1528,7 @@ test('load file that cannot be read', async (t) => {
     }
   })
 
-  await t.exception(() => Module.load(new URL('file:///foo.cjs'), { protocol }), /file missing/)
+  await t.exception(() => Module.load(new URL(root + '/foo.cjs'), { protocol }), /file missing/)
 })
 
 test('resolve already valid URL', (t) => {
@@ -1531,13 +1536,13 @@ test('resolve already valid URL', (t) => {
 
   const protocol = new Module.Protocol({
     exists (url) {
-      t.is(url.href, 'file:///bar.js')
+      t.is(url.href, root + '/bar.js')
 
       return true
     }
   })
 
-  Module.resolve('file:///bar.js', new URL('file:///foo.js'), { protocol })
+  Module.resolve(root + '/bar.js', new URL(root + '/foo.js'), { protocol })
 })
 
 function onteardown () {
