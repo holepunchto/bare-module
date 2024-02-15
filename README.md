@@ -18,7 +18,21 @@ const Module = require('bare-module')
 
 #### `Module.constants.states`
 
+Constant | Description
+:-- | :--
+`EVALUATED` |
+`SYNTHESIZED` |
+`DESTROYED` |
+
 #### `Module.constants.types`
+
+Constant | Description
+:-- | :--
+`SCRIPT` |
+`MODULE` |
+`JSON` |
+`BUNDLE` |
+`ADDON` |
 
 #### `Module.cache`
 
@@ -28,6 +42,12 @@ Options include:
 
 ```js
 {
+  referrer = null,
+  protocol,
+  imports,
+  resolutions,
+  builtins,
+  conditions
 }
 ```
 
@@ -37,6 +57,16 @@ Options include:
 
 ```js
 {
+  referrer = null,
+  type,
+  defaultType = constants.types.SCRIPT,
+  cache,
+  main,
+  protocol,
+  imports,
+  resolutions,
+  builtins,
+  conditions
 }
 ```
 
@@ -50,11 +80,15 @@ Options include:
 
 #### `module.defaultType`
 
+#### `module.cache`
+
 #### `module.main`
 
 #### `module.exports`
 
 #### `module.imports`
+
+#### `module.resolutions`
 
 #### `module.builtins`
 
@@ -68,6 +102,23 @@ Options include:
 
 #### `const require = Module.createRequire(parentURL[, options])`
 
+Options include:
+
+```js
+{
+  referrer = null,
+  type = constants.types.SCRIPT,
+  defaultType = constants.types.SCRIPT,
+  cache,
+  main,
+  protocol,
+  imports,
+  resolutions,
+  builtins,
+  conditions
+}
+```
+
 ### Protocols
 
 #### `const protocol = new Module.Protocol(options)`
@@ -76,12 +127,20 @@ Options include:
 
 ```js
 {
+  preresolve,
+  postresolve,
+  resolve,
+  exists,
+  read,
+  load
 }
 ```
 
 ### Bundles
 
 #### `const bundle = new Module.Bundle()`
+
+See <https://github.com/holepunchto/bare-bundle>.
 
 ## License
 
