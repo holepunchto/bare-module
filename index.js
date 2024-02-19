@@ -1,8 +1,8 @@
 /* global Bare */
 const path = require('bare-path')
-const url = require('bare-url')
 const resolve = require('bare-module-resolve')
 const Bundle = require('bare-bundle')
+const { fileURLToPath, pathToFileURL } = require('url-file-url')
 const Protocol = require('./lib/protocol')
 const constants = require('./lib/constants')
 const errors = require('./lib/errors')
@@ -665,16 +665,16 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
 }
 
 Module._protocols['file:'] = new Protocol({
-  postresolve (fileURL) {
-    return url.pathToFileURL(binding.realpath(url.fileURLToPath(fileURL)))
+  postresolve (url) {
+    return pathToFileURL(binding.realpath(fileURLToPath(url)))
   },
 
-  exists (fileURL) {
-    return binding.exists(url.fileURLToPath(fileURL))
+  exists (url) {
+    return binding.exists(fileURLToPath(url))
   },
 
-  read (fileURL) {
-    return Buffer.from(binding.read(url.fileURLToPath(fileURL)))
+  read (url) {
+    return Buffer.from(binding.read(fileURLToPath(url)))
   }
 })
 
@@ -687,34 +687,34 @@ Bare
     binding.destroy(Module._handle)
   })
 
-function urlToPath (u) {
-  if (u.protocol) return url.fileURLToPath(u)
+function urlToPath (url) {
+  if (url.protocol) return fileURLToPath(url)
 
   if (isWindows) {
-    if (/%2f|%5c/i.test(u.pathname)) {
+    if (/%2f|%5c/i.test(url.pathname)) {
       throw errors.INVALID_URL_PATH('The URL path must not include encoded \\ or / characters')
     }
   } else {
-    if (/%2f/i.test(u.pathname)) {
+    if (/%2f/i.test(url.pathname)) {
       throw errors.INVALID_URL_PATH('The URL path must not include encoded / characters')
     }
   }
 
-  return decodeURIComponent(u.pathname)
+  return decodeURIComponent(url.pathname)
 }
 
-function urlToDirname (u) {
-  if (u.protocol) return path.dirname(url.fileURLToPath(u))
+function urlToDirname (url) {
+  if (url.protocol) return path.dirname(fileURLToPath(url))
 
   if (isWindows) {
-    if (/%2f|%5c/i.test(u.pathname)) {
+    if (/%2f|%5c/i.test(url.pathname)) {
       throw errors.INVALID_URL_PATH('The URL path must not include encoded \\ or / characters')
     }
   } else {
-    if (/%2f/i.test(u.pathname)) {
+    if (/%2f/i.test(url.pathname)) {
       throw errors.INVALID_URL_PATH('The URL path must not include encoded / characters')
     }
   }
 
-  return decodeURIComponent((new URL('.', u)).pathname).replace(/\/$/, '')
+  return decodeURIComponent((new URL('.', url)).pathname).replace(/\/$/, '')
 }
