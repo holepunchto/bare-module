@@ -20,13 +20,51 @@ A package is directory with a `package.json` file.
 
 #### `"name"`
 
+```json
+{
+  "name": "my-package"
+}
+```
+
+The name of the package. This is used for [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm) and [self-referencing](#self-referencing).
+
 #### `"version"`
+
+```json
+{
+  "version": "1.2.3"
+}
+```
+
+The current version of the package. This is used for [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm).
 
 #### `"type"`
 
+```json
+{
+  "type": "module"
+}
+```
+
+The module format used for `.js` files. If not defined, `.js` files are interpreted as CommonJS. If set to `"module"`, `.js` files are instead interpreted as ES modules.
+
 #### `"exports"`
 
+##### Subpath exports
+
+##### Conditional exports
+
+##### Self-referencing
+
+##### Exports sugar
+
 #### `"imports"`
+
+##### Subpath imports
+
+##### Conditional imports
+
+##### Private imports
 
 ## API
 
