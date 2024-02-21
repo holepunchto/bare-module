@@ -12,6 +12,22 @@ npm i bare-module
 const Module = require('bare-module')
 ````
 
+## Packages
+
+A package is directory with a `package.json` file.
+
+### Fields
+
+#### `"name"`
+
+#### `"version"`
+
+#### `"type"`
+
+#### `"exports"`
+
+#### `"imports"`
+
 ## API
 
 #### `Module.constants`
