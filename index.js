@@ -688,7 +688,7 @@ Bare
   })
 
 function urlToPath (url) {
-  if (url.protocol) return fileURLToPath(url)
+  if (url.protocol === 'file:') return fileURLToPath(url)
 
   if (isWindows) {
     if (/%2f|%5c/i.test(url.pathname)) {
@@ -704,7 +704,7 @@ function urlToPath (url) {
 }
 
 function urlToDirname (url) {
-  if (url.protocol) return path.dirname(fileURLToPath(url))
+  if (url.protocol === 'file:') return path.dirname(fileURLToPath(url))
 
   if (isWindows) {
     if (/%2f|%5c/i.test(url.pathname)) {
