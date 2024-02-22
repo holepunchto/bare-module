@@ -77,7 +77,7 @@ When importing the package by name, `require('my-package')` will resolve to `<mo
 
 ##### Conditional exports
 
-Conditional exports allow packages to provide different exports depending for different conditions, such as the module format of the importing module:
+Conditional exports allow packages to provide different exports for different conditions, such as the module format of the importing module:
 
 ```json
 {
