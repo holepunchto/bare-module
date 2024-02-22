@@ -266,6 +266,30 @@ test('load .cjs with top-level await .mjs require', async (t) => {
   await t.exception.all(() => Module.load(new URL(root + '/foo.cjs'), { protocol }), /cannot access 'default' before initialization/i)
 })
 
+test('load .cjs with non-file: URL', async (t) => {
+  t.teardown(onteardown)
+
+  const root = 'protocol:'
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar.mjs'
+    },
+
+    read (url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = __filename'
+      }
+
+      t.fail()
+    }
+  })
+
+  const mod = Module.load(new URL(root + '/foo.cjs'), { protocol })
+
+  t.is(mod.exports, '/foo.cjs')
+})
+
 test('load .mjs', (t) => {
   t.teardown(onteardown)
 
