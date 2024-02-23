@@ -358,6 +358,154 @@ test('load .mjs with .cjs import', (t) => {
   Module.load(new URL(root + '/index.mjs'), { protocol })
 })
 
+test('load .mjs with named .cjs import', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read (url) {
+      if (url.href === root + '/index.mjs') {
+        return 'import { foo } from \'/foo.cjs\''
+      }
+
+      if (url.href === root + '/foo.cjs') {
+        return 'exports.foo = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load(new URL(root + '/index.mjs'), { protocol })
+})
+
+test('load .mjs with .cjs import with reexports from .cjs import', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return (
+        url.href === root + '/foo.cjs' ||
+        url.href === root + '/bar.cjs'
+      )
+    },
+
+    read (url) {
+      if (url.href === root + '/index.mjs') {
+        return 'import { bar } from \'/foo.cjs\''
+      }
+
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = require(\'/bar.cjs\')'
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return 'exports.bar = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load(new URL(root + '/index.mjs'), { protocol })
+})
+
+test('load .mjs with .cjs import with cyclic reexports from .cjs import', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return (
+        url.href === root + '/foo.cjs' ||
+        url.href === root + '/bar.cjs'
+      )
+    },
+
+    read (url) {
+      if (url.href === root + '/index.mjs') {
+        return 'import \'/foo.cjs\''
+      }
+
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = require(\'/bar.cjs\')'
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = require(\'/foo.cjs\')'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load(new URL(root + '/index.mjs'), { protocol })
+})
+
+test('load .mjs with .cjs import with reexports from .mjs import', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return (
+        url.href === root + '/foo.cjs' ||
+        url.href === root + '/bar.mjs'
+      )
+    },
+
+    read (url) {
+      if (url.href === root + '/index.mjs') {
+        return 'import { bar } from \'/foo.cjs\''
+      }
+
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = require(\'/bar.mjs\')'
+      }
+
+      if (url.href === root + '/bar.mjs') {
+        return 'export const bar = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load(new URL(root + '/index.mjs'), { protocol })
+})
+
+test('load .mjs with .cjs import with reexports from .json import', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return (
+        url.href === root + '/foo.cjs' ||
+        url.href === root + '/bar.json'
+      )
+    },
+
+    read (url) {
+      if (url.href === root + '/index.mjs') {
+        return 'import { bar } from \'/foo.cjs\''
+      }
+
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = require(\'/bar.json\')'
+      }
+
+      if (url.href === root + '/bar.json') {
+        return '{ "bar": 42 }'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load(new URL(root + '/index.mjs'), { protocol })
+})
+
 test('load .mjs with .js import', (t) => {
   t.teardown(onteardown)
 
@@ -500,6 +648,59 @@ test('load .mjs with top-level await .mjs import', (t) => {
   })
 
   Module.load(new URL(root + '/foo.mjs'), { protocol })
+})
+
+test('load .cjs and .mjs from .mjs', (t) => {
+  t.teardown(onteardown)
+
+  const order = global.order = []
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return (
+        url.href === root + '/b.mjs' ||
+        url.href === root + '/c.cjs' ||
+        url.href === root + '/d.mjs' ||
+        url.href === root + '/e.cjs'
+      )
+    },
+
+    read (url) {
+      if (url.href === root + '/a.mjs') {
+        return 'order.push(\'a.mjs\'); import \'/b.mjs\'; import \'/c.cjs\'; import \'/d.mjs\'; import \'/e.cjs\''
+      }
+
+      if (url.href === root + '/b.mjs') {
+        return 'order.push(\'b.mjs\')'
+      }
+
+      if (url.href === root + '/c.cjs') {
+        return 'order.push(\'c.cjs\')'
+      }
+
+      if (url.href === root + '/d.mjs') {
+        return 'order.push(\'d.mjs\')'
+      }
+
+      if (url.href === root + '/e.cjs') {
+        return 'order.push(\'e.cjs\')'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load(new URL(root + '/a.mjs'), { protocol })
+
+  delete global.order
+
+  t.alike(order, [
+    'b.mjs',
+    'c.cjs',
+    'd.mjs',
+    'e.cjs',
+    'a.mjs'
+  ])
 })
 
 test('load .json', (t) => {

@@ -29,6 +29,7 @@
     "bare-bundle": "^1.0.0",
     "bare-module-resolve": "^1.4.4",
     "bare-path": "^2.0.0",
+    "cjs-module-lexer": "^1.2.3",
     "url-file-url": "^1.0.2"
   },
   "devDependencies": {

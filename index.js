@@ -2,6 +2,7 @@
 const path = require('bare-path')
 const resolve = require('bare-module-resolve')
 const Bundle = require('bare-bundle')
+const { parse } = require('cjs-module-lexer')
 const { fileURLToPath, pathToFileURL } = require('url-file-url')
 const Protocol = require('./lib/protocol')
 const constants = require('./lib/constants')
@@ -27,6 +28,7 @@ const Module = module.exports = exports = class Module {
     this._conditions = null
     this._protocol = null
     this._bundle = null
+    this._function = null
     this._handle = null
 
     Module._modules.add(this)
@@ -112,42 +114,99 @@ const Module = module.exports = exports = class Module {
   _transform (isImport, isDynamicImport) {
     if (isDynamicImport) {
       this._synthesize()
-      this._evaluate()
+      this._evaluate(true /* eagerRun */)
     } else if (isImport) {
       this._synthesize()
-    } else if (this._type === constants.types.MODULE) {
+    } else {
       this._evaluate()
     }
 
     return this
   }
 
-  _evaluate () {
-    if ((this._state & constants.states.EVALUATED) !== 0) return
-
-    binding.runModule(this._handle, Module._handle)
-
-    if (this._type === constants.types.MODULE) {
-      this._exports = binding.getNamespace(this._handle)
-    }
-
-    this._state |= constants.states.EVALUATED
-  }
-
   _synthesize () {
     if ((this._state & constants.states.SYNTHESIZED) !== 0) return
 
-    if (this._type !== constants.types.MODULE) {
-      const names = ['default']
+    this._state |= constants.states.SYNTHESIZED
 
-      for (const key of Object.keys(this._exports)) {
-        if (key !== 'default') names.push(key)
+    if (this._type === constants.types.MODULE) return
+
+    const names = ['default']
+    const queue = [this]
+    const seen = new Set()
+
+    while (queue.length) {
+      const module = queue.pop()
+
+      if (seen.has(module)) continue
+
+      seen.add(module)
+
+      switch (module._type) {
+        case constants.types.SCRIPT: {
+          const result = parse(module._function.toString())
+
+          names.push(...result.exports)
+
+          const referrer = module
+
+          for (const specifier of result.reexports) {
+            const resolved = Module.resolve(specifier, referrer._url, { isImport: true, referrer })
+
+            const module = Module.load(resolved, { isImport: true, referrer })
+
+            queue.push(module)
+          }
+
+          break
+        }
+
+        case constants.types.MODULE: {
+          module._evaluate()
+
+          for (const name of Object.keys(module._exports)) {
+            names.push(name)
+          }
+          break
+        }
+
+        case constants.types.JSON: {
+          for (const name of Object.keys(module._exports)) {
+            names.push(name)
+          }
+        }
       }
-
-      this._handle = binding.createSyntheticModule(this._url.href, names, Module._handle)
     }
 
-    this._state |= constants.states.SYNTHESIZED
+    this._handle = binding.createSyntheticModule(this._url.href, names, Module._handle)
+  }
+
+  _evaluate (eagerRun = false) {
+    if ((this._state & constants.states.EVALUATED) !== 0) return
+
+    this._state |= constants.states.EVALUATED
+
+    if (this._type === constants.types.SCRIPT) {
+      const require = createRequire(this._url, { module: this })
+
+      this._exports = {}
+
+      this._function(
+        require,
+        this,
+        this._exports,
+        urlToPath(this._url),
+        urlToDirname(this._url)
+      )
+
+      if (eagerRun) binding.runModule(this._handle, Module._handle)
+    }
+
+    if (this._type === constants.types.MODULE) {
+      binding.runModule(this._handle, Module._handle)
+
+      this._exports = binding.getNamespace(this._handle)
+    }
   }
 
   [Symbol.for('bare.inspect')] () {
@@ -217,6 +276,8 @@ const Module = module.exports = exports = class Module {
     if (module === null) {
       throw errors.MODULE_NOT_FOUND(`Cannot find module '${href}'`)
     }
+
+    module._evaluate()
 
     binding.setExport(module._handle, 'default', module._exports)
 
@@ -415,7 +476,7 @@ exports.isBuiltin = function isBuiltin () {
   return false
 }
 
-exports.createRequire = function createRequire (parentURL, opts = {}) {
+const createRequire = exports.createRequire = function createRequire (parentURL, opts = {}) {
   const self = Module
 
   if (typeof parentURL === 'string') {
@@ -427,6 +488,8 @@ exports.createRequire = function createRequire (parentURL, opts = {}) {
   }
 
   let {
+    module = null,
+
     referrer = null,
     type = constants.types.SCRIPT,
     defaultType = referrer ? referrer._defaultType : constants.types.SCRIPT,
@@ -439,17 +502,19 @@ exports.createRequire = function createRequire (parentURL, opts = {}) {
     conditions = referrer ? referrer._conditions : self._conditions
   } = opts
 
-  const module = new Module(parentURL)
+  if (module === null) {
+    module = new Module(parentURL)
 
-  module._type = type
-  module._defaultType = defaultType
-  module._cache = cache
-  module._main = main || module
-  module._protocol = protocol
-  module._imports = imports
-  module._resolutions = resolutions
-  module._builtins = builtins
-  module._conditions = conditions
+    module._type = type
+    module._defaultType = defaultType
+    module._cache = cache
+    module._main = main || module
+    module._protocol = protocol
+    module._imports = imports
+    module._resolutions = resolutions
+    module._builtins = builtins
+    module._conditions = conditions
+  }
 
   referrer = module
 
@@ -522,8 +587,6 @@ Module._extensions['.js'] = function (module, source, referrer) {
 }
 
 Module._extensions['.cjs'] = function (module, source, referrer) {
-  const self = Module
-
   const protocol = module._protocol
 
   module._type = constants.types.SCRIPT
@@ -535,49 +598,7 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
 
     if (typeof source !== 'string') source = Buffer.coerce(source).toString()
 
-    referrer = module
-
-    addon.host = Bare.Addon.host
-
-    require.main = module._main
-    require.cache = module._cache
-    require.resolve = resolve
-    require.addon = addon
-
-    module._exports = {}
-
-    binding.createFunction(module._url.href, ['require', 'module', 'exports', '__filename', '__dirname'], source, 0)(
-      require,
-      module,
-      module._exports,
-      urlToPath(module._url),
-      urlToDirname(module._url)
-    )
-
-    function require (specifier) {
-      const resolved = self.resolve(specifier, referrer._url, { referrer })
-
-      const module = self.load(resolved, { referrer })
-
-      return module._exports
-    }
-
-    function resolve (specifier) {
-      const resolved = self.resolve(specifier, referrer._url, { referrer })
-
-      switch (resolved.protocol) {
-        case 'builtin:': return resolved.pathname
-        default: urlToPath(resolved)
-      }
-    }
-
-    function addon (specifier = '.') {
-      const resolved = Bare.Addon.resolve(specifier, referrer._url, { referrer })
-
-      const addon = Bare.Addon.load(resolved, { referrer })
-
-      return addon._exports
-    }
+    module._function = binding.createFunction(module._url.href, ['require', 'module', 'exports', '__filename', '__dirname'], source, 0)
   }
 }
 
