@@ -167,6 +167,7 @@ const Module = module.exports = exports = class Module {
           for (const name of Object.keys(module._exports)) {
             names.push(name)
           }
+
           break
         }
 
