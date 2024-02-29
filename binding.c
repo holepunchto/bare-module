@@ -21,6 +21,10 @@ on_static_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions, 
 
   int err;
 
+  js_handle_scope_t *scope;
+  err = js_open_handle_scope(env, &scope);
+  assert(err == 0);
+
   js_value_t *ctx;
   err = js_get_reference_value(env, context->ctx, &ctx);
   assert(err == 0);
@@ -36,20 +40,29 @@ on_static_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions, 
   js_value_t *args[4] = {specifier, assertions};
 
   err = js_create_string_utf8(env, (utf8_t *) name, -1, &args[2]);
-  if (err < 0) return NULL;
+  if (err < 0) goto err;
 
   err = js_get_boolean(env, false, &args[3]);
   assert(err == 0);
 
   js_value_t *result;
   err = js_call_function(env, ctx, on_import, 4, args, &result);
-  if (err < 0) return NULL;
+  if (err < 0) goto err;
 
   js_module_t *module;
   err = js_get_value_external(env, result, (void **) &module);
-  if (err < 0) return NULL;
+  if (err < 0) goto err;
+
+  err = js_close_handle_scope(env, scope);
+  assert(err == 0);
 
   return module;
+
+err:
+  err = js_close_handle_scope(env, scope);
+  assert(err == 0);
+
+  return NULL;
 }
 
 static js_module_t *
@@ -57,6 +70,10 @@ on_dynamic_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions,
   bare_module_context_t *context = (bare_module_context_t *) data;
 
   int err;
+
+  js_handle_scope_t *scope;
+  err = js_open_handle_scope(env, &scope);
+  assert(err == 0);
 
   js_value_t *ctx;
   err = js_get_reference_value(env, context->ctx, &ctx);
@@ -73,13 +90,22 @@ on_dynamic_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions,
 
   js_value_t *result;
   err = js_call_function(env, ctx, on_import, 4, args, &result);
-  if (err < 0) return NULL;
+  if (err < 0) goto err;
 
   js_module_t *module;
   err = js_get_value_external(env, result, (void **) &module);
-  if (err < 0) return NULL;
+  if (err < 0) goto err;
+
+  err = js_close_handle_scope(env, scope);
+  assert(err == 0);
 
   return module;
+
+err:
+  err = js_close_handle_scope(env, scope);
+  assert(err == 0);
+
+  return NULL;
 }
 
 static void
@@ -87,6 +113,10 @@ on_evaluate (js_env_t *env, js_module_t *module, void *data) {
   bare_module_context_t *context = (bare_module_context_t *) data;
 
   int err;
+
+  js_handle_scope_t *scope;
+  err = js_open_handle_scope(env, &scope);
+  assert(err == 0);
 
   js_value_t *ctx;
   err = js_get_reference_value(env, context->ctx, &ctx);
@@ -103,11 +133,20 @@ on_evaluate (js_env_t *env, js_module_t *module, void *data) {
   js_value_t *args[1];
 
   err = js_create_string_utf8(env, (utf8_t *) name, -1, &args[0]);
-  if (err < 0) return;
+  if (err < 0) goto err;
 
   js_value_t *result;
   err = js_call_function(env, ctx, on_evaluate, 1, args, &result);
-  if (err < 0) return;
+  if (err < 0) goto err;
+
+  err = js_close_handle_scope(env, scope);
+  assert(err == 0);
+
+  return;
+
+err:
+  err = js_close_handle_scope(env, scope);
+  assert(err == 0);
 }
 
 static void
@@ -115,6 +154,10 @@ on_meta (js_env_t *env, js_module_t *module, js_value_t *meta, void *data) {
   bare_module_context_t *context = (bare_module_context_t *) data;
 
   int err;
+
+  js_handle_scope_t *scope;
+  err = js_open_handle_scope(env, &scope);
+  assert(err == 0);
 
   js_value_t *ctx;
   err = js_get_reference_value(env, context->ctx, &ctx);
@@ -131,13 +174,22 @@ on_meta (js_env_t *env, js_module_t *module, js_value_t *meta, void *data) {
   js_value_t *args[2];
 
   err = js_create_string_utf8(env, (utf8_t *) name, -1, &args[0]);
-  if (err < 0) return;
+  if (err < 0) goto err;
 
   args[1] = meta;
 
   js_value_t *result;
   err = js_call_function(env, ctx, on_meta, 2, args, &result);
-  if (err < 0) return;
+  if (err < 0) goto err;
+
+  err = js_close_handle_scope(env, scope);
+  assert(err == 0);
+
+  return;
+
+err:
+  err = js_close_handle_scope(env, scope);
+  assert(err == 0);
 }
 
 static js_value_t *
