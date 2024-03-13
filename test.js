@@ -718,7 +718,7 @@ test('load .cjs with .bare import', async (t) => {
 
   const resolutions = {
     [root + '/index.cjs']: {
-      '/native.bare': __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare' // eslint-disable-line n/no-path-concat
+      '/native.bare': 'file:///' + __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
     }
   }
 
@@ -744,7 +744,7 @@ test('load .cjs with dynamic .bare import', async (t) => {
 
   const resolutions = {
     [root + '/index.cjs']: {
-      '/native.bare': __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare' // eslint-disable-line n/no-path-concat
+      '/native.bare': 'file:///' + __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
     }
   }
 
@@ -770,7 +770,7 @@ test('load .mjs with .bare import', async (t) => {
 
   const resolutions = {
     [root + '/index.mjs']: {
-      '/native.bare': __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare' // eslint-disable-line n/no-path-concat
+      '/native.bare': 'file:///' + __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
     }
   }
 
@@ -796,7 +796,7 @@ test('load .mjs with dynamic .bare import', async (t) => {
 
   const resolutions = {
     [root + '/index.mjs']: {
-      '/native.bare': __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare' // eslint-disable-line n/no-path-concat
+      '/native.bare': 'file:///' + __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
     }
   }
 
