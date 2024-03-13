@@ -29,6 +29,7 @@ const Module = module.exports = exports = class Module {
     this._protocol = null
     this._bundle = null
     this._function = null
+    this._names = null
     this._handle = null
 
     Module._modules.add(this)
@@ -179,7 +180,9 @@ const Module = module.exports = exports = class Module {
       }
     }
 
-    this._handle = binding.createSyntheticModule(this._url.href, names, Module._handle)
+    this._names = names
+
+    this._handle = binding.createSyntheticModule(this._url.href, this._names, Module._handle)
   }
 
   _evaluate (eagerRun = false) {
@@ -280,10 +283,8 @@ const Module = module.exports = exports = class Module {
 
     module._evaluate()
 
-    binding.setExport(module._handle, 'default', module._exports)
-
-    for (const [key, value] of Object.entries(module._exports)) {
-      binding.setExport(module._handle, key, value)
+    for (const name of module._names) {
+      binding.setExport(module._handle, name, name === 'default' ? module._exports : module._exports[name])
     }
   }
 

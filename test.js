@@ -83,10 +83,6 @@ test('load .js', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
-    exists () {
-      return false
-    },
-
     read (url) {
       if (url.href === root + '/index.js') {
         return 'module.exports = 42'
@@ -151,10 +147,6 @@ test('load .cjs', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
-    exists () {
-      return false
-    },
-
     read (url) {
       if (url.href === root + '/index.cjs') {
         return 'module.exports = 42'
@@ -226,10 +218,6 @@ test('load .cjs with top-level await', async (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
-    exists () {
-      return false
-    },
-
     read (url) {
       if (url.href === root + '/index.cjs') {
         return 'await 42'
@@ -294,10 +282,6 @@ test('load .mjs', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
-    exists () {
-      return false
-    },
-
     read (url) {
       if (url.href === root + '/index.mjs') {
         return 'export default 42'
@@ -534,10 +518,6 @@ test('load .mjs with missing import', async (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
-    exists () {
-      return false
-    },
-
     read (url) {
       if (url.href === root + '/index.mjs') {
         return 'import foo from \'./foo\''
@@ -610,10 +590,6 @@ test('load .mjs with top-level await', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
-    exists () {
-      return false
-    },
-
     read (url) {
       if (url.href === root + '/index.mjs') {
         return 'await 42'
@@ -707,8 +683,8 @@ test('load .json', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
-    exists () {
-      return false
+    exists (url) {
+      return url.href === root + '/native.bare'
     },
 
     read (url) {
@@ -723,19 +699,16 @@ test('load .json', (t) => {
   t.is(Module.load(new URL(root + '/index.json'), { protocol }).exports, 42)
 })
 
-test('load .bare', async (t) => {
+test('load .cjs with .bare import', async (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return (
-        url.href === root + '/index.js' ||
-        url.href === root + '/native.bare'
-      )
+      return url.href.endsWith('.bare')
     },
 
     read (url) {
-      if (url.href === root + '/index.js') {
+      if (url.href === root + '/index.cjs') {
         return 'require(\'/native.bare\')'
       }
 
@@ -743,30 +716,39 @@ test('load .bare', async (t) => {
     }
   })
 
-  await t.exception(() => Module.load(new URL(root + '/index.js'), { protocol }))
+  const resolutions = {
+    [root + '/index.cjs']: {
+      '/native.bare': __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
+    }
+  }
+
+  Module.load(new URL(root + '/index.cjs'), { protocol, resolutions })
 })
 
-test('load .node', async (t) => {
+test('load .mjs with .bare import', async (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
     exists (url) {
-      return (
-        url.href === root + '/index.js' ||
-        url.href === root + '/native.node'
-      )
+      return url.href.endsWith('.bare')
     },
 
     read (url) {
-      if (url.href === root + '/index.js') {
-        return 'require(\'/native.node\')'
+      if (url.href === root + '/index.mjs') {
+        return 'import \'/native.bare\''
       }
 
       t.fail()
     }
   })
 
-  await t.exception(() => Module.load(new URL(root + '/index.js'), { protocol }))
+  const resolutions = {
+    [root + '/index.mjs']: {
+      '/native.bare': __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
+    }
+  }
+
+  Module.load(new URL(root + '/index.mjs'), { protocol, resolutions })
 })
 
 test('load .bundle', (t) => {
@@ -837,10 +819,6 @@ test.skip('load specific module within .bundle', (t) => {
     .toBuffer()
 
   const protocol = new Module.Protocol({
-    exists () {
-      return false
-    },
-
     read (url) {
       if (url.href === root + '/app.bundle') {
         return bundle
@@ -865,10 +843,6 @@ test.skip('load specific module within nested .bundle', (t) => {
     .toBuffer()
 
   const protocol = new Module.Protocol({
-    exists () {
-      return false
-    },
-
     read (url) {
       if (url.href === root + '/foo.bundle') {
         return bundleB
@@ -947,10 +921,6 @@ test.skip('resolve specific module within .bundle', (t) => {
     .toBuffer()
 
   const protocol = new Module.Protocol({
-    exists () {
-      return false
-    },
-
     read (url) {
       if (url.href === root + '/app.bundle') {
         return bundle
@@ -975,10 +945,6 @@ test.skip('resolve specific module within nested .bundle', (t) => {
     .toBuffer()
 
   const protocol = new Module.Protocol({
-    exists () {
-      return false
-    },
-
     read (url) {
       if (url.href === root + '/foo.bundle') {
         return bundleB
@@ -995,10 +961,6 @@ test('load unknown extension', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
-    exists () {
-      return false
-    },
-
     read (url) {
       if (url.href === root + '/index.foo') {
         return 'module.exports = 42'
@@ -1015,10 +977,6 @@ test('load unknown extension with default type', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
-    exists () {
-      return false
-    },
-
     read (url) {
       if (url.href === root + '/index.foo') {
         return '42'
