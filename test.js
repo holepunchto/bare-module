@@ -725,6 +725,32 @@ test('load .cjs with .bare import', async (t) => {
   Module.load(new URL(root + '/index.cjs'), { protocol, resolutions })
 })
 
+test('load .cjs with dynamic .bare import', async (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href.endsWith('.bare')
+    },
+
+    read (url) {
+      if (url.href === root + '/index.cjs') {
+        return 'import(\'/native.bare\')'
+      }
+
+      t.fail()
+    }
+  })
+
+  const resolutions = {
+    [root + '/index.cjs']: {
+      '/native.bare': __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
+    }
+  }
+
+  Module.load(new URL(root + '/index.cjs'), { protocol, resolutions })
+})
+
 test('load .mjs with .bare import', async (t) => {
   t.teardown(onteardown)
 
@@ -736,6 +762,32 @@ test('load .mjs with .bare import', async (t) => {
     read (url) {
       if (url.href === root + '/index.mjs') {
         return 'import \'/native.bare\''
+      }
+
+      t.fail()
+    }
+  })
+
+  const resolutions = {
+    [root + '/index.mjs']: {
+      '/native.bare': __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
+    }
+  }
+
+  Module.load(new URL(root + '/index.mjs'), { protocol, resolutions })
+})
+
+test('load .mjs with dynamic .bare import', async (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href.endsWith('.bare')
+    },
+
+    read (url) {
+      if (url.href === root + '/index.mjs') {
+        return 'await import(\'/native.bare\')'
       }
 
       t.fail()

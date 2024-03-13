@@ -211,6 +211,10 @@ const Module = module.exports = exports = class Module {
 
       this._exports = binding.getNamespace(this._handle)
     }
+
+    if (this._type === constants.types.ADDON) {
+      if (eagerRun) binding.runModule(this._handle, Module._handle)
+    }
   }
 
   [Symbol.for('bare.inspect')] () {
