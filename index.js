@@ -373,33 +373,33 @@ const Module = module.exports = exports = class Module {
 
     const module = cache[url.href] = new Module(url)
 
-    switch (url.protocol) {
-      case 'builtin:':
-        module._exports = builtins[url.pathname]
-        break
-
-      default: {
-        module._defaultType = defaultType
-        module._cache = cache
-        module._main = main || module
-        module._protocol = protocol
-        module._imports = imports
-        module._resolutions = resolutions
-        module._builtins = builtins
-        module._conditions = conditions
-
-        let extension = self._extensionFor(type) || path.extname(url.pathname)
-
-        if (extension in self._extensions === false) {
-          if (defaultType) extension = self._extensionFor(defaultType) || '.js'
-          else extension = '.js'
-        }
-
-        self._extensions[extension](module, source, referrer)
-      }
-    }
-
     try {
+      switch (url.protocol) {
+        case 'builtin:':
+          module._exports = builtins[url.pathname]
+          break
+
+        default: {
+          module._defaultType = defaultType
+          module._cache = cache
+          module._main = main || module
+          module._protocol = protocol
+          module._imports = imports
+          module._resolutions = resolutions
+          module._builtins = builtins
+          module._conditions = conditions
+
+          let extension = self._extensionFor(type) || path.extname(url.pathname)
+
+          if (extension in self._extensions === false) {
+            if (defaultType) extension = self._extensionFor(defaultType) || '.js'
+            else extension = '.js'
+          }
+
+          self._extensions[extension](module, source, referrer)
+        }
+      }
+
       return module._transform(isImport, isDynamicImport)
     } catch (err) {
       delete cache[url.href]
