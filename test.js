@@ -1780,6 +1780,48 @@ test('resolve already valid URL', (t) => {
   Module.resolve(root + '/bar.js', new URL(root + '/foo.js'), { protocol })
 })
 
+test('throw in .cjs', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    read (url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'throw new Error(\'foo\')'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.cjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
+test('throw in .mjs', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    read (url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'throw new Error(\'foo\')'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.cjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
 test('type error in .cjs', (t) => {
   t.teardown(onteardown)
 
