@@ -1801,7 +1801,7 @@ test('throw in .cjs', (t) => {
   }
 })
 
-test('throw in .mjs', (t) => {
+test('throw in .cjs, load again', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
@@ -1816,6 +1816,62 @@ test('throw in .mjs', (t) => {
 
   try {
     Module.load(new URL(root + '/foo.cjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+
+  try {
+    Module.load(new URL(root + '/foo.cjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
+test('throw in .mjs', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    read (url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'throw new Error(\'foo\')'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.mjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
+test('throw in .mjs, load again', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    read (url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'throw new Error(\'foo\')'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.mjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+
+  try {
+    Module.load(new URL(root + '/foo.mjs'), { protocol })
     t.fail()
   } catch (err) {
     t.comment(err.message)

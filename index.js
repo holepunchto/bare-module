@@ -399,7 +399,13 @@ const Module = module.exports = exports = class Module {
       }
     }
 
-    return module._transform(isImport, isDynamicImport)
+    try {
+      return module._transform(isImport, isDynamicImport)
+    } catch (err) {
+      delete cache[url.href]
+
+      throw err
+    }
   }
 
   static resolve (specifier, parentURL, opts = {}) {
