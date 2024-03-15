@@ -162,7 +162,7 @@ const Module = module.exports = exports = class Module {
           break
         }
 
-        case constants.types.MODULE: {
+        case constants.types.MODULE:
           module._evaluate()
 
           for (const name of Object.keys(module._exports)) {
@@ -170,13 +170,11 @@ const Module = module.exports = exports = class Module {
           }
 
           break
-        }
 
-        case constants.types.JSON: {
+        case constants.types.JSON:
           for (const name of Object.keys(module._exports)) {
             names.push(name)
           }
-        }
       }
     }
 
@@ -190,12 +188,16 @@ const Module = module.exports = exports = class Module {
 
     this._state |= constants.states.EVALUATED
 
+    let result
+
     if (this._type === constants.types.SCRIPT) {
       const require = createRequire(this._url, { module: this })
 
       this._exports = {}
 
-      this._function(
+      const fn = this._function // Bind to variable to ensure proper stack trace
+
+      fn(
         require,
         this,
         this._exports,
@@ -203,17 +205,23 @@ const Module = module.exports = exports = class Module {
         urlToDirname(this._url)
       )
 
-      if (eagerRun) binding.runModule(this._handle, Module._handle)
+      if (eagerRun) result = binding.runModule(this._handle, Module._handle)
     }
 
     if (this._type === constants.types.MODULE) {
-      binding.runModule(this._handle, Module._handle)
+      result = binding.runModule(this._handle, Module._handle)
 
       this._exports = binding.getNamespace(this._handle)
     }
 
     if (this._type === constants.types.ADDON) {
-      if (eagerRun) binding.runModule(this._handle, Module._handle)
+      if (eagerRun) result = binding.runModule(this._handle, Module._handle)
+    }
+
+    if (result && result.error) {
+      result.catch(() => {}) // Handle the promise rejection
+
+      throw result.error
     }
   }
 

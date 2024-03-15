@@ -465,6 +465,25 @@ bare_module_run_module (js_env_t *env, js_callback_info_t *info) {
   err = js_run_module(env, module, &result);
   if (err < 0) return NULL;
 
+  bool is_promise;
+  err = js_is_promise(env, result, &is_promise);
+  assert(err == 0);
+
+  if (is_promise) {
+    js_promise_state_t state;
+    err = js_get_promise_state(env, result, &state);
+    assert(err == 0);
+
+    if (state == js_promise_rejected) {
+      js_value_t *error;
+      err = js_get_promise_result(env, result, &error);
+      if (err < 0) return NULL;
+
+      err = js_set_named_property(env, result, "error", error);
+      if (err < 0) return NULL;
+    }
+  }
+
   return result;
 }
 

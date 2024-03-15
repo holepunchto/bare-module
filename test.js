@@ -1780,6 +1780,90 @@ test('resolve already valid URL', (t) => {
   Module.resolve(root + '/bar.js', new URL(root + '/foo.js'), { protocol })
 })
 
+test('type error in .cjs', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    read (url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'null.foo()'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.cjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
+test('type error in .mjs', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    read (url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'null.foo()'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.mjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
+test('syntax error in .cjs', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    read (url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'foo bar'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.cjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
+test('syntax error in .mjs', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    read (url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'foo bar'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.mjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
 function onteardown () {
   // TODO Provide a public API for clearing the cache.
   Module._cache = Object.create(null)
