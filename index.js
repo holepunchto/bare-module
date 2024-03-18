@@ -292,11 +292,21 @@ const Module = module.exports = exports = class Module {
     module._evaluate()
 
     for (const name of module._names) {
-      binding.setExport(module._handle, name,
-        name === 'default' && name in module._exports === false
-          ? module._exports
-          : module._exports[name]
-      )
+      let value
+
+      if (
+        name === 'default' && (
+          typeof module._exports !== 'object' ||
+          module._exports === null ||
+          name in module._exports === false
+        )
+      ) {
+        value = module._exports
+      } else {
+        value = module._exports[name]
+      }
+
+      binding.setExport(module._handle, name, value)
     }
   }
 
