@@ -132,7 +132,7 @@ const Module = module.exports = exports = class Module {
 
     if (this._type === constants.types.MODULE) return
 
-    const names = ['default']
+    const names = new Set(['default'])
     const queue = [this]
     const seen = new Set()
 
@@ -147,7 +147,7 @@ const Module = module.exports = exports = class Module {
         case constants.types.SCRIPT: {
           const result = parse(module._function.toString())
 
-          names.push(...result.exports)
+          for (const name of result.exports) names.add(name)
 
           const referrer = module
 
@@ -165,20 +165,16 @@ const Module = module.exports = exports = class Module {
         case constants.types.MODULE:
           module._evaluate()
 
-          for (const name of Object.keys(module._exports)) {
-            names.push(name)
-          }
+          for (const name of Object.keys(module._exports)) names.add(name)
 
           break
 
         case constants.types.JSON:
-          for (const name of Object.keys(module._exports)) {
-            names.push(name)
-          }
+          for (const name of Object.keys(module._exports)) names.add(name)
       }
     }
 
-    this._names = names
+    this._names = Array.from(names)
 
     this._handle = binding.createSyntheticModule(this._url.href, this._names, Module._handle)
   }
@@ -296,7 +292,11 @@ const Module = module.exports = exports = class Module {
     module._evaluate()
 
     for (const name of module._names) {
-      binding.setExport(module._handle, name, name === 'default' ? module._exports : module._exports[name])
+      binding.setExport(module._handle, name,
+        name === 'default' && name in module._exports === false
+          ? module._exports
+          : module._exports[name]
+      )
     }
   }
 

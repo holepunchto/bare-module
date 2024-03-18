@@ -366,6 +366,30 @@ test('load .mjs with named .cjs import', (t) => {
   Module.load(new URL(root + '/index.mjs'), { protocol })
 })
 
+test('load .mjs with named default .cjs import', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read (url) {
+      if (url.href === root + '/index.mjs') {
+        return 'import foo from \'/foo.cjs\'; export default foo'
+      }
+
+      if (url.href === root + '/foo.cjs') {
+        return 'exports.default = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load(new URL(root + '/index.mjs'), { protocol }).exports.default, 42)
+})
+
 test('load .mjs with .cjs import with reexports from .cjs import', (t) => {
   t.teardown(onteardown)
 
