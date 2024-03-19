@@ -474,28 +474,30 @@ bare_module_run_module (js_env_t *env, js_callback_info_t *info) {
     err = js_get_promise_state(env, promise, &state);
     assert(err == 0);
 
+    js_value_t *reason;
+
     if (state == js_promise_rejected) {
-      js_value_t *reason;
       err = js_get_promise_result(env, promise, &reason);
       if (err < 0) return NULL;
-
-      js_value_t *exception;
-      err = js_get_and_clear_last_exception(env, &exception);
+    } else {
+      err = js_get_null(env, &reason);
       assert(err == 0);
-
-      js_value_t *ctx;
-      err = js_get_reference_value(env, context->ctx, &ctx);
-      assert(err == 0);
-
-      js_value_t *args[3] = {reason, promise, exception};
-
-      js_call_function(env, ctx, argv[2], 3, args, NULL);
-
-      return NULL;
     }
+
+    js_value_t *exception;
+    err = js_get_and_clear_last_exception(env, &exception);
+    assert(err == 0);
+
+    js_value_t *ctx;
+    err = js_get_reference_value(env, context->ctx, &ctx);
+    assert(err == 0);
+
+    js_value_t *args[3] = {reason, promise, exception};
+
+    js_call_function(env, ctx, argv[2], 3, args, NULL);
   }
 
-  return promise;
+  return NULL;
 }
 
 static js_value_t *

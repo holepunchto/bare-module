@@ -180,7 +180,7 @@ const Module = module.exports = exports = class Module {
   }
 
   _run () {
-    binding.runModule(this._handle, Module._handle, Module._onrejection)
+    binding.runModule(this._handle, Module._handle, Module._onrun)
   }
 
   _evaluate (eagerRun = false) {
@@ -343,10 +343,14 @@ const Module = module.exports = exports = class Module {
     }
   }
 
-  static _onrejection (reason, promise, err = reason) {
-    promise.catch(() => {}) // Don't leak the rejection
+  static _onrun (reason, promise, err = reason) {
+    if (err) {
+      promise.catch(() => {}) // Don't leak the rejection
 
-    throw err
+      throw err
+    } else {
+      promise.catch((err) => queueMicrotask(() => { throw err }))
+    }
   }
 
   static Protocol = Protocol

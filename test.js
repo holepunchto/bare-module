@@ -254,6 +254,33 @@ test('load .cjs with top-level await .mjs require', async (t) => {
   await t.exception.all(() => Module.load(new URL(root + '/foo.cjs'), { protocol }), /cannot access 'default' before initialization/i)
 })
 
+test('load .cjs with top-level await .mjs require with throw', async (t) => {
+  t.plan(1)
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar.mjs'
+    },
+
+    read (url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'require(\'/bar\')'
+      }
+
+      if (url.href === root + '/bar.mjs') {
+        return 'await 42; throw new Error(\'bar\')'
+      }
+
+      t.fail()
+    }
+  })
+
+  Bare.once('uncaughtException', (err) => t.is(err.message, 'bar'))
+
+  Module.load(new URL(root + '/foo.cjs'), { protocol })
+})
+
 test('load .cjs with non-file: URL', async (t) => {
   t.teardown(onteardown)
 
@@ -646,6 +673,33 @@ test('load .mjs with top-level await .mjs import', (t) => {
       t.fail()
     }
   })
+
+  Module.load(new URL(root + '/foo.mjs'), { protocol })
+})
+
+test('load .mjs with top-level await .mjs import with throw', (t) => {
+  t.plan(1)
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar.mjs'
+    },
+
+    read (url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'import \'/bar\''
+      }
+
+      if (url.href === root + '/bar.mjs') {
+        return 'await 42; throw new Error(\'bar\')'
+      }
+
+      t.fail()
+    }
+  })
+
+  Bare.once('uncaughtException', (err) => t.is(err.message, 'bar'))
 
   Module.load(new URL(root + '/foo.mjs'), { protocol })
 })
@@ -2069,6 +2123,36 @@ test('type error in .cjs imported from .mjs with type error', (t) => {
   }
 })
 
+test('type error in .cjs imported from .mjs with type error and top-level await', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar.cjs'
+    },
+
+    read (url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'import \'/bar.cjs\'; await 42; null.foo()'
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return 'null.bar()'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.mjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+    t.ok(/reading 'bar'/i.test(err.message))
+  }
+})
+
 test('type error in .cjs, load again', (t) => {
   t.teardown(onteardown)
 
@@ -2158,6 +2242,36 @@ test('type error in .mjs imported from .mjs with type error', (t) => {
     read (url) {
       if (url.href === root + '/foo.mjs') {
         return 'import \'/bar.mjs\'; null.foo()'
+      }
+
+      if (url.href === root + '/bar.mjs') {
+        return 'null.bar()'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.mjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+    t.ok(/reading 'bar'/i.test(err.message))
+  }
+})
+
+test('type error in .mjs imported from .mjs with type error and top-level await', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar.mjs'
+    },
+
+    read (url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'import \'/bar.mjs\'; await 42; null.foo()'
       }
 
       if (url.href === root + '/bar.mjs') {
