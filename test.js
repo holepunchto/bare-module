@@ -2065,6 +2065,7 @@ test('type error in .cjs imported from .mjs with type error', (t) => {
     t.fail()
   } catch (err) {
     t.comment(err.message)
+    t.ok(/reading 'bar'/i.test(err.message))
   }
 })
 
@@ -2172,6 +2173,7 @@ test('type error in .mjs imported from .mjs with type error', (t) => {
     t.fail()
   } catch (err) {
     t.comment(err.message)
+    t.ok(/reading 'bar'/i.test(err.message))
   }
 })
 

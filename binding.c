@@ -461,22 +461,22 @@ bare_module_run_module (js_env_t *env, js_callback_info_t *info) {
   err = js_instantiate_module(env, module, on_static_import, (void *) context);
   if (err < 0) return NULL;
 
-  js_value_t *result;
-  err = js_run_module(env, module, &result);
+  js_value_t *promise;
+  err = js_run_module(env, module, &promise);
   if (err < 0) return NULL;
 
   bool is_promise;
-  err = js_is_promise(env, result, &is_promise);
+  err = js_is_promise(env, promise, &is_promise);
   assert(err == 0);
 
   if (is_promise) {
     js_promise_state_t state;
-    err = js_get_promise_state(env, result, &state);
+    err = js_get_promise_state(env, promise, &state);
     assert(err == 0);
 
     if (state == js_promise_rejected) {
-      js_value_t *error;
-      err = js_get_promise_result(env, result, &error);
+      js_value_t *reason;
+      err = js_get_promise_result(env, promise, &reason);
       if (err < 0) return NULL;
 
       js_value_t *exception;
@@ -487,15 +487,15 @@ bare_module_run_module (js_env_t *env, js_callback_info_t *info) {
       err = js_get_reference_value(env, context->ctx, &ctx);
       assert(err == 0);
 
-      js_value_t *args[2] = {result, error};
+      js_value_t *args[3] = {reason, promise, exception};
 
-      js_call_function(env, ctx, argv[2], 2, args, NULL);
+      js_call_function(env, ctx, argv[2], 3, args, NULL);
 
       return NULL;
     }
   }
 
-  return result;
+  return promise;
 }
 
 static js_value_t *

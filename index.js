@@ -343,7 +343,7 @@ const Module = module.exports = exports = class Module {
     }
   }
 
-  static _onrejection (promise, err) {
+  static _onrejection (reason, promise, err = reason) {
     promise.catch(() => {}) // Don't leak the rejection
 
     throw err
