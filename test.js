@@ -1825,6 +1825,35 @@ test('throw in .cjs', (t) => {
   }
 })
 
+test('throw in imported .cjs', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar.cjs'
+    },
+
+    read (url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'require(\'/bar.cjs\')'
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return 'throw new Error(\'bar\')'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.cjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
 test('throw in .cjs, load again', (t) => {
   t.teardown(onteardown)
 
@@ -1874,6 +1903,35 @@ test('throw in .mjs', (t) => {
   }
 })
 
+test('throw in imported .mjs', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar.mjs'
+    },
+
+    read (url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'import \'/bar.mjs\''
+      }
+
+      if (url.href === root + '/bar.mjs') {
+        return 'throw new Error(\'bar\')'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.mjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
 test('throw in .mjs, load again', (t) => {
   t.teardown(onteardown)
 
@@ -1908,6 +1966,35 @@ test('type error in .cjs', (t) => {
   const protocol = new Module.Protocol({
     read (url) {
       if (url.href === root + '/foo.cjs') {
+        return 'null.foo()'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.cjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
+test('type error in imported .cjs', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar.cjs'
+    },
+
+    read (url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'require(\'/bar.cjs\')'
+      }
+
+      if (url.href === root + '/bar.cjs') {
         return 'null.foo()'
       }
 
@@ -1972,6 +2059,35 @@ test('type error in .mjs', (t) => {
   }
 })
 
+test('type error in imported .mjs', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar.mjs'
+    },
+
+    read (url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'import \'/bar.mjs\''
+      }
+
+      if (url.href === root + '/bar.mjs') {
+        return 'null.foo()'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.mjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
 test('syntax error in .cjs', (t) => {
   t.teardown(onteardown)
 
@@ -2021,12 +2137,70 @@ test('syntax error in .cjs, load again', (t) => {
   }
 })
 
+test('syntax error in imported .cjs', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar.cjs'
+    },
+
+    read (url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'require(\'/bar.cjs\')'
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return 'foo bar'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.cjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
 test('syntax error in .mjs', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
     read (url) {
       if (url.href === root + '/foo.mjs') {
+        return 'foo bar'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.mjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
+test('syntax error in imported .mjs', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar.mjs'
+    },
+
+    read (url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'import \'/bar.mjs\''
+      }
+
+      if (url.href === root + '/bar.mjs') {
         return 'foo bar'
       }
 
