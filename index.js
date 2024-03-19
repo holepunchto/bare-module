@@ -179,12 +179,28 @@ const Module = module.exports = exports = class Module {
     this._handle = binding.createSyntheticModule(this._url.href, this._names, Module._handle)
   }
 
+  _run () {
+    let result
+
+    try {
+      result = binding.runModule(this._handle, Module._handle)
+    } catch (err) {
+      Bare.once('unhandledRejection', Module._onrejection)
+
+      throw err
+    }
+
+    if (result && result.error) {
+      result.catch(Module._onrejection)
+
+      throw result.error
+    }
+  }
+
   _evaluate (eagerRun = false) {
     if ((this._state & constants.states.EVALUATED) !== 0) return
 
     this._state |= constants.states.EVALUATED
-
-    let result
 
     if (this._type === constants.types.SCRIPT) {
       const require = createRequire(this._url, { module: this })
@@ -201,29 +217,17 @@ const Module = module.exports = exports = class Module {
         urlToDirname(this._url)
       )
 
-      if (eagerRun) result = binding.runModule(this._handle, Module._handle)
+      if (eagerRun) this._run()
     }
 
     if (this._type === constants.types.MODULE) {
-      try {
-        result = binding.runModule(this._handle, Module._handle)
-      } catch (err) {
-        Bare.once('unhandledRejection', Module._onrejection)
-
-        throw err
-      }
+      this._run()
 
       this._exports = binding.getNamespace(this._handle)
     }
 
     if (this._type === constants.types.ADDON) {
-      if (eagerRun) result = binding.runModule(this._handle, Module._handle)
-    }
-
-    if (result && result.error) {
-      result.catch(Module._onrejection)
-
-      throw result.error
+      if (eagerRun) this._run()
     }
   }
 
