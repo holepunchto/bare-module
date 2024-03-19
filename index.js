@@ -205,7 +205,13 @@ const Module = module.exports = exports = class Module {
     }
 
     if (this._type === constants.types.MODULE) {
-      result = binding.runModule(this._handle, Module._handle)
+      try {
+        result = binding.runModule(this._handle, Module._handle)
+      } catch (err) {
+        Bare.once('unhandledRejection', Module._onrejection)
+
+        throw err
+      }
 
       this._exports = binding.getNamespace(this._handle)
     }
@@ -215,7 +221,7 @@ const Module = module.exports = exports = class Module {
     }
 
     if (result && result.error) {
-      result.catch(() => {}) // Handle the promise rejection
+      result.catch(Module._onrejection)
 
       throw result.error
     }
@@ -346,6 +352,8 @@ const Module = module.exports = exports = class Module {
       return addon._exports
     }
   }
+
+  static _onrejection () {}
 
   static Protocol = Protocol
   static Bundle = Bundle

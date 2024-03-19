@@ -1825,7 +1825,7 @@ test('throw in .cjs', (t) => {
   }
 })
 
-test('throw in imported .cjs', (t) => {
+test('throw in .cjs imported from .cjs', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
@@ -1903,7 +1903,7 @@ test('throw in .mjs', (t) => {
   }
 })
 
-test('throw in imported .mjs', (t) => {
+test('throw in .mjs imported from .mjs', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
@@ -1981,7 +1981,7 @@ test('type error in .cjs', (t) => {
   }
 })
 
-test('type error in imported .cjs', (t) => {
+test('type error in .cjs imported from .cjs', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
@@ -2004,6 +2004,64 @@ test('type error in imported .cjs', (t) => {
 
   try {
     Module.load(new URL(root + '/foo.cjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
+test('type error in .cjs imported from .mjs', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar.cjs'
+    },
+
+    read (url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'import bar from \'/bar.cjs\''
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return 'null.foo()'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.mjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
+test('type error in .cjs imported from .mjs with type error', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar.cjs'
+    },
+
+    read (url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'import \'/bar.cjs\'; null.foo()'
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return 'null.bar()'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.mjs'), { protocol })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2059,7 +2117,7 @@ test('type error in .mjs', (t) => {
   }
 })
 
-test('type error in imported .mjs', (t) => {
+test('type error in .mjs imported from .mjs', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
@@ -2074,6 +2132,35 @@ test('type error in imported .mjs', (t) => {
 
       if (url.href === root + '/bar.mjs') {
         return 'null.foo()'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.mjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
+test('type error in .mjs imported from .mjs with type error', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar.mjs'
+    },
+
+    read (url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'import \'/bar.mjs\'; null.foo()'
+      }
+
+      if (url.href === root + '/bar.mjs') {
+        return 'null.bar()'
       }
 
       t.fail()
@@ -2137,7 +2224,7 @@ test('syntax error in .cjs, load again', (t) => {
   }
 })
 
-test('syntax error in imported .cjs', (t) => {
+test('syntax error in .cjs imported from .cjs', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
@@ -2187,7 +2274,7 @@ test('syntax error in .mjs', (t) => {
   }
 })
 
-test('syntax error in imported .mjs', (t) => {
+test('syntax error in .mjs imported from .mjs', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
