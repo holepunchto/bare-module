@@ -180,21 +180,7 @@ const Module = module.exports = exports = class Module {
   }
 
   _run () {
-    let result
-
-    try {
-      result = binding.runModule(this._handle, Module._handle)
-    } catch (err) {
-      Bare.once('unhandledRejection', Module._onrejection)
-
-      throw err
-    }
-
-    if (result && result.error) {
-      result.catch(Module._onrejection)
-
-      throw result.error
-    }
+    binding.runModule(this._handle, Module._handle, Module._onrejection)
   }
 
   _evaluate (eagerRun = false) {
@@ -357,7 +343,11 @@ const Module = module.exports = exports = class Module {
     }
   }
 
-  static _onrejection () {}
+  static _onrejection (promise, err) {
+    promise.catch(() => {}) // Don't leak the rejection
+
+    throw err
+  }
 
   static Protocol = Protocol
   static Bundle = Bundle

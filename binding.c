@@ -442,13 +442,13 @@ static js_value_t *
 bare_module_run_module (js_env_t *env, js_callback_info_t *info) {
   int err;
 
-  size_t argc = 2;
-  js_value_t *argv[2];
+  size_t argc = 3;
+  js_value_t *argv[3];
 
   err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
   assert(err == 0);
 
-  assert(argc == 2);
+  assert(argc == 3);
 
   js_module_t *module;
   err = js_get_value_external(env, argv[0], (void **) &module);
@@ -479,8 +479,19 @@ bare_module_run_module (js_env_t *env, js_callback_info_t *info) {
       err = js_get_promise_result(env, result, &error);
       if (err < 0) return NULL;
 
-      err = js_set_named_property(env, result, "error", error);
-      if (err < 0) return NULL;
+      js_value_t *exception;
+      err = js_get_and_clear_last_exception(env, &exception);
+      assert(err == 0);
+
+      js_value_t *ctx;
+      err = js_get_reference_value(env, context->ctx, &ctx);
+      assert(err == 0);
+
+      js_value_t *args[2] = {result, error};
+
+      js_call_function(env, ctx, argv[2], 2, args, NULL);
+
+      return NULL;
     }
   }
 
