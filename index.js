@@ -453,6 +453,9 @@ const Module = module.exports = exports = class Module {
       imports,
       resolutions,
       builtins: builtins ? Object.keys(builtins) : [],
+      engines: {
+        ...Bare.versions
+      },
       extensions: [
         '.js',
         '.cjs',

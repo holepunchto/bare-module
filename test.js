@@ -1858,6 +1858,57 @@ test('resolve already valid URL', (t) => {
   Module.resolve(root + '/bar.js', new URL(root + '/foo.js'), { protocol })
 })
 
+test('pkg.engines with valid range', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return (
+        url.href === root + '/node_modules/foo/package.json' ||
+        url.href === root + '/node_modules/foo/index.js'
+      )
+    },
+
+    read (url) {
+      if (url.href === root + '/node_modules/foo/package.json') {
+        return `{ "engines": { "bare": ">=${Bare.versions.bare}" } }`
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.resolve('foo', new URL(root + '/'), { protocol }).href, root + '/node_modules/foo/index.js')
+})
+
+test('pkg.engines with invalid range', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return (
+        url.href === root + '/node_modules/foo/package.json' ||
+        url.href === root + '/node_modules/foo/index.js'
+      )
+    },
+
+    read (url) {
+      if (url.href === root + '/node_modules/foo/package.json') {
+        return `{ "engines": { "bare": "<${Bare.versions.bare}" } }`
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.resolve('foo', new URL(root + '/'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
 test('throw in .cjs', (t) => {
   t.teardown(onteardown)
 
