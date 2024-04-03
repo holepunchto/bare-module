@@ -163,6 +163,18 @@ If a package defines only a single export, `"."`, it may leave out the subpath e
 
 ##### Private imports
 
+#### `"engines"`
+
+```json
+{
+  "engines": {
+    "bare": ">=1.0.5"
+  }
+}
+```
+
+The engine requirements of the package. During module resolution, the versions declared by `Bare.versions` will be tested against the requirements declared by the package and resolution fail if they're not satisfied.
+
 ## API
 
 #### `Module.constants`
