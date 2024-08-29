@@ -1425,7 +1425,7 @@ test('import assertions', (t) => {
 
     read (url) {
       if (url.href === root + '/foo.mjs') {
-        return 'export { default } from \'/bar\' assert { type: \'json\' }'
+        return 'export { default } from \'/bar\' with { type: \'json\' }'
       }
 
       if (url.href === root + '/bar') {
