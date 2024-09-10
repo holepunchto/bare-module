@@ -1,5 +1,6 @@
 /* global Bare */
 const test = require('brittle')
+const { pathToFileURL } = require('url-file-url')
 const Module = require('.')
 
 const isWindows = Bare.platform === 'win32'
@@ -2464,6 +2465,29 @@ test('syntax error in .mjs imported from .mjs', (t) => {
 
   try {
     Module.load(new URL(root + '/foo.mjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
+test('load file: URL using the default protocol', (t) => {
+  t.teardown(onteardown)
+
+  t.is(Module.load(pathToFileURL('test/fixtures/foo.js')).exports, 42)
+})
+
+test('load non-file: URL using the default protocol', (t) => {
+  t.teardown(onteardown)
+
+  t.is(Module.load(new URL('foo:/foo.js'), 'module.exports = 42').exports, 42)
+})
+
+test('load non-file: URL with missing import using the default protocol', (t) => {
+  t.teardown(onteardown)
+
+  try {
+    Module.load(new URL('foo:/foo.js'), 'module.exports = require(\'./bar.js\')')
     t.fail()
   } catch (err) {
     t.comment(err.message)

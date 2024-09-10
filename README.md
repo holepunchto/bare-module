@@ -197,6 +197,8 @@ Constant | Description
 `BUNDLE` |
 `ADDON` |
 
+#### `Module.protocol`
+
 #### `Module.cache`
 
 #### `const url = Module.resolve(specifier, parentURL[, options])`

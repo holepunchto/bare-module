@@ -234,7 +234,7 @@ const Module = module.exports = exports = class Module {
   }
 
   static _extensions = Object.create(null)
-  static _protocols = Object.create(null)
+  static _protocol = null
   static _cache = module.cache || Object.create(null)
   static _modules = new Set()
   static _conditions = ['bare', 'node']
@@ -357,6 +357,10 @@ const Module = module.exports = exports = class Module {
   static Bundle = Bundle
   static constants = constants
 
+  static get protocol () {
+    return this._protocol
+  }
+
   static get cache () {
     return this._cache
   }
@@ -378,7 +382,7 @@ const Module = module.exports = exports = class Module {
       defaultType = referrer ? referrer._defaultType : 0,
       cache = referrer ? referrer._cache : self._cache,
       main = referrer ? referrer._main : null,
-      protocol = referrer ? referrer._protocol : self._protocols['file:'],
+      protocol = referrer ? referrer._protocol : self._protocol,
       imports = referrer ? referrer._imports : null,
       resolutions = referrer ? referrer._resolutions : null,
       builtins = referrer ? referrer._builtins : null,
@@ -435,7 +439,7 @@ const Module = module.exports = exports = class Module {
       isImport = false,
 
       referrer = null,
-      protocol = referrer ? referrer._protocol : self._protocols['file:'],
+      protocol = referrer ? referrer._protocol : self._protocol,
       imports = referrer ? referrer._imports : null,
       resolutions = referrer ? referrer._resolutions : null,
       builtins = referrer ? referrer._builtins : null,
@@ -534,7 +538,7 @@ const createRequire = exports.createRequire = function createRequire (parentURL,
     defaultType = referrer ? referrer._defaultType : constants.types.SCRIPT,
     cache = referrer ? referrer._cache : self._cache,
     main = referrer ? referrer._main : null,
-    protocol = referrer ? referrer._protocol : self._protocols['file:'],
+    protocol = referrer ? referrer._protocol : self._protocol,
     imports = referrer ? referrer._imports : null,
     resolutions = referrer ? referrer._resolutions : null,
     builtins = referrer ? referrer._builtins : null,
@@ -724,17 +728,32 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
   }
 }
 
-Module._protocols['file:'] = new Protocol({
+Module._protocol = new Protocol({
   postresolve (url) {
-    return pathToFileURL(binding.realpath(fileURLToPath(url)))
+    switch (url.protocol) {
+      case 'file:':
+        return pathToFileURL(binding.realpath(fileURLToPath(url)))
+      default:
+        return url
+    }
   },
 
   exists (url) {
-    return binding.exists(fileURLToPath(url))
+    switch (url.protocol) {
+      case 'file:':
+        return binding.exists(fileURLToPath(url))
+      default:
+        return false
+    }
   },
 
   read (url) {
-    return Buffer.from(binding.read(fileURLToPath(url)))
+    switch (url.protocol) {
+      case 'file:':
+        return Buffer.from(binding.read(fileURLToPath(url)))
+      default:
+        throw errors.UNKNOWN_PROTOCOL(`Cannot load module '${url.href}'`)
+    }
   }
 })
 
