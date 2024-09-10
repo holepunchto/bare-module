@@ -353,10 +353,6 @@ const Module = module.exports = exports = class Module {
     }
   }
 
-  static Protocol = Protocol
-  static Bundle = Bundle
-  static constants = constants
-
   static get protocol () {
     return this._protocol
   }
@@ -510,6 +506,11 @@ const Module = module.exports = exports = class Module {
     }
   }
 }
+
+exports.Protocol = Protocol
+exports.Bundle = Bundle
+
+exports.constants = constants
 
 // For Node.js compatibility
 exports.builtinModules = []
