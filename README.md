@@ -127,6 +127,9 @@ Condition | Description
 `"node"` |
 `"import"` |
 `"require"` |
+`"<platform>"` |
+`"<arch>"` |
+`"simulator"` |
 `"default"` |
 
 ##### Self-referencing
