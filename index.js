@@ -237,7 +237,7 @@ const Module = module.exports = exports = class Module {
   static _protocol = null
   static _cache = module.cache || Object.create(null)
   static _modules = new Set()
-  static _conditions = ['bare', 'node']
+  static _conditions = ['bare', 'node', Bare.platform, Bare.arch]
 
   static _handle = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
 
@@ -596,6 +596,8 @@ const createRequire = exports.createRequire = function createRequire (parentURL,
     return addon._exports
   }
 }
+
+if (Bare.simulator) Module._conditions.push('simulator')
 
 Module._extensions['.js'] = function (module, source, referrer) {
   const self = Module

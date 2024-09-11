@@ -1574,6 +1574,79 @@ test('conditional exports in package.json, array of conditions', (t) => {
   t.is(Module.resolve('/', new URL(root + '/'), { isImport: true, protocol }).href, root + '/foo.mjs')
 })
 
+test('conditional exports in package.json, runtime condition', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return (
+        url.href === root + '/package.json' ||
+        url.href === root + '/foo.bare.js' ||
+        url.href === root + '/foo.node.js'
+      )
+    },
+
+    read (url) {
+      if (url.href === root + '/package.json') {
+        return '{ "exports": { "bare": "./foo.bare.js", "node": "./foo.node.js" } }'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.resolve('/', new URL(root + '/'), { protocol }).href, root + '/foo.bare.js')
+})
+
+test('conditional exports in package.json, platform condition', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return (
+        url.href === root + '/package.json' ||
+        url.href === root + '/foo.darwin.js' ||
+        url.href === root + '/foo.linux.js' ||
+        url.href === root + '/foo.win32.js'
+      )
+    },
+
+    read (url) {
+      if (url.href === root + '/package.json') {
+        return '{ "exports": { "darwin": "./foo.darwin.js", "linux": "./foo.linux.js", "win32": "./foo.win32.js" } }'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.resolve('/', new URL(root + '/'), { protocol }).href, root + '/foo.' + Bare.platform + '.js')
+})
+
+test('conditional exports in package.json, architecture condition', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return (
+        url.href === root + '/package.json' ||
+        url.href === root + '/foo.arm64.js' ||
+        url.href === root + '/foo.x64.js'
+      )
+    },
+
+    read (url) {
+      if (url.href === root + '/package.json') {
+        return '{ "exports": { "arm64": "./foo.arm64.js", "x64": "./foo.x64.js" } }'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.resolve('/', new URL(root + '/'), { protocol }).href, root + '/foo.' + Bare.arch + '.js')
+})
+
 test('exports in node_modules', (t) => {
   t.teardown(onteardown)
 
