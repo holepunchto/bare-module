@@ -1,6 +1,7 @@
 /* global Bare */
 const test = require('brittle')
-const { pathToFileURL } = require('url-file-url')
+const path = require('bare-path')
+const { pathToFileURL, fileURLToPath } = require('url-file-url')
 const Module = require('.')
 
 const isWindows = Bare.platform === 'win32'
@@ -2565,6 +2566,27 @@ test('load non-file: URL with missing import using the default protocol', (t) =>
   } catch (err) {
     t.comment(err.message)
   }
+})
+
+test('extend the default protocol', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = Module.protocol.extend({
+    read (url, parent) {
+      const buffer = parent.read(url)
+
+      const target = path.relative(__dirname, fileURLToPath(url))
+
+      switch (target) {
+        case 'test/fixtures/bar.js':
+          return Buffer.from('module.exports = \'modified\'')
+      }
+
+      return buffer
+    }
+  })
+
+  t.is(Module.load(pathToFileURL('test/fixtures/foo.js'), { protocol }).exports, 'modified')
 })
 
 function onteardown () {
