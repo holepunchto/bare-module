@@ -210,6 +210,7 @@ Options include:
 
 ```js
 {
+  isImport = false,
   referrer = null,
   protocol,
   imports,
