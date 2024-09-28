@@ -239,6 +239,20 @@ Options include:
 }
 ```
 
+#### `const url = Module.asset(specifier, parentURL[, options])`
+
+Options include:
+
+```js
+{
+  referrer = null,
+  protocol,
+  imports,
+  resolutions,
+  conditions
+}
+```
+
 #### `module.url`
 
 #### `module.filename`

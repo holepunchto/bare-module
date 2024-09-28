@@ -324,6 +324,7 @@ const Module = module.exports = exports = class Module {
     meta.cache = module._cache
     meta.resolve = resolve
     meta.addon = addon
+    meta.asset = asset
 
     function resolve (specifier) {
       const resolved = self.resolve(specifier, referrer._url, { referrer })
@@ -340,6 +341,10 @@ const Module = module.exports = exports = class Module {
       const addon = Bare.Addon.load(resolved, { referrer })
 
       return addon._exports
+    }
+
+    function asset (specifier) {
+      return self.asset(specifier, referrer._url, { referrer }).href
     }
   }
 
@@ -489,6 +494,46 @@ const Module = module.exports = exports = class Module {
     }
   }
 
+  static asset (specifier, parentURL, opts = {}) {
+    const self = Module
+
+    if (typeof specifier !== 'string') {
+      throw new TypeError(`Specifier must be a string. Received type ${typeof specifier} (${specifier})`)
+    }
+
+    const {
+      referrer = null,
+      protocol = referrer ? referrer._protocol : self._protocol,
+      imports = referrer ? referrer._imports : null,
+      resolutions = referrer ? referrer._resolutions : null,
+      conditions = referrer ? referrer._conditions : self._conditions
+    } = opts
+
+    const [resolution = null] = resolve(specifier, parentURL, {
+      conditions,
+      imports,
+      resolutions
+    }, readPackage)
+
+    if (resolution !== null && protocol.exists(resolution)) {
+      return protocol.asset(resolution, parentURL)
+    }
+
+    let msg = `Cannot find asset '${specifier}'`
+
+    if (referrer) msg += ` imported from '${referrer._url.href}'`
+
+    throw errors.ASSET_NOT_FOUND(msg)
+
+    function readPackage (packageURL) {
+      if (protocol.exists(packageURL)) {
+        return Module.load(packageURL, { protocol })._exports
+      }
+
+      return null
+    }
+  }
+
   static _extensionFor (type) {
     switch (type) {
       case constants.types.SCRIPT:
@@ -568,6 +613,7 @@ const createRequire = exports.createRequire = function createRequire (parentURL,
   require.cache = module._cache
   require.resolve = resolve
   require.addon = addon
+  require.asset = asset
 
   return require
 
@@ -594,6 +640,10 @@ const createRequire = exports.createRequire = function createRequire (parentURL,
     const addon = Bare.Addon.load(resolved, { referrer })
 
     return addon._exports
+  }
+
+  function asset (specifier) {
+    return urlToPath(self.asset(specifier, referrer._url, { referrer }))
   }
 }
 
