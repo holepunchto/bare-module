@@ -2584,7 +2584,7 @@ test('load .js with asset import', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/index.js'), { protocol }).exports, '/foo.txt')
+  t.is(Module.load(new URL(root + '/index.js'), { protocol }).exports, isWindows ? 'c:\\foo.txt' : '/foo.txt')
 })
 
 test('load .cjs with asset import', (t) => {
@@ -2604,7 +2604,7 @@ test('load .cjs with asset import', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/index.cjs'), { protocol }).exports, '/foo.txt')
+  t.is(Module.load(new URL(root + '/index.cjs'), { protocol }).exports, isWindows ? 'c:\\foo.txt' : '/foo.txt')
 })
 
 test('load .mjs with asset import', (t) => {
@@ -2624,7 +2624,7 @@ test('load .mjs with asset import', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/index.mjs'), { protocol }).exports.default, 'file:///foo.txt')
+  t.is(Module.load(new URL(root + '/index.mjs'), { protocol }).exports.default, root + '/foo.txt')
 })
 
 test('load .js with asset import, asset method', (t) => {
@@ -2652,7 +2652,7 @@ test('load .js with asset import, asset method', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/index.js'), { protocol }).exports, '/bar.txt')
+  t.is(Module.load(new URL(root + '/index.js'), { protocol }).exports, isWindows ? 'c:\\bar.txt' : '/bar.txt')
 })
 
 function onteardown () {
