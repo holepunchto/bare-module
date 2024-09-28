@@ -516,7 +516,7 @@ const Module = module.exports = exports = class Module {
     }, readPackage)
 
     if (resolution !== null && protocol.exists(resolution)) {
-      return protocol.asset(resolution, parentURL)
+      return protocol.asset(resolution)
     }
 
     let msg = `Cannot find asset '${specifier}'`
