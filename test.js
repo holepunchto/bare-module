@@ -2571,8 +2571,8 @@ test('extend the default protocol', (t) => {
   t.teardown(onteardown)
 
   const protocol = Module.protocol.extend({
-    read (url, parent) {
-      const buffer = parent.read(url)
+    read (context, url) {
+      const buffer = context.read(url)
 
       if (url.href.endsWith('/test/fixtures/bar.js')) {
         return Buffer.from('module.exports = \'modified\'')
