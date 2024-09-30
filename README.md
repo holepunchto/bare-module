@@ -304,9 +304,9 @@ Options include:
 
 ### Protocols
 
-#### `const protocol = new Module.Protocol(options)`
+#### `const protocol = new Module.Protocol(methods)`
 
-Options include:
+Methods include:
 
 ```js
 {

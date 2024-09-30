@@ -2567,6 +2567,24 @@ test('load non-file: URL with missing import using the default protocol', (t) =>
   }
 })
 
+test('extend the default protocol', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = Module.protocol.extend({
+    read (context, url) {
+      const buffer = context.read(url)
+
+      if (url.href.endsWith('/test/fixtures/bar.js')) {
+        return Buffer.from('module.exports = \'modified\'')
+      }
+
+      return buffer
+    }
+  })
+
+  t.is(Module.load(pathToFileURL('test/fixtures/foo.js'), { protocol }).exports, 'modified')
+})
+
 test('load .js with asset import', (t) => {
   t.teardown(onteardown)
 
