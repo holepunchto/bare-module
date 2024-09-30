@@ -446,7 +446,7 @@ const Module = module.exports = exports = class Module {
 
     const [resolution] = protocol.resolve(specifier, parentURL, imports)
 
-    if (resolution) return protocol.postresolve(resolution, parentURL)
+    if (resolution) return protocol.postresolve(resolution)
 
     for (const resolution of resolve(resolved, parentURL, {
       conditions: isImport ? ['import', ...conditions] : ['require', ...conditions],
@@ -469,7 +469,7 @@ const Module = module.exports = exports = class Module {
         case 'builtin:': return resolution
         default:
           if (protocol.exists(resolution)) {
-            return protocol.postresolve(resolution, parentURL)
+            return protocol.postresolve(resolution)
           }
       }
     }
@@ -716,12 +716,22 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
   module._imports = bundle.imports
   module._resolutions = bundle.resolutions
 
-  module._protocol = new Protocol({
-    exists (url) {
+  module._protocol = protocol.extend({
+    preresolve (context, specifier) {
+      return specifier
+    },
+
+    postresolve (context, url) {
+      return url
+    },
+
+    * resolve () {},
+
+    exists (context, url) {
       return bundle.exists(url.href)
     },
 
-    read (url) {
+    read (context, url) {
       return bundle.read(url.href)
     }
   })

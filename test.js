@@ -2567,6 +2567,24 @@ test('load non-file: URL with missing import using the default protocol', (t) =>
   }
 })
 
+test('extend the default protocol', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = Module.protocol.extend({
+    read (context, url) {
+      const buffer = context.read(url)
+
+      if (url.href.endsWith('/test/fixtures/bar.js')) {
+        return Buffer.from('module.exports = \'modified\'')
+      }
+
+      return buffer
+    }
+  })
+
+  t.is(Module.load(pathToFileURL('test/fixtures/foo.js'), { protocol }).exports, 'modified')
+})
+
 function onteardown () {
   // TODO Provide a public API for clearing the cache.
   Module._cache = Object.create(null)
