@@ -26,7 +26,7 @@
   },
   "homepage": "https://github.com/holepunchto/bare-module#readme",
   "dependencies": {
-    "bare-bundle": "^1.0.0",
+    "bare-bundle": "^1.3.0",
     "bare-module-resolve": "^1.6.0",
     "bare-path": "^3.0.0",
     "cjs-module-lexer": "^1.2.3",

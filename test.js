@@ -2673,6 +2673,38 @@ test('load .js with asset import, asset method', (t) => {
   t.is(Module.load(new URL(root + '/index.js'), { protocol }).exports, isWindows ? 'c:\\bar.txt' : '/bar.txt')
 })
 
+test('load .bundle with asset import', (t) => {
+  t.teardown(onteardown)
+
+  const bundle = new Module.Bundle()
+    .write('/foo.js', 'module.exports = require.asset(\'./bar.txt\')', { main: true })
+    .write('/bar.txt', 'hello world', { asset: true })
+    .toBuffer()
+
+  t.is(Module.load(new URL(root + '/app.bundle'), bundle).exports, isWindows ? 'c:\\app.bundle\\bar.txt' : '/app.bundle/bar.txt')
+})
+
+test('load .bundle with asset import, asset method', (t) => {
+  t.teardown(onteardown)
+
+  const bundle = new Module.Bundle()
+    .write('/foo.js', 'module.exports = require.asset(\'./bar.txt\')', { main: true })
+    .write('/bar.txt', 'hello world', { asset: true })
+    .toBuffer()
+
+  const protocol = new Module.Protocol({
+    asset (url) {
+      if (url.href === root + '/app.bundle/bar.txt') {
+        return new URL(root + '/bar.txt')
+      }
+
+      return url
+    }
+  })
+
+  t.is(Module.load(new URL(root + '/app.bundle'), bundle, { protocol }).exports, isWindows ? 'c:\\bar.txt' : '/bar.txt')
+})
+
 function onteardown () {
   // TODO Provide a public API for clearing the cache.
   Module._cache = Object.create(null)
