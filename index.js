@@ -1,9 +1,9 @@
 /* global Bare */
 const path = require('bare-path')
 const resolve = require('bare-module-resolve')
+const { fileURLToPath, pathToFileURL } = require('bare-url')
 const Bundle = require('bare-bundle')
 const { parse } = require('cjs-module-lexer')
-const { fileURLToPath, pathToFileURL } = require('url-file-url')
 const Protocol = require('./lib/protocol')
 const constants = require('./lib/constants')
 const errors = require('./lib/errors')
