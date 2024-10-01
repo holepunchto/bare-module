@@ -1,6 +1,6 @@
 /* global Bare */
 const test = require('brittle')
-const { pathToFileURL } = require('url-file-url')
+const { pathToFileURL } = require('bare-url')
 const Module = require('.')
 
 const isWindows = Bare.platform === 'win32'
