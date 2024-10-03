@@ -1887,6 +1887,47 @@ test('conditional imports in package.json, asset and default', (t) => {
   t.alike(Module.load(new URL(root + '/foo.cjs'), { protocol }).exports, [isWindows ? 'c:\\bar.txt' : '/bar.txt', 42])
 })
 
+test('conditional imports in package.json, asset and require without default', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return (
+        url.href === root + '/package.json' ||
+        url.href === root + '/bar.txt' ||
+        url.href === root + '/bar.js'
+      )
+    },
+
+    read (url) {
+      if (url.href === root + '/package.json') {
+        return '{ "imports": { "bar": { "asset": "./bar.txt" } } }'
+      }
+
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = require(\'bar\')'
+      }
+
+      if (url.href === root + '/bar.txt') {
+        return 'hello world'
+      }
+
+      if (url.href === root + '/bar.js') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.cjs'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
 test('imports in node_modules', (t) => {
   t.teardown(onteardown)
 
