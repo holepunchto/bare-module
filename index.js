@@ -510,7 +510,7 @@ const Module = module.exports = exports = class Module {
     } = opts
 
     const [resolution = null] = resolve(specifier, parentURL, {
-      conditions,
+      conditions: ['asset', ...conditions],
       imports,
       resolutions
     }, readPackage)
