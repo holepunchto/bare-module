@@ -1820,6 +1820,73 @@ test('conditional imports in package.json, import', (t) => {
   Module.load(new URL(root + '/foo.mjs'), { protocol })
 })
 
+test('conditional imports in package.json, asset', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return (
+        url.href === root + '/package.json' ||
+        url.href === root + '/bar.txt'
+      )
+    },
+
+    read (url) {
+      if (url.href === root + '/package.json') {
+        return '{ "imports": { "bar": { "asset": "./bar.txt" } } }'
+      }
+
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = require.asset(\'bar\')'
+      }
+
+      if (url.href === root + '/bar.txt') {
+        return 'hello world'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load(new URL(root + '/foo.cjs'), { protocol }).exports, isWindows ? 'c:\\bar.txt' : '/bar.txt')
+})
+
+test('conditional imports in package.json, asset and default', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return (
+        url.href === root + '/package.json' ||
+        url.href === root + '/bar.txt' ||
+        url.href === root + '/bar.js'
+      )
+    },
+
+    read (url) {
+      if (url.href === root + '/package.json') {
+        return '{ "imports": { "bar": { "asset": "./bar.txt", "default": "./bar.js" } } }'
+      }
+
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = [require.asset(\'bar\'), require(\'bar\')]'
+      }
+
+      if (url.href === root + '/bar.txt') {
+        return 'hello world'
+      }
+
+      if (url.href === root + '/bar.js') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.alike(Module.load(new URL(root + '/foo.cjs'), { protocol }).exports, [isWindows ? 'c:\\bar.txt' : '/bar.txt', 42])
+})
+
 test('imports in node_modules', (t) => {
   t.teardown(onteardown)
 
