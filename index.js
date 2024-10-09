@@ -782,7 +782,7 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
     },
 
     read (context, url) {
-      return bundle.read(url.href) || context.read(url.href)
+      return bundle.read(url.href) || context.read(url)
     }
   })
 
