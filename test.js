@@ -2831,6 +2831,30 @@ test('load .bundle with asset import, resolutions map', (t) => {
   t.is(Module.load(new URL(root + '/app.bundle'), bundle.toBuffer()).exports, isWindows ? 'c:\\app.bundle\\baz.txt' : '/app.bundle/baz.txt')
 })
 
+test('load .bundle with asset import, resolutions map pointing outside .bundle', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar.txt'
+    }
+  })
+
+  const bundle = new Module.Bundle()
+    .write('/foo.js', 'module.exports = require.asset(\'./bar.txt\')', { main: true })
+    .write('/baz.txt', 'hello world', { asset: true })
+
+  bundle.resolutions = {
+    '/foo.js': {
+      './bar.txt': {
+        asset: root + '/bar.txt'
+      }
+    }
+  }
+
+  t.is(Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), { protocol }).exports, isWindows ? 'c:\\bar.txt' : '/bar.txt')
+})
+
 function onteardown () {
   // TODO Provide a public API for clearing the cache.
   Module._cache = Object.create(null)

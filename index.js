@@ -772,17 +772,17 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
     },
 
     postresolve (context, url) {
-      return url
+      return bundle.exists(url.href) ? url : context.postresolve(url)
     },
 
     * resolve () {},
 
     exists (context, url) {
-      return bundle.exists(url.href)
+      return bundle.exists(url.href) || context.exists(url)
     },
 
     read (context, url) {
-      return bundle.read(url.href)
+      return bundle.read(url.href) || context.read(url.href)
     }
   })
 
