@@ -2813,6 +2813,24 @@ test('load .bundle with asset import, asset method', (t) => {
   t.is(Module.load(new URL(root + '/app.bundle'), bundle, { protocol }).exports, isWindows ? 'c:\\bar.txt' : '/bar.txt')
 })
 
+test('load .bundle with asset import, resolutions map', (t) => {
+  t.teardown(onteardown)
+
+  const bundle = new Module.Bundle()
+    .write('/foo.js', 'module.exports = require.asset(\'./bar.txt\')', { main: true })
+    .write('/baz.txt', 'hello world', { asset: true })
+
+  bundle.resolutions = {
+    '/foo.js': {
+      './bar.txt': {
+        asset: '/baz.txt'
+      }
+    }
+  }
+
+  t.is(Module.load(new URL(root + '/app.bundle'), bundle.toBuffer()).exports, isWindows ? 'c:\\app.bundle\\baz.txt' : '/app.bundle/baz.txt')
+})
+
 function onteardown () {
   // TODO Provide a public API for clearing the cache.
   Module._cache = Object.create(null)
