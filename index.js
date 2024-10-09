@@ -767,15 +767,9 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
   module._resolutions = bundle.resolutions
 
   module._protocol = protocol.extend({
-    preresolve (context, specifier) {
-      return specifier
-    },
-
     postresolve (context, url) {
       return bundle.exists(url.href) ? url : context.postresolve(url)
     },
-
-    * resolve () {},
 
     exists (context, url) {
       return bundle.exists(url.href) || context.exists(url)
