@@ -315,7 +315,8 @@ Methods include:
   resolve,
   exists,
   read,
-  load
+  load,
+  asset
 }
 ```
 
