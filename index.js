@@ -156,7 +156,11 @@ const Module = module.exports = exports = class Module {
 
             const module = Module.load(resolved, { isImport: true, referrer })
 
-            queue.push(module)
+            if (module._names) {
+              for (const name of module._names) names.add(name)
+            } else {
+              queue.push(module)
+            }
           }
 
           break
