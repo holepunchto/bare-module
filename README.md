@@ -236,7 +236,7 @@ Options include:
   resolutions,
   builtins,
   conditions,
-  assertions
+  attributes
 }
 ```
 
