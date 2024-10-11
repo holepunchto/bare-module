@@ -572,14 +572,6 @@ exports.isBuiltin = function isBuiltin () {
 const createRequire = exports.createRequire = function createRequire (parentURL, opts = {}) {
   const self = Module
 
-  if (typeof parentURL === 'string') {
-    if (startsWithWindowsDriveLetter(parentURL)) {
-      parentURL = '/' + parentURL
-    }
-
-    parentURL = new URL(parentURL, 'file:')
-  }
-
   let {
     module = null,
 
@@ -596,7 +588,7 @@ const createRequire = exports.createRequire = function createRequire (parentURL,
   } = opts
 
   if (module === null) {
-    module = new Module(parentURL)
+    module = new Module(toURL(parentURL))
 
     module._type = type
     module._defaultType = defaultType
