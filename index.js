@@ -529,6 +529,10 @@ function extensionForType (type) {
       return '.bundle'
     case constants.types.ADDON:
       return '.bare'
+    case constants.types.BINARY:
+      return '.bin'
+    case constants.types.TEXT:
+      return '.txt'
     default:
       return null
   }
@@ -548,6 +552,10 @@ function typeForAttributes (attributes) {
       return constants.types.BUNDLE
     case 'addon':
       return constants.types.ADDON
+    case 'binary':
+      return constants.types.BINARY
+    case 'text':
+      return constants.types.TEXT
     default:
       return 0
   }
@@ -776,6 +784,30 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
   if (bundle.main) {
     module._exports = self.load(new URL(bundle.main), bundle.read(bundle.main), { referrer })._exports
   }
+}
+
+Module._extensions['.bin'] = function (module, source, referrer) {
+  const protocol = module._protocol
+
+  module._type = constants.types.BINARY
+
+  if (source === null) source = protocol.read(module._url)
+
+  if (typeof source === 'string') source = Buffer.from(source)
+
+  module._exports = source
+}
+
+Module._extensions['.txt'] = function (module, source, referrer) {
+  const protocol = module._protocol
+
+  module._type = constants.types.TEXT
+
+  if (source === null) source = protocol.read(module._url)
+
+  if (typeof source !== 'string') source = Buffer.coerce(source).toString()
+
+  module._exports = source
 }
 
 Module._protocol = new Protocol({
