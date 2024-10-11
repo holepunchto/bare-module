@@ -212,8 +212,8 @@ const Module = module.exports = exports = class Module {
       this._run()
 
       this._exports = binding.getNamespace(this._handle)
-    } else {
-      if (eagerRun) this._run()
+    } else if (eagerRun) {
+      this._run()
     }
   }
 
