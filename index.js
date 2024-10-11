@@ -252,7 +252,7 @@ const Module = module.exports = exports = class Module {
       throw errors.MODULE_NOT_FOUND(msg)
     }
 
-    const url = this.resolve(href, referrer._url, { isImport: true, referrer })
+    const url = this.resolve(href, referrer._url, { isImport: true, referrer, attributes })
 
     const module = this.load(url, { isImport: true, isDynamicImport, referrer, attributes })
 
@@ -392,10 +392,10 @@ const Module = module.exports = exports = class Module {
           module._builtins = builtins
           module._conditions = conditions
 
-          let extension = extensionForType(type) || path.extname(url.pathname)
+          let extension = canonicalExtensionForType(type) || path.extname(url.pathname)
 
           if (extension in self._extensions === false) {
-            if (defaultType) extension = extensionForType(defaultType) || '.js'
+            if (defaultType) extension = canonicalExtensionForType(defaultType) || '.js'
             else extension = '.js'
           }
 
@@ -422,6 +422,9 @@ const Module = module.exports = exports = class Module {
       isImport = false,
 
       referrer = null,
+      attributes,
+      type = typeForAttributes(attributes),
+      extensions = extensionsForType(type),
       protocol = referrer ? referrer._protocol : self._protocol,
       imports = referrer ? referrer._imports : null,
       resolutions = referrer ? referrer._resolutions : null,
@@ -439,18 +442,11 @@ const Module = module.exports = exports = class Module {
       conditions: isImport ? ['import', ...conditions] : ['require', ...conditions],
       imports,
       resolutions,
+      extensions,
       builtins: builtins ? Object.keys(builtins) : [],
       engines: {
         ...Bare.versions
-      },
-      extensions: [
-        '.js',
-        '.cjs',
-        '.mjs',
-        '.json',
-        '.bare',
-        '.node'
-      ]
+      }
     }, readPackage)) {
       switch (resolution.protocol) {
         case 'builtin:': return resolution
@@ -517,7 +513,28 @@ const Module = module.exports = exports = class Module {
   }
 }
 
-function extensionForType (type) {
+function extensionsForType (type) {
+  switch (type) {
+    case constants.types.SCRIPT:
+      return ['.js', '.cjs']
+    case constants.types.MODULE:
+      return ['.js', '.mjs']
+    case constants.types.JSON:
+      return ['.json']
+    case constants.types.BUNDLE:
+      return ['.json']
+    case constants.types.ADDON:
+      return ['.bare', '.node']
+    case constants.types.BINARY:
+      return ['.bin']
+    case constants.types.TEXT:
+      return ['.txt']
+    default:
+      return ['.js', '.cjs', '.mjs', '.json', '.bare', '.node']
+  }
+}
+
+function canonicalExtensionForType (type) {
   switch (type) {
     case constants.types.SCRIPT:
       return '.cjs'
@@ -619,9 +636,11 @@ const createRequire = exports.createRequire = function createRequire (parentURL,
   return require
 
   function require (specifier, opts = {}) {
-    const resolved = self.resolve(specifier, referrer._url, { referrer })
+    const attributes = opts && opts.with
 
-    const module = self.load(resolved, { referrer, attributes: opts.with })
+    const resolved = self.resolve(specifier, referrer._url, { referrer, attributes })
+
+    const module = self.load(resolved, { referrer, attributes })
 
     return module._exports
   }

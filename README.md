@@ -212,11 +212,14 @@ Options include:
 {
   isImport = false,
   referrer = null,
+  type,
+  extensions,
   protocol,
   imports,
   resolutions,
   builtins,
-  conditions
+  conditions,
+  attributes
 }
 ```
 
