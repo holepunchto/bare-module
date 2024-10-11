@@ -1416,7 +1416,7 @@ test('import.meta', (t) => {
   t.comment(meta.addon.host)
 })
 
-test('import assertions', (t) => {
+test('import attributes', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
@@ -1440,7 +1440,7 @@ test('import assertions', (t) => {
   t.alike(Module.load(new URL(root + '/foo.mjs'), { protocol }).exports.default, { hello: 'world' })
 })
 
-test('dynamic import assertions', async (t) => {
+test('dynamic import attributes', async (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
@@ -1464,7 +1464,7 @@ test('dynamic import assertions', async (t) => {
   t.comment(await Module.load(new URL(root + '/foo.mjs'), { protocol }).exports.default)
 })
 
-test('require assertions', (t) => {
+test('require attributes', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({

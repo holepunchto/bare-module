@@ -241,7 +241,7 @@ const Module = module.exports = exports = class Module {
 
   static _handle = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
 
-  static _onimport (href, assertions, referrerHref, isDynamicImport) {
+  static _onimport (href, attributes, referrerHref, isDynamicImport) {
     const referrer = this._cache[referrerHref] || null
 
     if (referrer === null) {
@@ -254,7 +254,7 @@ const Module = module.exports = exports = class Module {
 
     const url = this.resolve(href, referrer._url, { isImport: true, referrer })
 
-    const module = this.load(url, { isImport: true, isDynamicImport, referrer, assertions })
+    const module = this.load(url, { isImport: true, isDynamicImport, referrer, attributes })
 
     return module._handle
   }
@@ -360,8 +360,8 @@ const Module = module.exports = exports = class Module {
       isDynamicImport = false,
 
       referrer = null,
-      assertions,
-      type = typeForAssertions(assertions),
+      attributes,
+      type = typeForAttributes(attributes),
       defaultType = referrer ? referrer._defaultType : 0,
       cache = referrer ? referrer._cache : self._cache,
       main = referrer ? referrer._main : null,
@@ -534,10 +534,10 @@ function extensionForType (type) {
   }
 }
 
-function typeForAssertions (assertions) {
-  if (typeof assertions !== 'object' || assertions === null) return 0
+function typeForAttributes (attributes) {
+  if (typeof attributes !== 'object' || attributes === null) return 0
 
-  switch (assertions.type) {
+  switch (attributes.type) {
     case 'script':
       return constants.types.SCRIPT
     case 'module':
@@ -613,7 +613,7 @@ const createRequire = exports.createRequire = function createRequire (parentURL,
   function require (specifier, opts = {}) {
     const resolved = self.resolve(specifier, referrer._url, { referrer })
 
-    const module = self.load(resolved, { referrer, assertions: opts.with })
+    const module = self.load(resolved, { referrer, attributes: opts.with })
 
     return module._exports
   }
