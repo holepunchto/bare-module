@@ -112,6 +112,10 @@ const Module = module.exports = exports = class Module {
     Module._modules.delete(this)
   }
 
+  _run () {
+    binding.runModule(this._handle, Module._handle, Module._onrun)
+  }
+
   _transform (isImport, isDynamicImport) {
     if (isDynamicImport) {
       this._synthesize()
@@ -183,10 +187,6 @@ const Module = module.exports = exports = class Module {
     this._handle = binding.createSyntheticModule(this._url.href, this._names, Module._handle)
   }
 
-  _run () {
-    binding.runModule(this._handle, Module._handle, Module._onrun)
-  }
-
   _evaluate (eagerRun = false) {
     if ((this._state & constants.states.EVALUATED) !== 0) return
 
@@ -208,15 +208,11 @@ const Module = module.exports = exports = class Module {
       )
 
       if (eagerRun) this._run()
-    }
-
-    if (this._type === constants.types.MODULE) {
+    } else if (this._type === constants.types.MODULE) {
       this._run()
 
       this._exports = binding.getNamespace(this._handle)
-    }
-
-    if (this._type === constants.types.ADDON) {
+    } else {
       if (eagerRun) this._run()
     }
   }
@@ -256,28 +252,9 @@ const Module = module.exports = exports = class Module {
       throw errors.MODULE_NOT_FOUND(msg)
     }
 
-    const url = this.resolve(href, referrer._url, {
-      isImport: true,
-      referrer
-    })
+    const url = this.resolve(href, referrer._url, { isImport: true, referrer })
 
-    let type
-
-    switch (assertions.type) {
-      case 'module':
-        type = constants.types.MODULE
-        break
-      case 'json':
-        type = constants.types.JSON
-        break
-    }
-
-    const module = this.load(url, {
-      isImport: true,
-      isDynamicImport,
-      referrer,
-      type
-    })
+    const module = this.load(url, { isImport: true, isDynamicImport, referrer, assertions })
 
     return module._handle
   }
@@ -383,7 +360,8 @@ const Module = module.exports = exports = class Module {
       isDynamicImport = false,
 
       referrer = null,
-      type = 0,
+      assertions,
+      type = typeForAssertions(assertions),
       defaultType = referrer ? referrer._defaultType : 0,
       cache = referrer ? referrer._cache : self._cache,
       main = referrer ? referrer._main : null,
@@ -414,10 +392,10 @@ const Module = module.exports = exports = class Module {
           module._builtins = builtins
           module._conditions = conditions
 
-          let extension = self._extensionFor(type) || path.extname(url.pathname)
+          let extension = extensionForType(type) || path.extname(url.pathname)
 
           if (extension in self._extensions === false) {
-            if (defaultType) extension = self._extensionFor(defaultType) || '.js'
+            if (defaultType) extension = extensionForType(defaultType) || '.js'
             else extension = '.js'
           }
 
@@ -537,22 +515,41 @@ const Module = module.exports = exports = class Module {
       return null
     }
   }
+}
 
-  static _extensionFor (type) {
-    switch (type) {
-      case constants.types.SCRIPT:
-        return '.cjs'
-      case constants.types.MODULE:
-        return '.esm'
-      case constants.types.JSON:
-        return '.json'
-      case constants.types.BUNDLE:
-        return '.bundle'
-      case constants.types.ADDON:
-        return '.bare'
-      default:
-        return null
-    }
+function extensionForType (type) {
+  switch (type) {
+    case constants.types.SCRIPT:
+      return '.cjs'
+    case constants.types.MODULE:
+      return '.esm'
+    case constants.types.JSON:
+      return '.json'
+    case constants.types.BUNDLE:
+      return '.bundle'
+    case constants.types.ADDON:
+      return '.bare'
+    default:
+      return null
+  }
+}
+
+function typeForAssertions (assertions) {
+  if (typeof assertions !== 'object' || assertions === null) return 0
+
+  switch (assertions.type) {
+    case 'script':
+      return constants.types.SCRIPT
+    case 'module':
+      return constants.types.MODULE
+    case 'json':
+      return constants.types.JSON
+    case 'bundle':
+      return constants.types.BUNDLE
+    case 'addon':
+      return constants.types.ADDON
+    default:
+      return 0
   }
 }
 
@@ -613,10 +610,10 @@ const createRequire = exports.createRequire = function createRequire (parentURL,
 
   return require
 
-  function require (specifier) {
+  function require (specifier, opts = {}) {
     const resolved = self.resolve(specifier, referrer._url, { referrer })
 
-    const module = self.load(resolved, { referrer })
+    const module = self.load(resolved, { referrer, assertions: opts.with })
 
     return module._exports
   }

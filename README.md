@@ -235,7 +235,8 @@ Options include:
   imports,
   resolutions,
   builtins,
-  conditions
+  conditions,
+  assertions
 }
 ```
 
