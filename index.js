@@ -1,7 +1,7 @@
 /* global Bare */
 const path = require('bare-path')
 const resolve = require('bare-module-resolve')
-const { fileURLToPath, pathToFileURL } = require('bare-url')
+const { isURL, fileURLToPath, pathToFileURL } = require('bare-url')
 const Bundle = require('bare-bundle')
 const { parse } = require('cjs-module-lexer')
 const Protocol = require('./lib/protocol')
@@ -330,8 +330,8 @@ const Module = module.exports = exports = class Module {
     meta.addon = addon
     meta.asset = asset
 
-    function resolve (specifier) {
-      const resolved = self.resolve(specifier, referrer._url, { referrer })
+    function resolve (specifier, parentURL = referrer._url) {
+      const resolved = self.resolve(specifier, toURL(parentURL), { referrer })
 
       switch (resolved.protocol) {
         case 'builtin:': return resolved.pathname
@@ -339,16 +339,16 @@ const Module = module.exports = exports = class Module {
       }
     }
 
-    function addon (specifier = '.') {
-      const resolved = Bare.Addon.resolve(specifier, referrer._url, { referrer })
+    function addon (specifier = '.', parentURL = referrer._url) {
+      const resolved = Bare.Addon.resolve(specifier, toURL(parentURL), { referrer })
 
       const addon = Bare.Addon.load(resolved, { referrer })
 
       return addon._exports
     }
 
-    function asset (specifier) {
-      return self.asset(specifier, referrer._url, { referrer }).href
+    function asset (specifier, parentURL = referrer._url) {
+      return self.asset(specifier, toURL(parentURL), { referrer }).href
     }
   }
 
@@ -485,7 +485,7 @@ const Module = module.exports = exports = class Module {
 
     let msg = `Cannot find module '${specifier}'`
 
-    if (referrer) msg += ` imported from '${referrer._url.href}'`
+    if (referrer) msg += ` imported from '${parentURL.href}'`
 
     throw errors.MODULE_NOT_FOUND(msg)
 
@@ -525,7 +525,7 @@ const Module = module.exports = exports = class Module {
 
     let msg = `Cannot find asset '${specifier}'`
 
-    if (referrer) msg += ` imported from '${referrer._url.href}'`
+    if (referrer) msg += ` imported from '${parentURL.href}'`
 
     throw errors.ASSET_NOT_FOUND(msg)
 
@@ -629,8 +629,8 @@ const createRequire = exports.createRequire = function createRequire (parentURL,
     return module._exports
   }
 
-  function resolve (specifier) {
-    const resolved = self.resolve(specifier, referrer._url, { referrer })
+  function resolve (specifier, parentURL = referrer._url) {
+    const resolved = self.resolve(specifier, toURL(parentURL), { referrer })
 
     switch (resolved.protocol) {
       case 'builtin:': return resolved.pathname
@@ -638,16 +638,16 @@ const createRequire = exports.createRequire = function createRequire (parentURL,
     }
   }
 
-  function addon (specifier = '.') {
-    const resolved = Bare.Addon.resolve(specifier, referrer._url, { referrer })
+  function addon (specifier = '.', parentURL = referrer._url) {
+    const resolved = Bare.Addon.resolve(specifier, toURL(parentURL), { referrer })
 
     const addon = Bare.Addon.load(resolved, { referrer })
 
     return addon._exports
   }
 
-  function asset (specifier) {
-    return urlToPath(self.asset(specifier, referrer._url, { referrer }))
+  function asset (specifier, parentURL = referrer._url) {
+    return urlToPath(self.asset(specifier, toURL(parentURL), { referrer }))
   }
 }
 
@@ -826,6 +826,16 @@ Bare
 
     binding.destroy(Module._handle)
   })
+
+function toURL (value) {
+  if (isURL(value)) return value
+
+  if (startsWithWindowsDriveLetter(value)) {
+    return pathToFileURL(value)
+  }
+
+  return URL.parse(value) || pathToFileURL(value)
+}
 
 function urlToPath (url) {
   if (url.protocol === 'file:') return fileURLToPath(url)
