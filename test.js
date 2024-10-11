@@ -1416,7 +1416,7 @@ test('import.meta', (t) => {
   t.comment(meta.addon.host)
 })
 
-test('import assertions', (t) => {
+test('import attributes', (t) => {
   t.teardown(onteardown)
 
   const protocol = new Module.Protocol({
@@ -1438,6 +1438,54 @@ test('import assertions', (t) => {
   })
 
   t.alike(Module.load(new URL(root + '/foo.mjs'), { protocol }).exports.default, { hello: 'world' })
+})
+
+test('dynamic import attributes', async (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar'
+    },
+
+    read (url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'export default import(\'/bar\', { with: { type: \'json\' } })'
+      }
+
+      if (url.href === root + '/bar') {
+        return '{ "hello": "world" }'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.comment(await Module.load(new URL(root + '/foo.mjs'), { protocol }).exports.default)
+})
+
+test('require attributes', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar'
+    },
+
+    read (url) {
+      if (url.href === root + '/foo.js') {
+        return 'module.exports = require(\'/bar\', { with: { type: \'json\' } })'
+      }
+
+      if (url.href === root + '/bar') {
+        return '{ "hello": "world" }'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.alike(Module.load(new URL(root + '/foo.js'), { protocol }).exports, { hello: 'world' })
 })
 
 test('createRequire', (t) => {
