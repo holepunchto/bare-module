@@ -2903,6 +2903,102 @@ test('load .bundle with asset import, resolutions map pointing outside .bundle',
   t.is(Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), { protocol }).exports, isWindows ? 'c:\\bar.txt' : '/bar.txt')
 })
 
+test('load .js with .bin require', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/foo.bin'
+    },
+
+    read (url) {
+      if (url.href === root + '/index.js') {
+        return 'module.exports = require(\'./foo.bin\')'
+      }
+
+      if (url.href === root + '/foo.bin') {
+        return Buffer.from('hello world')
+      }
+
+      t.fail()
+    }
+  })
+
+  t.alike(Module.load(new URL(root + '/index.js'), { protocol }).exports, Buffer.from('hello world'))
+})
+
+test('load .js with .txt require', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/foo.txt'
+    },
+
+    read (url) {
+      if (url.href === root + '/index.js') {
+        return 'module.exports = require(\'./foo.txt\')'
+      }
+
+      if (url.href === root + '/foo.txt') {
+        return 'hello world'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load(new URL(root + '/index.js'), { protocol }).exports, 'hello world')
+})
+
+test('load .js with .bin require, asserted type', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/asset'
+    },
+
+    read (url) {
+      if (url.href === root + '/index.js') {
+        return 'module.exports = require(\'./asset\', { with: { type: \'binary\' } })'
+      }
+
+      if (url.href === root + '/asset') {
+        return Buffer.from('hello world')
+      }
+
+      t.fail()
+    }
+  })
+
+  t.alike(Module.load(new URL(root + '/index.js'), { protocol }).exports, Buffer.from('hello world'))
+})
+
+test('load .js with .txt require, asserted type', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/asset'
+    },
+
+    read (url) {
+      if (url.href === root + '/index.js') {
+        return 'module.exports = require(\'./asset\', { with: { type: \'text\' } })'
+      }
+
+      if (url.href === root + '/asset') {
+        return 'hello world'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load(new URL(root + '/index.js'), { protocol }).exports, 'hello world')
+})
+
 function onteardown () {
   // TODO Provide a public API for clearing the cache.
   Module._cache = Object.create(null)
