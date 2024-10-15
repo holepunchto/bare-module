@@ -308,7 +308,7 @@ const Module = module.exports = exports = class Module {
     meta.asset = asset
 
     function resolve (specifier, parentURL = referrer._url) {
-      const resolved = self.resolve(specifier, toURL(parentURL), { referrer })
+      const resolved = self.resolve(specifier, toURL(parentURL, referrer._url), { referrer })
 
       switch (resolved.protocol) {
         case 'builtin:': return resolved.pathname
@@ -317,7 +317,7 @@ const Module = module.exports = exports = class Module {
     }
 
     function addon (specifier = '.', parentURL = referrer._url) {
-      const resolved = Bare.Addon.resolve(specifier, toURL(parentURL), { referrer })
+      const resolved = Bare.Addon.resolve(specifier, toURL(parentURL, referrer._url), { referrer })
 
       const addon = Bare.Addon.load(resolved, { referrer })
 
@@ -325,7 +325,7 @@ const Module = module.exports = exports = class Module {
     }
 
     function asset (specifier, parentURL = referrer._url) {
-      return self.asset(specifier, toURL(parentURL), { referrer }).href
+      return self.asset(specifier, toURL(parentURL, referrer._url), { referrer }).href
     }
   }
 
@@ -646,7 +646,7 @@ const createRequire = exports.createRequire = function createRequire (parentURL,
   }
 
   function resolve (specifier, parentURL = referrer._url) {
-    const resolved = self.resolve(specifier, toURL(parentURL), { referrer })
+    const resolved = self.resolve(specifier, toURL(parentURL, referrer._url), { referrer })
 
     switch (resolved.protocol) {
       case 'builtin:': return resolved.pathname
@@ -655,7 +655,7 @@ const createRequire = exports.createRequire = function createRequire (parentURL,
   }
 
   function addon (specifier = '.', parentURL = referrer._url) {
-    const resolved = Bare.Addon.resolve(specifier, toURL(parentURL), { referrer })
+    const resolved = Bare.Addon.resolve(specifier, toURL(parentURL, referrer._url), { referrer })
 
     const addon = Bare.Addon.load(resolved, { referrer })
 
@@ -663,7 +663,7 @@ const createRequire = exports.createRequire = function createRequire (parentURL,
   }
 
   function asset (specifier, parentURL = referrer._url) {
-    return urlToPath(self.asset(specifier, toURL(parentURL), { referrer }))
+    return urlToPath(self.asset(specifier, toURL(parentURL, referrer._url), { referrer }))
   }
 }
 
@@ -867,14 +867,14 @@ Bare
     binding.destroy(Module._handle)
   })
 
-function toURL (value) {
+function toURL (value, base) {
   if (isURL(value)) return value
 
   if (startsWithWindowsDriveLetter(value)) {
     return pathToFileURL(value)
   }
 
-  return URL.parse(value) || pathToFileURL(value)
+  return URL.parse(value, base) || pathToFileURL(value)
 }
 
 function urlToPath (url) {
