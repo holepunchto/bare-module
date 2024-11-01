@@ -1,9 +1,9 @@
 /* global Bare */
 const path = require('bare-path')
 const resolve = require('bare-module-resolve')
+const lex = require('bare-module-lexer')
 const { isURL, fileURLToPath, pathToFileURL } = require('bare-url')
 const Bundle = require('bare-bundle')
-const { parse } = require('cjs-module-lexer')
 const Protocol = require('./lib/protocol')
 const constants = require('./lib/constants')
 const errors = require('./lib/errors')
@@ -149,21 +149,23 @@ const Module = module.exports = exports = class Module {
 
       switch (module._type) {
         case constants.types.SCRIPT: {
-          const result = parse(module._function.toString())
+          const result = lex(module._function.toString())
 
-          for (const name of result.exports) names.add(name)
+          for (const { name } of result.exports) names.add(name)
 
           const referrer = module
 
-          for (const specifier of result.reexports) {
-            const resolved = Module.resolve(specifier, referrer._url, { isImport: true, referrer })
+          for (const { specifier, type } of result.imports) {
+            if (type & lex.constants.REEXPORT) {
+              const resolved = Module.resolve(specifier, referrer._url, { isImport: true, referrer })
 
-            const module = Module.load(resolved, { isImport: true, referrer })
+              const module = Module.load(resolved, { isImport: true, referrer })
 
-            if (module._names) {
-              for (const name of module._names) names.add(name)
-            } else {
-              queue.push(module)
+              if (module._names) {
+                for (const name of module._names) names.add(name)
+              } else {
+                queue.push(module)
+              }
             }
           }
 
