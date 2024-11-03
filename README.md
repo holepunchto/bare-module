@@ -320,6 +320,7 @@ Methods include:
   exists,
   read,
   load,
+  addon,
   asset
 }
 ```

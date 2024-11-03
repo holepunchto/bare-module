@@ -436,7 +436,7 @@ const Module = module.exports = exports = class Module {
 
     const resolved = protocol.preresolve(specifier, parentURL)
 
-    const [resolution] = protocol.resolve(specifier, parentURL, imports)
+    const [resolution] = protocol.resolve(resolved, parentURL, imports)
 
     if (resolution) return protocol.postresolve(resolution)
 
@@ -489,14 +489,20 @@ const Module = module.exports = exports = class Module {
       conditions = referrer ? referrer._conditions : self._conditions
     } = opts
 
-    const [resolution = null] = resolve(specifier, parentURL, {
+    const resolved = protocol.preresolve(specifier, parentURL)
+
+    const [resolution] = protocol.resolve(resolved, parentURL, imports)
+
+    if (resolution) return protocol.postresolve(resolution)
+
+    for (const resolution of resolve(resolved, parentURL, {
       conditions: ['asset', ...conditions],
       imports,
       resolutions
-    }, readPackage)
-
-    if (resolution !== null && protocol.exists(resolution)) {
-      return protocol.asset(resolution)
+    }, readPackage)) {
+      if (protocol.exists(resolution)) {
+        return protocol.postresolve(protocol.asset ? protocol.asset(resolution) : resolution)
+      }
     }
 
     let msg = `Cannot find asset '${specifier}'`
