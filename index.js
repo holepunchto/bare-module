@@ -374,9 +374,17 @@ const Module = module.exports = exports = class Module {
       conditions = referrer ? referrer._conditions : self._conditions
     } = opts
 
-    if (cache[url.href]) return cache[url.href]._transform(isImport, isDynamicImport)
+    let module = cache[url.href] || null
 
-    const module = cache[url.href] = new Module(url)
+    if (module !== null) {
+      if (type !== 0 && type !== module._type) {
+        throw errors.TYPE_INCOMPATIBLE(`Module '${module.url.href}' is not of type '${nameOfType(type)}'`)
+      }
+
+      return module._transform(isImport, isDynamicImport)
+    }
+
+    module = cache[url.href] = new Module(url)
 
     try {
       switch (url.protocol) {
@@ -558,6 +566,27 @@ function canonicalExtensionForType (type) {
       return '.bin'
     case constants.types.TEXT:
       return '.txt'
+    default:
+      return null
+  }
+}
+
+function nameOfType (type) {
+  switch (type) {
+    case constants.types.SCRIPT:
+      return 'script'
+    case constants.types.MODULE:
+      return 'module'
+    case constants.types.JSON:
+      return 'json'
+    case constants.types.BUNDLE:
+      return 'bundle'
+    case constants.types.ADDON:
+      return 'bare'
+    case constants.types.BINARY:
+      return 'binary'
+    case constants.types.TEXT:
+      return 'text'
     default:
       return null
   }

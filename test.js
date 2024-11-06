@@ -2999,6 +2999,35 @@ test('load .js with .txt require, asserted type', (t) => {
   t.is(Module.load(new URL(root + '/index.js'), { protocol }).exports, 'hello world')
 })
 
+test('load .js with .txt require, asserted type mismatch', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/asset'
+    },
+
+    read (url) {
+      if (url.href === root + '/index.js') {
+        return 'module.exports = [require(\'./asset\', { with: { type: \'text\' } }), require(\'./asset\', { with: { type: \'binary\' } })]'
+      }
+
+      if (url.href === root + '/asset') {
+        return 'hello world'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/index.js'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
 function onteardown () {
   // TODO Provide a public API for clearing the cache.
   Module._cache = Object.create(null)
