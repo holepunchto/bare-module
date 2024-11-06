@@ -199,6 +199,8 @@ Constant | Description
 `JSON` |
 `BUNDLE` |
 `ADDON` |
+`BINARY` |
+`TEXT` |
 
 #### `Module.protocol`
 
