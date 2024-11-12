@@ -4,6 +4,7 @@ const resolve = require('bare-module-resolve')
 const lex = require('bare-module-lexer')
 const { isURL, fileURLToPath, pathToFileURL } = require('bare-url')
 const Bundle = require('bare-bundle')
+const sameObject = require('same-object')
 const Protocol = require('./lib/protocol')
 const constants = require('./lib/constants')
 const errors = require('./lib/errors')
@@ -217,6 +218,9 @@ const Module = module.exports = exports = class Module {
     } else if (eagerRun) {
       this._run()
     }
+
+    // Some legacy codebases may overwrite our internal export getter/setter
+    if (!sameObject(this._exports, this.exports)) this._exports = this.exports
   }
 
   [Symbol.for('bare.inspect')] () {

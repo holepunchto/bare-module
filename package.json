@@ -30,7 +30,8 @@
     "bare-module-lexer": "^1.0.0",
     "bare-module-resolve": "^1.8.0",
     "bare-path": "^3.0.0",
-    "bare-url": "^2.0.1"
+    "bare-url": "^2.0.1",
+    "same-object": "^1.0.2"
   },
   "devDependencies": {
     "brittle": "^3.1.1",

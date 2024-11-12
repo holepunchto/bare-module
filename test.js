@@ -1532,6 +1532,28 @@ test('createRequire with default type', (t) => {
   t.is(require('./bar').default, 42)
 })
 
+test('corrupt `exports` property using Object.defineProperty', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/dir/bar.js'
+    },
+
+    read (url) {
+      if (url.href === root + '/dir/bar.js') {
+        return 'Object.defineProperty(module, \'exports\', { get: () => 42 })'
+      }
+
+      t.fail()
+    }
+  })
+
+  const require = Module.createRequire(root + '/dir/foo.js', { protocol })
+
+  t.is(require('./bar'), 42)
+})
+
 test('main in package.json', (t) => {
   t.teardown(onteardown)
 
