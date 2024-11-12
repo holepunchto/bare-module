@@ -3032,3 +3032,32 @@ function onteardown () {
   // TODO Provide a public API for clearing the cache.
   Module._cache = Object.create(null)
 }
+
+test('extend module with exports property', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists (url) {
+      return url.href === root + '/bar.js'
+    },
+
+    read (url) {
+      if (url.href === root + '/foo.js') {
+        return 'module.exports = require(\'./bar.js\')'
+      }
+
+      if (url.href === root + '/bar.js') {
+        return 'Object.defineProperty(module, \'exports\', { get: () => 42 })'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/foo.js'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})

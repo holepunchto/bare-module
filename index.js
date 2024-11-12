@@ -32,6 +32,8 @@ const Module = module.exports = exports = class Module {
     this._names = null
     this._handle = null
 
+    Object.preventExtensions(this)
+
     Module._modules.add(this)
   }
 
