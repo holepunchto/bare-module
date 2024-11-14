@@ -249,11 +249,7 @@ const Module = module.exports = exports = class Module {
     const referrer = this._cache[referrerHref] || null
 
     if (referrer === null) {
-      let msg = `Cannot find referrer for module '${href}'`
-
-      if (referrerHref) msg += ` imported from '${referrerHref}'`
-
-      throw errors.MODULE_NOT_FOUND(msg)
+      throw errors.MODULE_NOT_FOUND(`Cannot find referrer for module '${href}' imported from '${referrerHref}'`)
     }
 
     const url = this.resolve(href, referrer._url, { isImport: true, referrer, attributes })
@@ -469,11 +465,7 @@ const Module = module.exports = exports = class Module {
       }
     }
 
-    let msg = `Cannot find module '${specifier}'`
-
-    if (referrer) msg += ` imported from '${parentURL.href}'`
-
-    throw errors.MODULE_NOT_FOUND(msg)
+    throw errors.MODULE_NOT_FOUND(`Cannot find module '${specifier}' imported from '${parentURL.href}'`)
 
     function readPackage (packageURL) {
       if (protocol.exists(packageURL)) {
@@ -515,11 +507,7 @@ const Module = module.exports = exports = class Module {
       }
     }
 
-    let msg = `Cannot find asset '${specifier}'`
-
-    if (referrer) msg += ` imported from '${parentURL.href}'`
-
-    throw errors.ASSET_NOT_FOUND(msg)
+    throw errors.ASSET_NOT_FOUND(`Cannot find asset '${specifier}' imported from '${parentURL.href}'`)
 
     function readPackage (packageURL) {
       if (protocol.exists(packageURL)) {
