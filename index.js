@@ -245,16 +245,16 @@ const Module = module.exports = exports = class Module {
 
   static _handle = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
 
-  static _onimport (href, attributes, referrerHref, isDynamicImport) {
+  static _onimport (specifier, attributes, referrerHref, isDynamicImport) {
     const referrer = this._cache[referrerHref] || null
 
     if (referrer === null) {
-      throw errors.MODULE_NOT_FOUND(`Cannot find referrer for module '${href}' imported from '${referrerHref}'`)
+      throw errors.MODULE_NOT_FOUND(`Cannot find referrer for module '${specifier}' imported from '${referrerHref}'`)
     }
 
-    const url = this.resolve(href, referrer._url, { isImport: true, referrer, attributes })
+    const resolved = this.resolve(specifier, referrer._url, { isImport: true, referrer, attributes })
 
-    const module = this.load(url, { isImport: true, isDynamicImport, referrer, attributes })
+    const module = this.load(resolved, { isImport: true, isDynamicImport, referrer, attributes })
 
     return module._handle
   }
@@ -298,25 +298,15 @@ const Module = module.exports = exports = class Module {
 
     const referrer = module
 
-    addon.host = Bare.Addon.host
-
     meta.url = module._url.href
     meta.main = module._main === module
     meta.cache = module._cache
-    meta.resolve = resolve
-    meta.addon = addon
-    meta.asset = asset
 
-    function resolve (specifier, parentURL = referrer._url) {
-      const resolved = self.resolve(specifier, toURL(parentURL, referrer._url), { referrer })
-
-      switch (resolved.protocol) {
-        case 'builtin:': return resolved.pathname
-        default: return resolved.href
-      }
+    meta.resolve = function resolve (specifier, parentURL = referrer._url) {
+      return self.resolve(specifier, toURL(parentURL, referrer._url), { referrer }).href
     }
 
-    function addon (specifier = '.', parentURL = referrer._url) {
+    meta.addon = function addon (specifier = '.', parentURL = referrer._url) {
       const resolved = Bare.Addon.resolve(specifier, toURL(parentURL, referrer._url), { referrer })
 
       const addon = Bare.Addon.load(resolved, { referrer })
@@ -324,7 +314,13 @@ const Module = module.exports = exports = class Module {
       return addon._exports
     }
 
-    function asset (specifier, parentURL = referrer._url) {
+    meta.addon.resolve = function resolve (specifier = '.', parentURL = referrer._url) {
+      return Bare.Addon.resolve(specifier, toURL(parentURL, referrer._url), { referrer }).href
+    }
+
+    meta.addon.host = Bare.Addon.host
+
+    meta.asset = function asset (specifier, parentURL = referrer._url) {
       return self.asset(specifier, toURL(parentURL, referrer._url), { referrer }).href
     }
   }
@@ -652,16 +648,6 @@ const createRequire = exports.createRequire = function createRequire (parentURL,
 
   referrer = module
 
-  addon.host = Bare.Addon.host
-
-  require.main = module._main
-  require.cache = module._cache
-  require.resolve = resolve
-  require.addon = addon
-  require.asset = asset
-
-  return require
-
   function require (specifier, opts = {}) {
     const attributes = opts && opts.with
 
@@ -672,16 +658,14 @@ const createRequire = exports.createRequire = function createRequire (parentURL,
     return module._exports
   }
 
-  function resolve (specifier, parentURL = referrer._url) {
-    const resolved = self.resolve(specifier, toURL(parentURL, referrer._url), { referrer })
+  require.main = module._main
+  require.cache = module._cache
 
-    switch (resolved.protocol) {
-      case 'builtin:': return resolved.pathname
-      default: return urlToPath(resolved)
-    }
+  require.resolve = function resolve (specifier, parentURL = referrer._url) {
+    return urlToPath(self.resolve(specifier, toURL(parentURL, referrer._url), { referrer }))
   }
 
-  function addon (specifier = '.', parentURL = referrer._url) {
+  require.addon = function addon (specifier = '.', parentURL = referrer._url) {
     const resolved = Bare.Addon.resolve(specifier, toURL(parentURL, referrer._url), { referrer })
 
     const addon = Bare.Addon.load(resolved, { referrer })
@@ -689,9 +673,17 @@ const createRequire = exports.createRequire = function createRequire (parentURL,
     return addon._exports
   }
 
-  function asset (specifier, parentURL = referrer._url) {
+  require.addon.host = Bare.Addon.host
+
+  require.addon.resolve = function resolve (specifier = '.', parentURL = referrer._url) {
+    return urlToPath(Bare.Addon.resolve(specifier, toURL(parentURL, referrer._url), { referrer }))
+  }
+
+  require.asset = function asset (specifier, parentURL = referrer._url) {
     return urlToPath(self.asset(specifier, toURL(parentURL, referrer._url), { referrer }))
   }
+
+  return require
 }
 
 if (Bare.simulator) Module._conditions.push('simulator')
