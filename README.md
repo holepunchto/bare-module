@@ -295,7 +295,7 @@ Constant | Description
 
 #### `Module.protocol`
 
-The default ModuleProtocol class for resolving, reading and loading modules. See
+The default `ModuleProtocol` class for resolving, reading and loading modules. See
 [Protocols](#protocols) for usage.
 
 #### `Module.cache`
