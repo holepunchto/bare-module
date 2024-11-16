@@ -269,7 +269,10 @@ external packages, but it is not required unlike in Node.js.
 }
 ```
 
-The engine requirements of the package. During module resolution, the versions declared by `Bare.versions` will be tested against the requirements declared by the package and resolution fail if they're not satisfied.
+The `"engines"` field defines the engine requirements of the package. During
+module resolution, the versions declared by `Bare.versions` will be tested
+against the requirements declared by the package and resolution fail if they're
+not satisfied.
 
 ## API
 
