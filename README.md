@@ -131,7 +131,7 @@ Condition | Description
 `"<platform>"` | Matches when equal to `Bare.platform`. See [`Bare.platform`](https://github.com/holepunchto/bare#bareplatform) for possible values.
 `"<arch>"` | Matches when equal to `Bare.arch`. See [`Bare.arch`](https://github.com/holepunchto/bare#barearch) for possible values.
 `"simulator"` | Matches when Bare was compiled for a simulator, i.e. when `Bare.simulator` is `true`.
-`"default"` | The fallback that always matches.
+`"default"` | The fallback that always matches. This condition should always be last.
 
 Export conditions are evaluated in the order they are defined in the `"exports"`
 field. This means that less specific conditionals defined first will override
@@ -148,6 +148,9 @@ call `./fallback.js` because `"default"` always matches and is defined first.
   }
 }
 ```
+
+This is why the general rule is that conditions should be from most specific to
+least specific when defined.
 
 ##### Self-referencing
 
@@ -247,7 +250,10 @@ Condition | Description
 `"<platform>"` | Matches when equal to `Bare.platform`. See [`Bare.platform`](https://github.com/holepunchto/bare#bareplatform) for possible values.
 `"<arch>"` | Matches when equal to `Bare.arch`. See [`Bare.arch`](https://github.com/holepunchto/bare#barearch) for possible values.
 `"simulator"` | Matches when Bare was compiled for a simulator, ie when `Bare.simulator` is `true`.
-`"default"` | The fallback that always matches.
+`"default"` | The fallback that always matches. This condition should always be last.
+
+The general rule is that conditions should be from most specific to least
+specific when defined.
 
 ##### `#` Prefix
 
