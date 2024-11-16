@@ -126,7 +126,7 @@ Condition | Description
 `"import"` | Matches when the package is loaded via `import` or `import()`.
 `"require"` | Matches when the package is loaded via `require()`.
 `"asset"` | Matches when the package is loaded via `require.asset()`.
-`"bare"` | Matches for any Bare environment.
+`"bare"` | Matches for any [Bare](https://github.com/holepunchto/bare) environment.
 `"node"` | Matches for any Node.js environment.
 `"<platform>"` | Matches when equal to `Bare.platform`. See [`Bare.platform`](https://github.com/holepunchto/bare#bareplatform) for possible values.
 `"<arch>"` | Matches when equal to `Bare.arch`. See [`Bare.arch`](https://github.com/holepunchto/bare#barearch) for possible values.
