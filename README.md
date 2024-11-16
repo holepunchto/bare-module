@@ -180,12 +180,10 @@ If a package defines only a single export, `"."`, it may leave out the subpath e
 
 #### `"imports"`
 
-A private mapping for imports specifiers within the package itself. For example
-the import field can be used to gain the same benefits as conditional exports
-for internal modules.
-
-Unlike the `"exports"` field, the `"imports"` field permits mapping to external
-packages.
+A private mapping for import specifiers within the package itself. Similar to
+`"exports"`, the `"imports"` field can be used to conditional import other
+packages within the package. But unlike `"exports"`, `"imports"` permits mapping
+to external packages.
 
 The rules are otherwise analogous to the ["exports" field](#conditional-exports).
 
@@ -257,9 +255,9 @@ specific when defined.
 
 ##### `#` Prefix
 
-All import maps are private to the module and allow mapping to external
-packages. Entries in `"imports"` may start with `#` to disambiguate from external
-packages, but it is not required unlike in Node.js.
+All import maps are private to the package and allow mapping to external
+packages. Entries in `"imports"` may start with `#` to disambiguate from
+external packages, but it is not required unlike in Node.js.
 
 #### `"engines"`
 
