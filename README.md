@@ -201,8 +201,8 @@ Just like exports, subpaths can be used when importing a module internally.
 
 ##### Conditional imports
 
-Just like adding conditions to "exports", conditional imports allow importing
-different packages based on the configured conditions. As an example:
+Adding conditional imports allows importing different packages based on the
+configured conditions. As an example:
 
 ```json
 {
