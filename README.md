@@ -328,8 +328,8 @@ Options include:
   // A list of file extensions to look for. The default is based on the `type`
   // option.
   extensions = [],
-  // The ModuleProtocol to use resolve the specifier and/or the module. Defaults to
-  // referrer's protocol if defined, otherwise defaults to Module.protocol
+  // The ModuleProtocol to resolve the specifier. Defaults to referrer's
+  // protocol if defined, otherwise defaults to Module.protocol
   protocol,
   // A default "imports" map to apply to all specifiers. Follows the same
   // syntax and rules as the "imports" property defined in `package.json`.
@@ -337,9 +337,8 @@ Options include:
   // A map of preresolved imports with keys being serialized parent URLs and
   // values being "imports" maps.
   resolutions,
-  // A map of builtin module specifiers to loaded modules. If matched by
-  // the default resolver, the protocol of the resolved URL will be its
-  // `builtinProtocol` property which is `builtin:` by default.
+  // A map of builtin module specifiers to loaded modules. If matched by the
+  // default resolver, the protocol of the resolved URL will be `builtin:`.
   builtins,
   // The supported import conditions. "default" is always recognized.
   conditions = [],
