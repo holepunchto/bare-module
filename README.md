@@ -181,7 +181,7 @@ A private mapping for imports specifiers within the package itself. For example
 the import field can be used to gain the same benefits as conditional exports
 for internal modules.
 
-Unlike the "exports" field, the "imports" field permits mapping to external
+Unlike the `"exports"` field, the `"imports"` field permits mapping to external
 packages.
 
 The rules are otherwise analogous to the ["exports" field](#conditional-exports).
@@ -252,7 +252,7 @@ Condition | Description
 ##### `#` Prefix
 
 All import maps are private to the module and allow mapping to external
-packages. Entries in "imports" may start with `#` to disambiguate from external
+packages. Entries in `"imports"` may start with `#` to disambiguate from external
 packages, but it is not required unlike in Node.js.
 
 #### `"engines"`
@@ -456,7 +456,7 @@ The import map when the module was loaded.
 #### `module.resolutions`
 
 A map of preresolved imports with keys being serialized parent URLs and values
-being "imports" maps.
+being `"imports"` maps.
 
 #### `module.builtins`
 
