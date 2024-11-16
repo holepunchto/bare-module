@@ -372,11 +372,12 @@ Options include:
   // such as `.js`. See Module.constants.types. Inherited from `referrer` if it
   // is defined.
   defaultType = constants.types.SCRIPT,
+  // Cache to use to load the Module. Defaults to `Module.cache`.
   cache,
   // The module representing the entry script where the program was launched.
   main,
-  // The ModuleProtocol to use resolve the specifier and/or the module. Defaults to
-  // referrer's `protocol` if defined, otherwise defaults to `Module.protocol`.
+  // The ModuleProtocol to use resolve the specifier. Defaults to referrer's
+  // `protocol` if defined, otherwise defaults to `Module.protocol`.
   protocol,
   // A default "imports" map to apply to all specifiers. Follows the same
   // syntax and rules as the "imports" property defined in `package.json`.
@@ -386,7 +387,7 @@ Options include:
   resolutions,
   // A map of builtin module specifiers to loaded modules. If the `url`'s
   // protocol is `builtin:`, the module's exports will be set to the matching
-  // value in the map for the `url`.
+  // value in the map for `url.pathname`.
   builtins,
   // The supported import conditions. "default" is always recognized.
   conditions,
