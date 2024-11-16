@@ -311,8 +311,8 @@ The global cache of loaded modules.
 
 #### `const url = Module.resolve(specifier, parentURL[, options])`
 
-Resolve the module with a `specifier` relative to the `parentURL`. `parentURL`
-is a WHATWG `URL` instance.
+Resolve the module `specifier` relative to the `parentURL`. `specifier` is a
+string and `parentURL` is a WHATWG `URL`.
 
 Options include:
 
