@@ -14,7 +14,7 @@ const Module = require('bare-module')
 
 ## Packages
 
-A package is directory with a `package.json` file.
+A package is a directory with a `package.json` file.
 
 ### Fields
 
@@ -432,7 +432,7 @@ The pathname of the `module.url`.
 
 #### `module.dirname`
 
-The directory name of module.
+The directory name of the module.
 
 #### `module.type`
 
