@@ -369,7 +369,7 @@ Options include:
   // The assumed type of a module without a type using an ambiguous extension
   // such as `.js`. See Module.constants.types. Inherited from `referrer` if it
   // is defined.
-  defaultType = constants.types.SCRIPT,
+  defaultType = Module.constants.types.SCRIPT,
   // Cache to use to load the Module. Defaults to `Module.cache`.
   cache,
   // The module representing the entry script where the program was launched.
