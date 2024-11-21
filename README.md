@@ -401,14 +401,17 @@ Options include:
 
 #### `const url = Module.asset(specifier, parentURL[, options])`
 
+Get the asset URL by resolving `specifier` relative to `parentURL`. `specifier`
+is a string and `parentURL` is a WHATWG `URL`.
+
 Options include:
 
 ```js
 {
   // The referring Module
   referrer = null,
-  // The ModuleProtocol to use resolve the specifier and/or the module. Defaults to
-  // referrer's protocol if defined, otherwise defaults to Module.protocol
+  // The ModuleProtocol to use resolve the specifier. Defaults to referrer's
+  // protocol if defined, otherwise defaults to Module.protocol
   protocol,
   // A default "imports" map to apply to all specifiers. Follows the same
   // syntax and rules as the "imports" property defined in `package.json`.
