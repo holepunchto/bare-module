@@ -321,7 +321,7 @@ Options include:
   // The referring module
   referrer = null,
   // The type of the module. See Module.constants.types for possible values. The
-  // default is based on the `attributes`'s `type` property.
+  // default is the equivalent constant of the `attributes`'s `type` property.
   type,
   // A list of file extensions to look for. The default is based on the `type`
   // option.
@@ -363,8 +363,8 @@ Options include:
   isDynamicImport = false,
   // The referring module.
   referrer = null,
-  // The type of the module. See Module.constants.types for possible values.
-  // The default is based on the `attributes`'s `type` property.
+  // The type of the module. See Module.constants.types for possible values. The
+  // default is the equivalent constant of the `attributes`'s `type` property.
   type,
   // The assumed type of a module without a type using an ambiguous extension
   // such as `.js`. See Module.constants.types. Inherited from `referrer` if it
