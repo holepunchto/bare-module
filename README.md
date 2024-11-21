@@ -276,8 +276,6 @@ not satisfied.
 
 ## API
 
-#### `Module.constants`
-
 #### `Module.constants.states`
 
 The flags for the current state of a module.
