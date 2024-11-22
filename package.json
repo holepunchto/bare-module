@@ -13,7 +13,7 @@
   ],
   "addon": true,
   "scripts": {
-    "test": "standard && bare test.js"
+    "test": "prettier . --check && bare test.js"
   },
   "repository": {
     "type": "git",
@@ -35,6 +35,7 @@
   "devDependencies": {
     "brittle": "^3.1.1",
     "cmake-bare": "^1.1.6",
-    "standard": "^17.0.0"
+    "prettier": "^3.3.3",
+    "prettier-config-standard": "^7.0.0"
   }
 }

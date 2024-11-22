@@ -10,7 +10,7 @@ npm i bare-module
 
 ```js
 const Module = require('bare-module')
-````
+```
 
 ## Packages
 
@@ -121,16 +121,16 @@ To provide a fallback for when no other conditions match, the `"default"` condit
 
 The following conditions are supported, listed in order from most specific to least specific as conditions should be defined:
 
-Condition | Description
-:-- | :--
-`"bare"` |
-`"node"` |
-`"import"` |
-`"require"` |
-`"<platform>"` |
-`"<arch>"` |
-`"simulator"` |
-`"default"` |
+| Condition      | Description |
+| :------------- | :---------- |
+| `"bare"`       |
+| `"node"`       |
+| `"import"`     |
+| `"require"`    |
+| `"<platform>"` |
+| `"<arch>"`     |
+| `"simulator"`  |
+| `"default"`    |
 
 ##### Self-referencing
 
@@ -184,23 +184,23 @@ The engine requirements of the package. During module resolution, the versions d
 
 #### `Module.constants.states`
 
-Constant | Description
-:-- | :--
-`EVALUATED` |
-`SYNTHESIZED` |
-`DESTROYED` |
+| Constant      | Description |
+| :------------ | :---------- |
+| `EVALUATED`   |
+| `SYNTHESIZED` |
+| `DESTROYED`   |
 
 #### `Module.constants.types`
 
-Constant | Description
-:-- | :--
-`SCRIPT` |
-`MODULE` |
-`JSON` |
-`BUNDLE` |
-`ADDON` |
-`BINARY` |
-`TEXT` |
+| Constant | Description |
+| :------- | :---------- |
+| `SCRIPT` |
+| `MODULE` |
+| `JSON`   |
+| `BUNDLE` |
+| `ADDON`  |
+| `BINARY` |
+| `TEXT`   |
 
 #### `Module.protocol`
 
@@ -212,16 +212,16 @@ Options include:
 
 ```js
 {
-  isImport = false,
-  referrer = null,
-  type,
-  extensions,
-  protocol,
-  imports,
-  resolutions,
-  builtins,
-  conditions,
-  attributes
+  ;(isImport = false),
+    (referrer = null),
+    type,
+    extensions,
+    protocol,
+    imports,
+    resolutions,
+    builtins,
+    conditions,
+    attributes
 }
 ```
 
@@ -231,17 +231,17 @@ Options include:
 
 ```js
 {
-  referrer = null,
-  type,
-  defaultType = constants.types.SCRIPT,
-  cache,
-  main,
-  protocol,
-  imports,
-  resolutions,
-  builtins,
-  conditions,
-  attributes
+  ;(referrer = null),
+    type,
+    (defaultType = constants.types.SCRIPT),
+    cache,
+    main,
+    protocol,
+    imports,
+    resolutions,
+    builtins,
+    conditions,
+    attributes
 }
 ```
 
@@ -251,11 +251,7 @@ Options include:
 
 ```js
 {
-  referrer = null,
-  protocol,
-  imports,
-  resolutions,
-  conditions
+  ;(referrer = null), protocol, imports, resolutions, conditions
 }
 ```
 
@@ -295,16 +291,16 @@ Options include:
 
 ```js
 {
-  referrer = null,
-  type = constants.types.SCRIPT,
-  defaultType = constants.types.SCRIPT,
-  cache,
-  main,
-  protocol,
-  imports,
-  resolutions,
-  builtins,
-  conditions
+  ;(referrer = null),
+    (type = constants.types.SCRIPT),
+    (defaultType = constants.types.SCRIPT),
+    cache,
+    main,
+    protocol,
+    imports,
+    resolutions,
+    builtins,
+    conditions
 }
 ```
 
@@ -316,14 +312,7 @@ Methods include:
 
 ```js
 {
-  preresolve,
-  postresolve,
-  resolve,
-  exists,
-  read,
-  load,
-  addon,
-  asset
+  preresolve, postresolve, resolve, exists, read, load, addon, asset
 }
 ```
 
