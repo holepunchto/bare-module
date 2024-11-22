@@ -519,14 +519,15 @@ methods = {
   // A function to process the resolved URL. Can be used to convert file paths,
   // etc.
   postresolve,
-  // function* (specifier, parentURL, imports): [url]
-  // A generator to resolve the `specifier` to an array of a single URL.
+  // function* (specifier, parentURL, imports): [URL]
+  // A generator to resolve the `specifier` to a URL.
   resolve,
   // function (url): boolean
   // A function that returns whether the URL exists as a boolean.
   exists,
-  // function (url): string
-  // A function that returns the source code of a URL represented as a string.
+  // function (url): string | Buffer
+  // A function that returns the source code of a URL represented as a string or
+  // buffer.
   read,
   // function (url): object
   // A function that returns the evaluated exports for the url. This is
@@ -535,10 +536,10 @@ methods = {
   // evaluating the source method for the default implementations of the
   // Javascript extensions.
   load,
-  // function (url): url
+  // function (url): URL
   // A function used to post process URLs for addons before `postresolve()`.
   addon,
-  // function (url): url
+  // function (url): URL
   // A function used to post process URLs for assets before `postresolve()`.
   asset
 }
