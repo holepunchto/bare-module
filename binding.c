@@ -16,7 +16,7 @@ typedef struct {
 } bare_module_context_t;
 
 static js_module_t *
-bare_module__on_static_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions, js_module_t *referrer, void *data) {
+bare_module__on_static_import(js_env_t *env, js_value_t *specifier, js_value_t *assertions, js_module_t *referrer, void *data) {
   bare_module_context_t *context = (bare_module_context_t *) data;
 
   int err;
@@ -66,7 +66,7 @@ err:
 }
 
 static js_module_t *
-bare_module__on_dynamic_import (js_env_t *env, js_value_t *specifier, js_value_t *assertions, js_value_t *referrer, void *data) {
+bare_module__on_dynamic_import(js_env_t *env, js_value_t *specifier, js_value_t *assertions, js_value_t *referrer, void *data) {
   bare_module_context_t *context = (bare_module_context_t *) data;
 
   int err;
@@ -109,7 +109,7 @@ err:
 }
 
 static void
-bare_module__on_evaluate (js_env_t *env, js_module_t *module, void *data) {
+bare_module__on_evaluate(js_env_t *env, js_module_t *module, void *data) {
   bare_module_context_t *context = (bare_module_context_t *) data;
 
   int err;
@@ -150,7 +150,7 @@ err:
 }
 
 static void
-bare_module__on_meta (js_env_t *env, js_module_t *module, js_value_t *meta, void *data) {
+bare_module__on_meta(js_env_t *env, js_module_t *module, js_value_t *meta, void *data) {
   bare_module_context_t *context = (bare_module_context_t *) data;
 
   int err;
@@ -193,7 +193,7 @@ err:
 }
 
 static js_value_t *
-bare_module_init (js_env_t *env, js_callback_info_t *info) {
+bare_module_init(js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 4;
@@ -229,7 +229,7 @@ bare_module_init (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-bare_module_destroy (js_env_t *env, js_callback_info_t *info) {
+bare_module_destroy(js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 1;
@@ -260,7 +260,7 @@ bare_module_destroy (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-bare_module_create_function (js_env_t *env, js_callback_info_t *info) {
+bare_module_create_function(js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 4;
@@ -308,7 +308,7 @@ err:
 }
 
 static js_value_t *
-bare_module_create_module (js_env_t *env, js_callback_info_t *info) {
+bare_module_create_module(js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 4;
@@ -346,7 +346,7 @@ bare_module_create_module (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-bare_module_create_synthetic_module (js_env_t *env, js_callback_info_t *info) {
+bare_module_create_synthetic_module(js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 3;
@@ -396,7 +396,7 @@ err:
 }
 
 static js_value_t *
-bare_module_delete_module (js_env_t *env, js_callback_info_t *info) {
+bare_module_delete_module(js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 1;
@@ -418,7 +418,7 @@ bare_module_delete_module (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-bare_module_set_export (js_env_t *env, js_callback_info_t *info) {
+bare_module_set_export(js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 3;
@@ -439,7 +439,7 @@ bare_module_set_export (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-bare_module_run_module (js_env_t *env, js_callback_info_t *info) {
+bare_module_run_module(js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 3;
@@ -501,7 +501,7 @@ bare_module_run_module (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-bare_module_get_namespace (js_env_t *env, js_callback_info_t *info) {
+bare_module_get_namespace(js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 1;
@@ -522,7 +522,7 @@ bare_module_get_namespace (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-bare_module_exists (js_env_t *env, js_callback_info_t *info) {
+bare_module_exists(js_env_t *env, js_callback_info_t *info) {
   int err;
 
   uv_loop_t *loop;
@@ -556,7 +556,7 @@ bare_module_exists (js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-bare_module_realpath (js_env_t *env, js_callback_info_t *info) {
+bare_module_realpath(js_env_t *env, js_callback_info_t *info) {
   int err;
 
   uv_loop_t *loop;
@@ -601,7 +601,7 @@ err:
 }
 
 static js_value_t *
-bare_module_read (js_env_t *env, js_callback_info_t *info) {
+bare_module_read(js_env_t *env, js_callback_info_t *info) {
   int err;
 
   uv_loop_t *loop;
@@ -679,7 +679,7 @@ err:
 }
 
 static js_value_t *
-bare_module_exports (js_env_t *env, js_value_t *exports) {
+bare_module_exports(js_env_t *env, js_value_t *exports) {
   int err;
 
 #define V(name, fn) \
