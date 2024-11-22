@@ -10,7 +10,7 @@ npm i bare-module
 
 ```js
 const Module = require('bare-module')
-````
+```
 
 ## Packages
 
@@ -121,17 +121,17 @@ To provide a fallback for when no other conditions match, the `"default"` condit
 
 The following conditions are supported, listed in order from most specific to least specific as conditions should be defined:
 
-Condition | Description
-:-- | :--
-`"import"` | Matches when the package is loaded via `import` or `import()`.
-`"require"` | Matches when the package is loaded via `require()`.
-`"asset"` | Matches when the package is loaded via `require.asset()`.
-`"bare"` | Matches for any [Bare](https://github.com/holepunchto/bare) environment.
-`"node"` | Matches for any Node.js environment.
-`"<platform>"` | Matches when equal to `Bare.platform`. See [`Bare.platform`](https://github.com/holepunchto/bare#bareplatform) for possible values.
-`"<arch>"` | Matches when equal to `Bare.arch`. See [`Bare.arch`](https://github.com/holepunchto/bare#barearch) for possible values.
-`"simulator"` | Matches when Bare was compiled for a simulator, i.e. when `Bare.simulator` is `true`.
-`"default"` | The fallback that always matches. This condition should always be last.
+| Condition      | Description                                                                                                                         |
+| :------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+| `"import"`     | Matches when the package is loaded via `import` or `import()`.                                                                      |
+| `"require"`    | Matches when the package is loaded via `require()`.                                                                                 |
+| `"asset"`      | Matches when the package is loaded via `require.asset()`.                                                                           |
+| `"bare"`       | Matches for any [Bare](https://github.com/holepunchto/bare) environment.                                                            |
+| `"node"`       | Matches for any Node.js environment.                                                                                                |
+| `"<platform>"` | Matches when equal to `Bare.platform`. See [`Bare.platform`](https://github.com/holepunchto/bare#bareplatform) for possible values. |
+| `"<arch>"`     | Matches when equal to `Bare.arch`. See [`Bare.arch`](https://github.com/holepunchto/bare#barearch) for possible values.             |
+| `"simulator"`  | Matches when Bare was compiled for a simulator, i.e. when `Bare.simulator` is `true`.                                               |
+| `"default"`    | The fallback that always matches. This condition should always be last.                                                             |
 
 Export conditions are evaluated in the order they are defined in the `"exports"`
 field. This means that less specific conditionals defined first will override
@@ -238,17 +238,17 @@ condition can be configured like so:
 The following conditions are supported, listed in order from most specific to
 least specific as conditions should be defined:
 
-Condition | Description
-:-- | :--
-`"import"` | Matches when the package is loaded via `import` or `import()`.
-`"require"` | Matches when the package is loaded via `require()`.
-`"asset"` | Matches when the package is loaded via `require.asset()`.
-`"bare"` | Matches for any [Bare](https://github.com/holepunchto/bare) environment.
-`"node"` | Matches for any Node.js environment.
-`"<platform>"` | Matches when equal to `Bare.platform`. See [`Bare.platform`](https://github.com/holepunchto/bare#bareplatform) for possible values.
-`"<arch>"` | Matches when equal to `Bare.arch`. See [`Bare.arch`](https://github.com/holepunchto/bare#barearch) for possible values.
-`"simulator"` | Matches when Bare was compiled for a simulator, ie when `Bare.simulator` is `true`.
-`"default"` | The fallback that always matches. This condition should always be last.
+| Condition      | Description                                                                                                                         |
+| :------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+| `"import"`     | Matches when the package is loaded via `import` or `import()`.                                                                      |
+| `"require"`    | Matches when the package is loaded via `require()`.                                                                                 |
+| `"asset"`      | Matches when the package is loaded via `require.asset()`.                                                                           |
+| `"bare"`       | Matches for any [Bare](https://github.com/holepunchto/bare) environment.                                                            |
+| `"node"`       | Matches for any Node.js environment.                                                                                                |
+| `"<platform>"` | Matches when equal to `Bare.platform`. See [`Bare.platform`](https://github.com/holepunchto/bare#bareplatform) for possible values. |
+| `"<arch>"`     | Matches when equal to `Bare.arch`. See [`Bare.arch`](https://github.com/holepunchto/bare#barearch) for possible values.             |
+| `"simulator"`  | Matches when Bare was compiled for a simulator, ie when `Bare.simulator` is `true`.                                                 |
+| `"default"`    | The fallback that always matches. This condition should always be last.                                                             |
 
 The general rule is that conditions should be from most specific to least
 specific when defined.
@@ -280,23 +280,23 @@ not satisfied.
 
 The flags for the current state of a module.
 
-Constant | Description
-:-- | :--
-`EVALUATED` | The module has been evaluated.
-`SYNTHESIZED` | The module named exports have been detected.
-`DESTROYED` | The module has been unloaded.
+| Constant      | Description                                  |
+| :------------ | :------------------------------------------- |
+| `EVALUATED`   | The module has been evaluated.               |
+| `SYNTHESIZED` | The module named exports have been detected. |
+| `DESTROYED`   | The module has been unloaded.                |
 
 #### `Module.constants.types`
 
-Constant | Description
-:-- | :--
-`SCRIPT` | The module is a CommonJS module.
-`MODULE` | The module is a ECMAScript module.
-`JSON` | The module is a JSON file.
-`BUNDLE` | The module is a [`bare-bundle`](https://github.com/holepunchto/bare-bundle).
-`ADDON` | The module is a native addon.
-`BINARY` | The module is a binary file.
-`TEXT` | The module is a text file.
+| Constant | Description                                                                  |
+| :------- | :--------------------------------------------------------------------------- |
+| `SCRIPT` | The module is a CommonJS module.                                             |
+| `MODULE` | The module is a ECMAScript module.                                           |
+| `JSON`   | The module is a JSON file.                                                   |
+| `BUNDLE` | The module is a [`bare-bundle`](https://github.com/holepunchto/bare-bundle). |
+| `ADDON`  | The module is a native addon.                                                |
+| `BINARY` | The module is a binary file.                                                 |
+| `TEXT`   | The module is a text file.                                                   |
 
 #### `Module.protocol`
 
@@ -317,34 +317,34 @@ Options include:
 ```js
 {
   // Whether the module is called via `import` or `import()`.
-  isImport = false,
-  // The referring module
-  referrer = null,
-  // The type of the module. See Module.constants.types for possible values. The
-  // default is the equivalent constant of the `attributes`'s `type` property.
-  type,
-  // A list of file extensions to look for. The default is based on the `type`
-  // option.
-  extensions = [],
-  // The ModuleProtocol to resolve the specifier. Defaults to referrer's
-  // protocol if defined, otherwise defaults to Module.protocol
-  protocol,
-  // A default "imports" map to apply to all specifiers. Follows the same
-  // syntax and rules as the "imports" property defined in `package.json`.
-  imports,
-  // A map of preresolved imports with keys being serialized parent URLs and
-  // values being "imports" maps.
-  resolutions,
-  // A map of builtin module specifiers to loaded modules. If matched by the
-  // default resolver, the protocol of the resolved URL will be `builtin:`.
-  builtins,
-  // The supported import conditions. "default" is always recognized.
-  conditions = [],
-  // The import attributes, e.g. the `{ type: "json" }` in:
-  // `import foo from 'foo' with { type: "json" }`
-  // or in:
-  // `require('foo', { with: { type: "json" } })`
-  attributes
+  ;(isImport = false),
+    // The referring module
+    (referrer = null),
+    // The type of the module. See Module.constants.types for possible values. The
+    // default is the equivalent constant of the `attributes`'s `type` property.
+    type,
+    // A list of file extensions to look for. The default is based on the `type`
+    // option.
+    (extensions = []),
+    // The ModuleProtocol to resolve the specifier. Defaults to referrer's
+    // protocol if defined, otherwise defaults to Module.protocol
+    protocol,
+    // A default "imports" map to apply to all specifiers. Follows the same
+    // syntax and rules as the "imports" property defined in `package.json`.
+    imports,
+    // A map of preresolved imports with keys being serialized parent URLs and
+    // values being "imports" maps.
+    resolutions,
+    // A map of builtin module specifiers to loaded modules. If matched by the
+    // default resolver, the protocol of the resolved URL will be `builtin:`.
+    builtins,
+    // The supported import conditions. "default" is always recognized.
+    (conditions = []),
+    // The import attributes, e.g. the `{ type: "json" }` in:
+    // `import foo from 'foo' with { type: "json" }`
+    // or in:
+    // `require('foo', { with: { type: "json" } })`
+    attributes
 }
 ```
 
@@ -358,42 +358,42 @@ Options include:
 ```js
 {
   // Whether the module is called via `import` or `import()`.
-  isImport = false,
-  // Whether the module is called via `import()`.
-  isDynamicImport = false,
-  // The referring module.
-  referrer = null,
-  // The type of the module. See Module.constants.types for possible values. The
-  // default is the equivalent constant of the `attributes`'s `type` property.
-  type,
-  // The assumed type of a module without a type using an ambiguous extension
-  // such as `.js`. See Module.constants.types. Inherited from `referrer` if it
-  // is defined.
-  defaultType = Module.constants.types.SCRIPT,
-  // Cache to use to load the Module. Defaults to `Module.cache`.
-  cache,
-  // The module representing the entry script where the program was launched.
-  main,
-  // The ModuleProtocol to use resolve the specifier. Defaults to referrer's
-  // `protocol` if defined, otherwise defaults to `Module.protocol`.
-  protocol,
-  // A default "imports" map to apply to all specifiers. Follows the same
-  // syntax and rules as the "imports" property defined in `package.json`.
-  imports,
-  // A map of preresolved imports with keys being serialized parent URLs and
-  // values being "imports" maps.
-  resolutions,
-  // A map of builtin module specifiers to loaded modules. If the `url`'s
-  // protocol is `builtin:`, the module's exports will be set to the matching
-  // value in the map for `url.pathname`.
-  builtins,
-  // The supported import conditions. "default" is always recognized.
-  conditions,
-  // The import attributes, e.g. the `{ type: "json" }` in:
-  // `import foo from 'foo' with { type: "json" }`
-  // or in:
-  // `require('foo', { with: { type: "json" } })`
-  attributes
+  ;(isImport = false),
+    // Whether the module is called via `import()`.
+    (isDynamicImport = false),
+    // The referring module.
+    (referrer = null),
+    // The type of the module. See Module.constants.types for possible values. The
+    // default is the equivalent constant of the `attributes`'s `type` property.
+    type,
+    // The assumed type of a module without a type using an ambiguous extension
+    // such as `.js`. See Module.constants.types. Inherited from `referrer` if it
+    // is defined.
+    (defaultType = Module.constants.types.SCRIPT),
+    // Cache to use to load the Module. Defaults to `Module.cache`.
+    cache,
+    // The module representing the entry script where the program was launched.
+    main,
+    // The ModuleProtocol to use resolve the specifier. Defaults to referrer's
+    // `protocol` if defined, otherwise defaults to `Module.protocol`.
+    protocol,
+    // A default "imports" map to apply to all specifiers. Follows the same
+    // syntax and rules as the "imports" property defined in `package.json`.
+    imports,
+    // A map of preresolved imports with keys being serialized parent URLs and
+    // values being "imports" maps.
+    resolutions,
+    // A map of builtin module specifiers to loaded modules. If the `url`'s
+    // protocol is `builtin:`, the module's exports will be set to the matching
+    // value in the map for `url.pathname`.
+    builtins,
+    // The supported import conditions. "default" is always recognized.
+    conditions,
+    // The import attributes, e.g. the `{ type: "json" }` in:
+    // `import foo from 'foo' with { type: "json" }`
+    // or in:
+    // `require('foo', { with: { type: "json" } })`
+    attributes
 }
 ```
 
@@ -407,18 +407,18 @@ Options include:
 ```js
 {
   // The referring Module
-  referrer = null,
-  // The ModuleProtocol to use resolve the specifier. Defaults to referrer's
-  // protocol if defined, otherwise defaults to Module.protocol
-  protocol,
-  // A default "imports" map to apply to all specifiers. Follows the same
-  // syntax and rules as the "imports" property defined in `package.json`.
-  imports,
-  // A map of preresolved imports with keys being serialized parent URLs and
-  // values being "imports" maps.
-  resolutions,
-  // The supported import conditions. "default" is always recognized.
-  conditions
+  ;(referrer = null),
+    // The ModuleProtocol to use resolve the specifier. Defaults to referrer's
+    // protocol if defined, otherwise defaults to Module.protocol
+    protocol,
+    // A default "imports" map to apply to all specifiers. Follows the same
+    // syntax and rules as the "imports" property defined in `package.json`.
+    imports,
+    // A map of preresolved imports with keys being serialized parent URLs and
+    // values being "imports" maps.
+    resolutions,
+    // The supported import conditions. "default" is always recognized.
+    conditions
 }
 ```
 
@@ -499,33 +499,33 @@ Options include:
   // The module to become the `referrer` for the returned `require()`. Defaults
   // to creating a new module instance from the `parentURL` with the same
   // options.
-  module = null,
-  // The referring Module.
-  referrer = null,
-  // The type of the module. See Module.constants.types for possible values.
-  type = Module.constants.types.SCRIPT,
-  // The assumed type of a module without a type using an ambiguous extension
-  // such as `.js`. See Module.constants.types. Inherited from `referrer` if it
-  // is defined, otherwise defaults to SCRIPT.
-  defaultType = Module.constants.types.SCRIPT,
-  // A cache of loaded modules. Inherited from `referrer` if it is defined,
-  // otherwise defaults to `Module.cache`
-  cache,
-  // The module representing the entry script where the program was launched.
-  main,
-  // The ModuleProtocol to use resolve the specifier and/or the module. Defaults to
-  // referrer's protocol if defined, otherwise defaults to Module.protocol
-  protocol,
-  // A default "imports" map to apply to all specifiers. Follows the same
-  // syntax and rules as the "imports" property defined in `package.json`.
-  imports,
-  // A map of preresolved imports with keys being serialized parent URLs and
-  // values being "imports" maps.
-  resolutions,
-  // A map of builtin module specifiers to loaded modules.
-  builtins,
-  // The supported import conditions. "default" is always recognized.
-  conditions
+  ;(module = null),
+    // The referring Module.
+    (referrer = null),
+    // The type of the module. See Module.constants.types for possible values.
+    (type = Module.constants.types.SCRIPT),
+    // The assumed type of a module without a type using an ambiguous extension
+    // such as `.js`. See Module.constants.types. Inherited from `referrer` if it
+    // is defined, otherwise defaults to SCRIPT.
+    (defaultType = Module.constants.types.SCRIPT),
+    // A cache of loaded modules. Inherited from `referrer` if it is defined,
+    // otherwise defaults to `Module.cache`
+    cache,
+    // The module representing the entry script where the program was launched.
+    main,
+    // The ModuleProtocol to use resolve the specifier and/or the module. Defaults to
+    // referrer's protocol if defined, otherwise defaults to Module.protocol
+    protocol,
+    // A default "imports" map to apply to all specifiers. Follows the same
+    // syntax and rules as the "imports" property defined in `package.json`.
+    imports,
+    // A map of preresolved imports with keys being serialized parent URLs and
+    // values being "imports" maps.
+    resolutions,
+    // A map of builtin module specifiers to loaded modules.
+    builtins,
+    // The supported import conditions. "default" is always recognized.
+    conditions
 }
 ```
 
@@ -546,32 +546,32 @@ Methods include:
   // A function to preprocess the `specifier` and `parentURL` before the resolve
   // algorithm is called.
   preresolve,
-  // function (url): string
-  // A function to process the resolved URL. Can be used to convert file paths,
-  // etc.
-  postresolve,
-  // function* (specifier, parentURL, imports): [url]
-  // A generator to resolve the `specifier` to an array of a single URL.
-  resolve,
-  // function (url): boolean
-  // A function that returns whether the URL exists as a boolean.
-  exists,
-  // function (url): string
-  // A function that returns the source code of a URL represented as a string.
-  read,
-  // function (url): object
-  // A function that returns the evaluated exports for the url. This is
-  // only called for Javascript modules (extensions `.js`, `.cjs` & `.mjs`)
-  // by default. If defined, this function will skip calling `read()` and
-  // evaluating the source method for the default implementations of the
-  // Javascript extensions.
-  load,
-  // function (url): url
-  // A function used to post process URLs for addons before `postresolve()`.
-  addon,
-  // function (url): url
-  // A function used to post process URLs for assets before `postresolve()`.
-  asset
+    // function (url): string
+    // A function to process the resolved URL. Can be used to convert file paths,
+    // etc.
+    postresolve,
+    // function* (specifier, parentURL, imports): [url]
+    // A generator to resolve the `specifier` to an array of a single URL.
+    resolve,
+    // function (url): boolean
+    // A function that returns whether the URL exists as a boolean.
+    exists,
+    // function (url): string
+    // A function that returns the source code of a URL represented as a string.
+    read,
+    // function (url): object
+    // A function that returns the evaluated exports for the url. This is
+    // only called for Javascript modules (extensions `.js`, `.cjs` & `.mjs`)
+    // by default. If defined, this function will skip calling `read()` and
+    // evaluating the source method for the default implementations of the
+    // Javascript extensions.
+    load,
+    // function (url): url
+    // A function used to post process URLs for addons before `postresolve()`.
+    addon,
+    // function (url): url
+    // A function used to post process URLs for assets before `postresolve()`.
+    asset
 }
 ```
 
