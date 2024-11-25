@@ -557,6 +557,10 @@ Returns the string representation of the platform and architecture used when res
 
 Resolve the `specifier` string relative to the URL `parentURL` as an addon and returns the path string. The `specifier` is resolved using the [addon resolution algorithm](https://github.com/holepunchto/bare-addon-resolve#algorithm).
 
+#### `const path = import.meta.asset(specifier = '.', parentURL = referrer.url)`
+
+Resolve the `specifier` relative to the `parentURL` and return the path of the asset as a string.
+
 ### Custom `require()`
 
 Creating a custom require allows one to create a preconfigured `require()`. This can be useful in scenarios such as a Read-Evaluate-Print-Loop (REPL) where the parent URL is set to a directory so requiring relative paths to work correctly.
