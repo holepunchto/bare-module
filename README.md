@@ -553,13 +553,13 @@ Returns the exported module contents.
 
 Returns the string representation of the platform and architecture used when resolving addons with the pattern `<platform>-<arch>[-simulator]`. Returns the same value as `Bare.Addon.host`.
 
-#### `const path = import.meta.addon.resolve(specifier = '.', parentURL = referrer.url)`
+#### `const href = import.meta.addon.resolve(specifier = '.', parentURL = referrer.url)`
 
-Resolve the `specifier` string relative to the URL `parentURL` as an addon and returns the path string. The `specifier` is resolved using the [addon resolution algorithm](https://github.com/holepunchto/bare-addon-resolve#algorithm).
+Resolve the `specifier` string relative to the URL `parentURL` as an addon and returns the URL string. The `specifier` is resolved using the [addon resolution algorithm](https://github.com/holepunchto/bare-addon-resolve#algorithm).
 
-#### `const path = import.meta.asset(specifier = '.', parentURL = referrer.url)`
+#### `const href = import.meta.asset(specifier = '.', parentURL = referrer.url)`
 
-Resolve the `specifier` relative to the `parentURL` and return the path of the asset as a string.
+Resolve the `specifier` relative to the `parentURL` and return the URL of the asset as a string.
 
 ### Custom `require()`
 
