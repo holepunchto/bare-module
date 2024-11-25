@@ -521,6 +521,12 @@ const contents = fs.readFileSync(require.asset('./foo.txt'))
 
 ### ECMAScript Module Import Methods
 
+#### `import defaultExport, * as name, { export1, export2 as alias2, ... } from 'specifier' with { type: 'json' }`
+
+The static `import` declaration is used to import read-only live bindings that are exported by another module. The imported bindings are called *live* bindings because they are updated by the module that exported the binding, but cannot be re-assigned by the importing module. In brief, you can import what is exported from another module.
+
+For more information on `import` syntax, see [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import).
+
 #### `const href = import.meta.resolve(specifier = '.', parentURL = referrer.url)`
 
 A module-relative resolution function which returns the URL string for the module. The `specifier` is a string which is resolved relative to the `parentURL` which is a WHATWG URL.
