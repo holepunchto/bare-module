@@ -458,7 +458,7 @@ The `ModuleProtocol` class used for resolving, reading and loading modules. See 
 
 Unloads the module.
 
-### Module Import Methods
+### CommonJS Import Methods
 
 #### `require(specifier, options = {})`
 
@@ -502,6 +502,8 @@ local files:
 const fs = require('bare-fs')
 const contents = fs.readFileSync(require.asset('./foo.txt'))
 ```
+
+### ECMAScript Module Import Methods
 
 #### `const href = import.meta.resolve(specifier = '.', parentURL = referrer.url)`
 
