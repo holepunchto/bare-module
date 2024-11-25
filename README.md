@@ -483,7 +483,7 @@ The module representing the entry script where the program was launched. The sam
 
 #### `require.cache`
 
-A cache of loaded modules for this module. The same value as [`module.cache`](#modulecache) for the current module.
+A cache of loaded modules for this module. The same value as `module.cache` for the current module.
 
 #### `require.addon(specifier = '.', parentURL = referrer.url)`
 
@@ -537,7 +537,7 @@ A boolean representing whether the current module is the entry script where the 
 
 #### `import.meta.cache`
 
-A cache of loaded modules for this module. The same value as [`module.cache`](#modulecache) for the current module.
+A cache of loaded modules for this module. The same value as `module.cache` for the current module.
 
 #### `const href = import.meta.resolve(specifier = '.', parentURL = referrer.url)`
 
