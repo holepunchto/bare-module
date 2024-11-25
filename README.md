@@ -489,9 +489,9 @@ module.exports = require.addon()
 
 See [`bare-addon`](https://github.com/holepunchto/bare-addon) for a template of building native addon modules.
 
-#### `require.asset(specifier = '.', parentURL = referrer.url)`
+#### `const path = require.asset(specifier = '.', parentURL = referrer.url)`
 
-Resolve the `specifier` relative to the `parentURL` and return the path of the asset.
+Resolve the `specifier` relative to the `parentURL` and return the path of the asset as a string.
 
 Can be used to load assets, for example the following loads `./foo.txt` from the
 local files:
@@ -501,7 +501,7 @@ const fs = require('bare-js')
 const contents = fs.readFileSync(require.asset('./foo.txt'))
 ```
 
-#### `import.meta.resolve(specifier = '.', parentURL = referrer.url)`
+#### `const href = import.meta.resolve(specifier = '.', parentURL = referrer.url)`
 
 A module-relative resolution function which returns the URL string for the module. The `specifier` is a string which is resolved relative to the `parentURL` which is a WHATWG URL.
 
