@@ -458,6 +458,53 @@ The `ModuleProtocol` class used for resolving, reading and loading modules. See 
 
 Unloads the module.
 
+#### `require(specifier, options = {})`
+
+Used to import modules, JSON and local files. Relative paths (e.g. `./`, `./foo`, `./bar/baz`, `../foo`) will be resolved against the directory named by `__dirname` (if defined) or the current working directory. The relative paths of POSIX style are resolved in an OS independent fashion, meaning that the examples above will work on Windows in the same way they would on Unix systems.
+
+Returns the exported module contents.
+
+Options includes:
+
+```js
+options = {
+  // The import attributes which instruct how the file or module should be loaded.
+  // Possible values for `type` are `script`, `module`, `json`, `bundle`,
+  // `addon`, `binary` and `text`.
+  with: { type: 'json' }
+}
+```
+
+#### `require.addon(specifier = '.', parentURL = referrer.url)`
+
+Also used to import modules but specifically loads only addon modules. `specifier` is resolved relative to `parentURL` using the [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm) algorithm.
+
+Returns the exported module contents.
+
+A common pattern for writing an addon module is to use `require.addon()` as the js module exports:
+
+```js
+module.exports = require.addon()
+```
+
+See [`bare-addon`](https://github.com/holepunchto/bare-addon) for a template of building native addon modules.
+
+#### `require.asset(specifier = '.', parentURL = referrer.url)`
+
+Resolve the `specifier` relative to the `parentURL` and return the path of the asset.
+
+Can be used to load assets, for example the following loads `./foo.txt` from the
+local files:
+
+```js
+const fs = require('bare-js')
+const contents = fs.readFileSync(require.asset('./foo.txt'))
+```
+
+#### `import.meta.resolve(specifier = '.', parentURL = referrer.url)`
+
+A module-relative resolution function which returns the URL string for the module. The `specifier` is a string which is resolved relative to the `parentURL` which is a WHATWG URL.
+
 ### Custom `require()`
 
 Creating a custom require allows one to create a preconfigured `require()`. This can be useful in scenarios such as a Read-Evaluate-Print-Loop (REPL) where the parent URL is set to a directory so requiring relative paths to work correctly.
