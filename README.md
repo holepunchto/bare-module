@@ -531,6 +531,10 @@ For more information on `import` syntax, see [MDN](https://developer.mozilla.org
 
 The string representation of the URL for the current module.
 
+#### `import.meta.main`
+
+A boolean representing whether the current module is the entry script where the program was launched.
+
 #### `const href = import.meta.resolve(specifier = '.', parentURL = referrer.url)`
 
 A module-relative resolution function which returns the URL string for the module. The `specifier` is a string which is resolved relative to the `parentURL` which is a WHATWG URL.
