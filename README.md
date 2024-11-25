@@ -543,6 +543,12 @@ A cache of loaded modules for this module. The same value as [`module.cache`](#m
 
 A module-relative resolution function which returns the URL string for the module. The `specifier` is a string which is resolved relative to the `parentURL` which is a WHATWG URL.
 
+#### `import.meta.addon(specifier = '.', parentURL = referrer.url)`
+
+Also used to import modules but specifically loads only addon modules. `specifier` is resolved relative to `parentURL` using the [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm) algorithm.
+
+Returns the exported module contents.
+
 ### Custom `require()`
 
 Creating a custom require allows one to create a preconfigured `require()`. This can be useful in scenarios such as a Read-Evaluate-Print-Loop (REPL) where the parent URL is set to a directory so requiring relative paths to work correctly.
