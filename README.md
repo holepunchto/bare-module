@@ -527,6 +527,10 @@ The static `import` declaration is used to import read-only live bindings that a
 
 For more information on `import` syntax, see [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import).
 
+#### `import.meta.url`
+
+The string representation of the URL for the current module.
+
 #### `const href = import.meta.resolve(specifier = '.', parentURL = referrer.url)`
 
 A module-relative resolution function which returns the URL string for the module. The `specifier` is a string which is resolved relative to the `parentURL` which is a WHATWG URL.
