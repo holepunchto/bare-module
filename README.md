@@ -477,6 +477,10 @@ options = {
 }
 ```
 
+#### `require.main`
+
+The module representing the entry script where the program was launched. The same value as [`module.main`](#modulemain) for the current module.
+
 #### `require.addon(specifier = '.', parentURL = referrer.url)`
 
 Also used to import modules but specifically loads only addon modules. `specifier` is resolved relative to `parentURL` using the [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm) algorithm.
