@@ -499,7 +499,7 @@ Can be used to load assets, for example the following loads `./foo.txt` from the
 local files:
 
 ```js
-const fs = require('bare-js')
+const fs = require('bare-fs')
 const contents = fs.readFileSync(require.asset('./foo.txt'))
 ```
 
