@@ -495,6 +495,10 @@ See [`bare-addon`](https://github.com/holepunchto/bare-addon) for a template of 
 
 Returns the string representation of the platform and architecture used when resolving addons with the pattern `<platform>-<arch>[-simulator]`. Returns the same value as `Bare.Addon.host`.
 
+#### `const path = require.addon.resolve(specifier = '.', parentURL = referrer.url)`
+
+Resolve the `specifier` string relative to the URL `parentURL` as an addon and returns the path string. The `specifier` is resolved using the [addon resolution algorithm](https://github.com/holepunchto/bare-addon-resolve#algorithm).
+
 #### `const path = require.asset(specifier = '.', parentURL = referrer.url)`
 
 Resolve the `specifier` relative to the `parentURL` and return the path of the asset as a string.
