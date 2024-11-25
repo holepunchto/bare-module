@@ -549,6 +549,10 @@ Also used to import modules but specifically loads only addon modules. `specifie
 
 Returns the exported module contents.
 
+#### `import.meta.addon.host`
+
+Returns the string representation of the platform and architecture used when resolving addons with the pattern `<platform>-<arch>[-simulator]`. Returns the same value as `Bare.Addon.host`.
+
 ### Custom `require()`
 
 Creating a custom require allows one to create a preconfigured `require()`. This can be useful in scenarios such as a Read-Evaluate-Print-Loop (REPL) where the parent URL is set to a directory so requiring relative paths to work correctly.
