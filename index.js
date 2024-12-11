@@ -505,9 +505,7 @@ module.exports = exports = class Module {
         resolutions,
         extensions,
         builtins: builtins ? Object.keys(builtins) : [],
-        engines: {
-          ...Bare.versions
-        }
+        engines: Bare.versions
       },
       readPackage
     )) {
@@ -563,7 +561,8 @@ module.exports = exports = class Module {
       {
         conditions: ['asset', ...conditions],
         imports,
-        resolutions
+        resolutions,
+        engines: Bare.versions
       },
       readPackage
     )) {
