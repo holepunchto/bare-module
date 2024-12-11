@@ -13,588 +13,582 @@ const isWindows = Bare.platform === 'win32'
 
 const { startsWithWindowsDriveLetter } = resolve
 
-const Module =
-  (module.exports =
-  exports =
-    class Module {
-      constructor(url) {
-        this._url = url
-        this._state = 0
-        this._type = 0
-        this._defaultType = this._type
-        this._cache = null
-        this._main = null
-        this._exports = null
-        this._imports = null
-        this._resolutions = null
-        this._builtins = null
-        this._conditions = null
-        this._protocol = null
-        this._bundle = null
-        this._function = null
-        this._names = null
-        this._handle = null
+module.exports = exports = class Module {
+  constructor(url) {
+    this._url = url
+    this._state = 0
+    this._type = 0
+    this._defaultType = this._type
+    this._cache = null
+    this._main = null
+    this._exports = null
+    this._imports = null
+    this._resolutions = null
+    this._builtins = null
+    this._conditions = null
+    this._protocol = null
+    this._bundle = null
+    this._function = null
+    this._names = null
+    this._handle = null
 
-        Object.preventExtensions(this)
+    Object.preventExtensions(this)
 
-        Module._modules.add(this)
-      }
+    Module._modules.add(this)
+  }
 
-      get url() {
-        return this._url
-      }
+  get url() {
+    return this._url
+  }
 
-      get filename() {
-        return urlToPath(this._url)
-      }
+  get filename() {
+    return urlToPath(this._url)
+  }
 
-      get dirname() {
-        return urlToDirname(this._url)
-      }
+  get dirname() {
+    return urlToDirname(this._url)
+  }
 
-      get type() {
-        return this._type
-      }
+  get type() {
+    return this._type
+  }
 
-      get defaultType() {
-        return this._defaultType
-      }
+  get defaultType() {
+    return this._defaultType
+  }
 
-      get cache() {
-        return this._cache
-      }
+  get cache() {
+    return this._cache
+  }
 
-      get main() {
-        return this._main
-      }
+  get main() {
+    return this._main
+  }
 
-      get exports() {
-        return this._exports
-      }
+  get exports() {
+    return this._exports
+  }
 
-      set exports(value) {
-        this._exports = value
-      }
+  set exports(value) {
+    this._exports = value
+  }
 
-      get imports() {
-        return this._imports
-      }
+  get imports() {
+    return this._imports
+  }
 
-      get resolutions() {
-        return this._resolutions
-      }
+  get resolutions() {
+    return this._resolutions
+  }
 
-      get builtins() {
-        return this._builtins
-      }
+  get builtins() {
+    return this._builtins
+  }
 
-      get conditions() {
-        return Array.from(this._conditions)
-      }
+  get conditions() {
+    return Array.from(this._conditions)
+  }
 
-      get protocol() {
-        return this._protocol
-      }
+  get protocol() {
+    return this._protocol
+  }
 
-      // For Node.js compatibility
-      get id() {
-        return this.filename
-      }
+  // For Node.js compatibility
+  get id() {
+    return this.filename
+  }
 
-      // For Node.js compatibility
-      get path() {
-        return this.dirname
-      }
+  // For Node.js compatibility
+  get path() {
+    return this.dirname
+  }
 
-      destroy() {
-        this._state |= constants.states.DESTROYED
+  destroy() {
+    this._state |= constants.states.DESTROYED
 
-        if (this._handle) {
-          binding.deleteModule(this._handle)
-          this._handle = null
-        }
+    if (this._handle) {
+      binding.deleteModule(this._handle)
+      this._handle = null
+    }
 
-        Module._modules.delete(this)
-      }
+    Module._modules.delete(this)
+  }
 
-      _run() {
-        binding.runModule(this._handle, Module._handle, Module._onrun)
-      }
+  _run() {
+    binding.runModule(this._handle, Module._handle, Module._onrun)
+  }
 
-      _transform(isImport, isDynamicImport) {
-        if (isDynamicImport) {
-          this._synthesize()
-          this._evaluate(true /* eagerRun */)
-        } else if (isImport) {
-          this._synthesize()
-        } else {
-          this._evaluate()
-        }
+  _transform(isImport, isDynamicImport) {
+    if (isDynamicImport) {
+      this._synthesize()
+      this._evaluate(true /* eagerRun */)
+    } else if (isImport) {
+      this._synthesize()
+    } else {
+      this._evaluate()
+    }
 
-        return this
-      }
+    return this
+  }
 
-      _synthesize() {
-        if ((this._state & constants.states.SYNTHESIZED) !== 0) return
+  _synthesize() {
+    if ((this._state & constants.states.SYNTHESIZED) !== 0) return
 
-        this._state |= constants.states.SYNTHESIZED
+    this._state |= constants.states.SYNTHESIZED
 
-        if (this._type === constants.types.MODULE) return
+    if (this._type === constants.types.MODULE) return
 
-        const names = new Set(['default'])
-        const queue = [this]
-        const seen = new Set()
+    const names = new Set(['default'])
+    const queue = [this]
+    const seen = new Set()
 
-        while (queue.length) {
-          const module = queue.pop()
+    while (queue.length) {
+      const module = queue.pop()
 
-          if (seen.has(module)) continue
+      if (seen.has(module)) continue
 
-          seen.add(module)
+      seen.add(module)
 
-          switch (module._type) {
-            case constants.types.SCRIPT: {
-              const result = lex(module._function.toString())
+      switch (module._type) {
+        case constants.types.SCRIPT: {
+          const result = lex(module._function.toString())
 
-              for (const { name } of result.exports) names.add(name)
+          for (const { name } of result.exports) names.add(name)
 
-              const referrer = module
+          const referrer = module
 
-              for (const { specifier, type } of result.imports) {
-                if (type & lex.constants.REEXPORT) {
-                  const resolved = Module.resolve(specifier, referrer._url, {
-                    isImport: true,
-                    referrer
-                  })
+          for (const { specifier, type } of result.imports) {
+            if (type & lex.constants.REEXPORT) {
+              const resolved = Module.resolve(specifier, referrer._url, {
+                isImport: true,
+                referrer
+              })
 
-                  const module = Module.load(resolved, {
-                    isImport: true,
-                    referrer
-                  })
+              const module = Module.load(resolved, {
+                isImport: true,
+                referrer
+              })
 
-                  if (module._names) {
-                    for (const name of module._names) names.add(name)
-                  } else {
-                    queue.push(module)
-                  }
-                }
+              if (module._names) {
+                for (const name of module._names) names.add(name)
+              } else {
+                queue.push(module)
               }
-
-              break
             }
-
-            case constants.types.MODULE:
-              module._evaluate()
-
-              for (const name of Object.keys(module._exports)) names.add(name)
-
-              break
-
-            case constants.types.JSON:
-              for (const name of Object.keys(module._exports)) names.add(name)
           }
+
+          break
         }
 
-        this._names = Array.from(names)
+        case constants.types.MODULE:
+          module._evaluate()
 
-        this._handle = binding.createSyntheticModule(
-          this._url.href,
-          this._names,
-          Module._handle
-        )
+          for (const name of Object.keys(module._exports)) names.add(name)
+
+          break
+
+        case constants.types.JSON:
+          for (const name of Object.keys(module._exports)) names.add(name)
       }
+    }
 
-      _evaluate(eagerRun = false) {
-        if ((this._state & constants.states.EVALUATED) !== 0) return
+    this._names = Array.from(names)
 
-        this._state |= constants.states.EVALUATED
+    this._handle = binding.createSyntheticModule(
+      this._url.href,
+      this._names,
+      Module._handle
+    )
+  }
 
-        if (this._type === constants.types.SCRIPT) {
-          const require = createRequire(this._url, { module: this })
+  _evaluate(eagerRun = false) {
+    if ((this._state & constants.states.EVALUATED) !== 0) return
 
-          this._exports = {}
+    this._state |= constants.states.EVALUATED
 
-          const fn = this._function // Bind to variable to ensure proper stack trace
+    if (this._type === constants.types.SCRIPT) {
+      const require = createRequire(this._url, { module: this })
 
-          fn(
-            require,
-            this,
-            this._exports,
-            urlToPath(this._url),
-            urlToDirname(this._url)
-          )
+      this._exports = {}
 
-          if (eagerRun) this._run()
-        } else if (this._type === constants.types.MODULE) {
-          this._run()
+      const fn = this._function // Bind to variable to ensure proper stack trace
 
-          this._exports = binding.getNamespace(this._handle)
-        } else if (eagerRun) {
-          this._run()
-        }
-      }
-
-      [Symbol.for('bare.inspect')]() {
-        return {
-          __proto__: { constructor: Module },
-
-          url: this.url,
-          type: this.type,
-          defaultType: this.defaultType,
-          main: this.main,
-          exports: this.exports,
-          imports: this.imports,
-          resolutions: this.resolutions,
-          builtins: this.builtins,
-          conditions: this.conditions
-        }
-      }
-
-      static _extensions = Object.create(null)
-      static _protocol = null
-      static _cache = module.cache || Object.create(null)
-      static _modules = new Set()
-      static _conditions = ['bare', 'node', Bare.platform, Bare.arch]
-
-      static _handle = binding.init(
+      fn(
+        require,
         this,
-        this._onimport,
-        this._onevaluate,
-        this._onmeta
+        this._exports,
+        urlToPath(this._url),
+        urlToDirname(this._url)
       )
 
-      static _onimport(specifier, attributes, referrerHref, isDynamicImport) {
-        const referrer = this._cache[referrerHref] || null
+      if (eagerRun) this._run()
+    } else if (this._type === constants.types.MODULE) {
+      this._run()
 
-        if (referrer === null) {
-          throw errors.MODULE_NOT_FOUND(
-            `Cannot find referrer for module '${specifier}' imported from '${referrerHref}'`
-          )
-        }
+      this._exports = binding.getNamespace(this._handle)
+    } else if (eagerRun) {
+      this._run()
+    }
+  }
 
-        const resolved = this.resolve(specifier, referrer._url, {
-          isImport: true,
-          referrer,
-          attributes
-        })
+  [Symbol.for('bare.inspect')]() {
+    return {
+      __proto__: { constructor: Module },
 
-        const module = this.load(resolved, {
-          isImport: true,
-          isDynamicImport,
-          referrer,
-          attributes
-        })
+      url: this.url,
+      type: this.type,
+      defaultType: this.defaultType,
+      main: this.main,
+      exports: this.exports,
+      imports: this.imports,
+      resolutions: this.resolutions,
+      builtins: this.builtins,
+      conditions: this.conditions
+    }
+  }
 
-        return module._handle
-      }
+  static _extensions = Object.create(null)
+  static _protocol = null
+  static _cache = module.cache || Object.create(null)
+  static _modules = new Set()
+  static _conditions = ['bare', 'node', Bare.platform, Bare.arch]
 
-      static _onevaluate(href) {
-        const module = this._cache[href] || null
+  static _handle = binding.init(
+    this,
+    this._onimport,
+    this._onevaluate,
+    this._onmeta
+  )
 
-        if (module === null) {
-          throw errors.MODULE_NOT_FOUND(`Cannot find module '${href}'`)
-        }
+  static _onimport(specifier, attributes, referrerHref, isDynamicImport) {
+    const referrer = this._cache[referrerHref] || null
 
-        module._evaluate()
+    if (referrer === null) {
+      throw errors.MODULE_NOT_FOUND(
+        `Cannot find referrer for module '${specifier}' imported from '${referrerHref}'`
+      )
+    }
 
-        for (const name of module._names) {
-          let value
-
-          if (
-            name === 'default' &&
-            (typeof module._exports !== 'object' ||
-              module._exports === null ||
-              name in module._exports === false)
-          ) {
-            value = module._exports
-          } else {
-            value = module._exports[name]
-          }
-
-          binding.setExport(module._handle, name, value)
-        }
-      }
-
-      static _onmeta(href, meta) {
-        const self = Module
-
-        const module = this._cache[href] || null
-
-        if (module === null) {
-          throw errors.MODULE_NOT_FOUND(`Cannot find module '${href}'`)
-        }
-
-        const referrer = module
-
-        meta.url = module._url.href
-        meta.main = module._main === module
-        meta.cache = module._cache
-
-        meta.resolve = function resolve(specifier, parentURL = referrer._url) {
-          return self.resolve(specifier, toURL(parentURL, referrer._url), {
-            referrer
-          }).href
-        }
-
-        meta.addon = function addon(
-          specifier = '.',
-          parentURL = referrer._url
-        ) {
-          const resolved = Bare.Addon.resolve(
-            specifier,
-            toURL(parentURL, referrer._url),
-            { referrer }
-          )
-
-          const addon = Bare.Addon.load(resolved, { referrer })
-
-          return addon._exports
-        }
-
-        meta.addon.resolve = function resolve(
-          specifier = '.',
-          parentURL = referrer._url
-        ) {
-          return Bare.Addon.resolve(
-            specifier,
-            toURL(parentURL, referrer._url),
-            { referrer }
-          ).href
-        }
-
-        meta.addon.host = Bare.Addon.host
-
-        meta.asset = function asset(specifier, parentURL = referrer._url) {
-          return self.asset(specifier, toURL(parentURL, referrer._url), {
-            referrer
-          }).href
-        }
-      }
-
-      static _onrun(reason, promise, err = reason) {
-        if (err) {
-          promise.catch(() => {}) // Don't leak the rejection
-
-          throw err
-        } else {
-          promise.catch((err) =>
-            queueMicrotask(() => {
-              throw err
-            })
-          )
-        }
-      }
-
-      static get protocol() {
-        return this._protocol
-      }
-
-      static get cache() {
-        return this._cache
-      }
-
-      static load(url, source = null, opts = {}) {
-        const self = Module
-
-        if (
-          !ArrayBuffer.isView(source) &&
-          typeof source !== 'string' &&
-          source !== null
-        ) {
-          opts = source
-          source = null
-        }
-
-        const {
-          isImport = false,
-          isDynamicImport = false,
-
-          referrer = null,
-          attributes,
-          type = typeForAttributes(attributes),
-          defaultType = referrer ? referrer._defaultType : 0,
-          cache = referrer ? referrer._cache : self._cache,
-          main = referrer ? referrer._main : null,
-          protocol = referrer ? referrer._protocol : self._protocol,
-          imports = referrer ? referrer._imports : null,
-          resolutions = referrer ? referrer._resolutions : null,
-          builtins = referrer ? referrer._builtins : null,
-          conditions = referrer ? referrer._conditions : self._conditions
-        } = opts
-
-        let module = cache[url.href] || null
-
-        if (module !== null) {
-          if (type !== 0 && type !== module._type) {
-            throw errors.TYPE_INCOMPATIBLE(
-              `Module '${module.url.href}' is not of type '${nameOfType(type)}'`
-            )
-          }
-
-          return module._transform(isImport, isDynamicImport)
-        }
-
-        module = cache[url.href] = new Module(url)
-
-        try {
-          switch (url.protocol) {
-            case 'builtin:':
-              module._exports = builtins[url.pathname]
-              break
-
-            default: {
-              module._defaultType = defaultType
-              module._cache = cache
-              module._main = main || module
-              module._protocol = protocol
-              module._imports = imports
-              module._resolutions = resolutions
-              module._builtins = builtins
-              module._conditions = conditions
-
-              let extension =
-                canonicalExtensionForType(type) || path.extname(url.pathname)
-
-              if (extension in self._extensions === false) {
-                if (defaultType)
-                  extension = canonicalExtensionForType(defaultType) || '.js'
-                else extension = '.js'
-              }
-
-              self._extensions[extension](module, source, referrer)
-            }
-          }
-
-          return module._transform(isImport, isDynamicImport)
-        } catch (err) {
-          delete cache[url.href]
-
-          throw err
-        }
-      }
-
-      static resolve(specifier, parentURL, opts = {}) {
-        const self = Module
-
-        if (typeof specifier !== 'string') {
-          throw new TypeError(
-            `Specifier must be a string. Received type ${typeof specifier} (${specifier})`
-          )
-        }
-
-        const {
-          isImport = false,
-
-          referrer = null,
-          attributes,
-          type = typeForAttributes(attributes),
-          extensions = extensionsForType(type),
-          protocol = referrer ? referrer._protocol : self._protocol,
-          imports = referrer ? referrer._imports : null,
-          resolutions = referrer ? referrer._resolutions : null,
-          builtins = referrer ? referrer._builtins : null,
-          conditions = referrer ? referrer._conditions : self._conditions
-        } = opts
-
-        const resolved = protocol.preresolve(specifier, parentURL)
-
-        const [resolution] = protocol.resolve(resolved, parentURL, imports)
-
-        if (resolution) return protocol.postresolve(resolution)
-
-        for (const resolution of resolve(
-          resolved,
-          parentURL,
-          {
-            conditions: isImport
-              ? ['import', ...conditions]
-              : ['require', ...conditions],
-            imports,
-            resolutions,
-            extensions,
-            builtins: builtins ? Object.keys(builtins) : [],
-            engines: {
-              ...Bare.versions
-            }
-          },
-          readPackage
-        )) {
-          switch (resolution.protocol) {
-            case 'builtin:':
-              return resolution
-            default:
-              if (protocol.exists(resolution)) {
-                return protocol.postresolve(resolution)
-              }
-          }
-        }
-
-        throw errors.MODULE_NOT_FOUND(
-          `Cannot find module '${specifier}' imported from '${parentURL.href}'`
-        )
-
-        function readPackage(packageURL) {
-          if (protocol.exists(packageURL)) {
-            return Module.load(packageURL, { protocol })._exports
-          }
-
-          return null
-        }
-      }
-
-      static asset(specifier, parentURL, opts = {}) {
-        const self = Module
-
-        if (typeof specifier !== 'string') {
-          throw new TypeError(
-            `Specifier must be a string. Received type ${typeof specifier} (${specifier})`
-          )
-        }
-
-        const {
-          referrer = null,
-          protocol = referrer ? referrer._protocol : self._protocol,
-          imports = referrer ? referrer._imports : null,
-          resolutions = referrer ? referrer._resolutions : null,
-          conditions = referrer ? referrer._conditions : self._conditions
-        } = opts
-
-        const resolved = protocol.preresolve(specifier, parentURL)
-
-        const [resolution] = protocol.resolve(resolved, parentURL, imports)
-
-        if (resolution) return protocol.postresolve(resolution)
-
-        for (const resolution of resolve(
-          resolved,
-          parentURL,
-          {
-            conditions: ['asset', ...conditions],
-            imports,
-            resolutions
-          },
-          readPackage
-        )) {
-          if (protocol.exists(resolution)) {
-            return protocol.postresolve(
-              protocol.asset ? protocol.asset(resolution) : resolution
-            )
-          }
-        }
-
-        throw errors.ASSET_NOT_FOUND(
-          `Cannot find asset '${specifier}' imported from '${parentURL.href}'`
-        )
-
-        function readPackage(packageURL) {
-          if (protocol.exists(packageURL)) {
-            return Module.load(packageURL, { protocol })._exports
-          }
-
-          return null
-        }
-      }
+    const resolved = this.resolve(specifier, referrer._url, {
+      isImport: true,
+      referrer,
+      attributes
     })
+
+    const module = this.load(resolved, {
+      isImport: true,
+      isDynamicImport,
+      referrer,
+      attributes
+    })
+
+    return module._handle
+  }
+
+  static _onevaluate(href) {
+    const module = this._cache[href] || null
+
+    if (module === null) {
+      throw errors.MODULE_NOT_FOUND(`Cannot find module '${href}'`)
+    }
+
+    module._evaluate()
+
+    for (const name of module._names) {
+      let value
+
+      if (
+        name === 'default' &&
+        (typeof module._exports !== 'object' ||
+          module._exports === null ||
+          name in module._exports === false)
+      ) {
+        value = module._exports
+      } else {
+        value = module._exports[name]
+      }
+
+      binding.setExport(module._handle, name, value)
+    }
+  }
+
+  static _onmeta(href, meta) {
+    const self = Module
+
+    const module = this._cache[href] || null
+
+    if (module === null) {
+      throw errors.MODULE_NOT_FOUND(`Cannot find module '${href}'`)
+    }
+
+    const referrer = module
+
+    meta.url = module._url.href
+    meta.main = module._main === module
+    meta.cache = module._cache
+
+    meta.resolve = function resolve(specifier, parentURL = referrer._url) {
+      return self.resolve(specifier, toURL(parentURL, referrer._url), {
+        referrer
+      }).href
+    }
+
+    meta.addon = function addon(specifier = '.', parentURL = referrer._url) {
+      const resolved = Bare.Addon.resolve(
+        specifier,
+        toURL(parentURL, referrer._url),
+        { referrer }
+      )
+
+      const addon = Bare.Addon.load(resolved, { referrer })
+
+      return addon._exports
+    }
+
+    meta.addon.resolve = function resolve(
+      specifier = '.',
+      parentURL = referrer._url
+    ) {
+      return Bare.Addon.resolve(specifier, toURL(parentURL, referrer._url), {
+        referrer
+      }).href
+    }
+
+    meta.addon.host = Bare.Addon.host
+
+    meta.asset = function asset(specifier, parentURL = referrer._url) {
+      return self.asset(specifier, toURL(parentURL, referrer._url), {
+        referrer
+      }).href
+    }
+  }
+
+  static _onrun(reason, promise, err = reason) {
+    if (err) {
+      promise.catch(() => {}) // Don't leak the rejection
+
+      throw err
+    } else {
+      promise.catch((err) =>
+        queueMicrotask(() => {
+          throw err
+        })
+      )
+    }
+  }
+
+  static get protocol() {
+    return this._protocol
+  }
+
+  static get cache() {
+    return this._cache
+  }
+
+  static load(url, source = null, opts = {}) {
+    const self = Module
+
+    if (
+      !ArrayBuffer.isView(source) &&
+      typeof source !== 'string' &&
+      source !== null
+    ) {
+      opts = source
+      source = null
+    }
+
+    const {
+      isImport = false,
+      isDynamicImport = false,
+
+      referrer = null,
+      attributes,
+      type = typeForAttributes(attributes),
+      defaultType = referrer ? referrer._defaultType : 0,
+      cache = referrer ? referrer._cache : self._cache,
+      main = referrer ? referrer._main : null,
+      protocol = referrer ? referrer._protocol : self._protocol,
+      imports = referrer ? referrer._imports : null,
+      resolutions = referrer ? referrer._resolutions : null,
+      builtins = referrer ? referrer._builtins : null,
+      conditions = referrer ? referrer._conditions : self._conditions
+    } = opts
+
+    let module = cache[url.href] || null
+
+    if (module !== null) {
+      if (type !== 0 && type !== module._type) {
+        throw errors.TYPE_INCOMPATIBLE(
+          `Module '${module.url.href}' is not of type '${nameOfType(type)}'`
+        )
+      }
+
+      return module._transform(isImport, isDynamicImport)
+    }
+
+    module = cache[url.href] = new Module(url)
+
+    try {
+      switch (url.protocol) {
+        case 'builtin:':
+          module._exports = builtins[url.pathname]
+          break
+
+        default: {
+          module._defaultType = defaultType
+          module._cache = cache
+          module._main = main || module
+          module._protocol = protocol
+          module._imports = imports
+          module._resolutions = resolutions
+          module._builtins = builtins
+          module._conditions = conditions
+
+          let extension =
+            canonicalExtensionForType(type) || path.extname(url.pathname)
+
+          if (extension in self._extensions === false) {
+            if (defaultType)
+              extension = canonicalExtensionForType(defaultType) || '.js'
+            else extension = '.js'
+          }
+
+          self._extensions[extension](module, source, referrer)
+        }
+      }
+
+      return module._transform(isImport, isDynamicImport)
+    } catch (err) {
+      delete cache[url.href]
+
+      throw err
+    }
+  }
+
+  static resolve(specifier, parentURL, opts = {}) {
+    const self = Module
+
+    if (typeof specifier !== 'string') {
+      throw new TypeError(
+        `Specifier must be a string. Received type ${typeof specifier} (${specifier})`
+      )
+    }
+
+    const {
+      isImport = false,
+
+      referrer = null,
+      attributes,
+      type = typeForAttributes(attributes),
+      extensions = extensionsForType(type),
+      protocol = referrer ? referrer._protocol : self._protocol,
+      imports = referrer ? referrer._imports : null,
+      resolutions = referrer ? referrer._resolutions : null,
+      builtins = referrer ? referrer._builtins : null,
+      conditions = referrer ? referrer._conditions : self._conditions
+    } = opts
+
+    const resolved = protocol.preresolve(specifier, parentURL)
+
+    const [resolution] = protocol.resolve(resolved, parentURL, imports)
+
+    if (resolution) return protocol.postresolve(resolution)
+
+    for (const resolution of resolve(
+      resolved,
+      parentURL,
+      {
+        conditions: isImport
+          ? ['import', ...conditions]
+          : ['require', ...conditions],
+        imports,
+        resolutions,
+        extensions,
+        builtins: builtins ? Object.keys(builtins) : [],
+        engines: {
+          ...Bare.versions
+        }
+      },
+      readPackage
+    )) {
+      switch (resolution.protocol) {
+        case 'builtin:':
+          return resolution
+        default:
+          if (protocol.exists(resolution)) {
+            return protocol.postresolve(resolution)
+          }
+      }
+    }
+
+    throw errors.MODULE_NOT_FOUND(
+      `Cannot find module '${specifier}' imported from '${parentURL.href}'`
+    )
+
+    function readPackage(packageURL) {
+      if (protocol.exists(packageURL)) {
+        return Module.load(packageURL, { protocol })._exports
+      }
+
+      return null
+    }
+  }
+
+  static asset(specifier, parentURL, opts = {}) {
+    const self = Module
+
+    if (typeof specifier !== 'string') {
+      throw new TypeError(
+        `Specifier must be a string. Received type ${typeof specifier} (${specifier})`
+      )
+    }
+
+    const {
+      referrer = null,
+      protocol = referrer ? referrer._protocol : self._protocol,
+      imports = referrer ? referrer._imports : null,
+      resolutions = referrer ? referrer._resolutions : null,
+      conditions = referrer ? referrer._conditions : self._conditions
+    } = opts
+
+    const resolved = protocol.preresolve(specifier, parentURL)
+
+    const [resolution] = protocol.resolve(resolved, parentURL, imports)
+
+    if (resolution) return protocol.postresolve(resolution)
+
+    for (const resolution of resolve(
+      resolved,
+      parentURL,
+      {
+        conditions: ['asset', ...conditions],
+        imports,
+        resolutions
+      },
+      readPackage
+    )) {
+      if (protocol.exists(resolution)) {
+        return protocol.postresolve(
+          protocol.asset ? protocol.asset(resolution) : resolution
+        )
+      }
+    }
+
+    throw errors.ASSET_NOT_FOUND(
+      `Cannot find asset '${specifier}' imported from '${parentURL.href}'`
+    )
+
+    function readPackage(packageURL) {
+      if (protocol.exists(packageURL)) {
+        return Module.load(packageURL, { protocol })._exports
+      }
+
+      return null
+    }
+  }
+}
+
+const Module = exports
 
 function extensionsForType(type) {
   switch (type) {
