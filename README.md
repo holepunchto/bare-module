@@ -503,11 +503,11 @@ See [`bare-addon`](https://github.com/holepunchto/bare-addon) for a template of 
 
 Returns the string representation of the platform and architecture used when resolving addons with the pattern `<platform>-<arch>[-simulator]`. Returns the same value as `Bare.Addon.host`.
 
-#### `const path = require.addon.resolve(specifier = '.', parentURL = referrer.url)`
+#### `const path = require.addon.resolve([specifier][, parentURL])`
 
 Resolve the `specifier` string relative to the URL `parentURL` as an addon and returns the path string. The `specifier` is resolved using the [addon resolution algorithm](https://github.com/holepunchto/bare-addon-resolve#algorithm).
 
-#### `const path = require.asset(specifier = '.', parentURL = referrer.url)`
+#### `const path = require.asset([specifier][, parentURL])`
 
 Resolve the `specifier` relative to the `parentURL` and return the path of the asset as a string.
 
@@ -538,11 +538,11 @@ A boolean representing whether the current module is the entry script where the 
 
 A cache of loaded modules for this module. The same value as `module.cache` for the current module.
 
-#### `const href = import.meta.resolve(specifier = '.', parentURL = referrer.url)`
+#### `const href = import.meta.resolve([specifier][, parentURL])`
 
 A module-relative resolution function which returns the URL string for the module. The `specifier` is a string which is resolved relative to the `parentURL` which is a WHATWG URL.
 
-#### `import.meta.addon(specifier = '.', parentURL = referrer.url)`
+#### `import.meta.addon([specifier][, parentURL])`
 
 Also used to import modules but specifically loads only addon modules. `specifier` is resolved relative to `parentURL` using the [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm) algorithm.
 
@@ -552,11 +552,11 @@ Returns the exported module contents.
 
 Returns the string representation of the platform and architecture used when resolving addons with the pattern `<platform>-<arch>[-simulator]`. Returns the same value as `Bare.Addon.host`.
 
-#### `const href = import.meta.addon.resolve(specifier = '.', parentURL = referrer.url)`
+#### `const href = import.meta.addon.resolve([specifier][, parentURL])`
 
 Resolve the `specifier` string relative to the URL `parentURL` as an addon and returns the URL string. The `specifier` is resolved using the [addon resolution algorithm](https://github.com/holepunchto/bare-addon-resolve#algorithm).
 
-#### `const href = import.meta.asset(specifier = '.', parentURL = referrer.url)`
+#### `const href = import.meta.asset([specifier][, parentURL])`
 
 Resolve the `specifier` relative to the `parentURL` and return the URL of the asset as a string.
 
