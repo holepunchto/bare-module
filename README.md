@@ -458,7 +458,7 @@ The `ModuleProtocol` class used for resolving, reading and loading modules. See 
 
 Unloads the module.
 
-### CommonJS Import Methods
+### CommonJS modules
 
 #### `require(specifier[, options])`
 
@@ -466,7 +466,7 @@ Used to import modules, JSON and local files. Relative paths (e.g. `./`, `./foo`
 
 Returns the exported module contents.
 
-Options includes:
+Options include:
 
 ```js
 options = {
@@ -491,7 +491,7 @@ Also used to import modules but specifically loads only addon modules. `specifie
 
 Returns the exported module contents.
 
-A common pattern for writing an addon module is to use `require.addon()` as the js module exports:
+A common pattern for writing an addon module is to use `require.addon()` as the JavaScript module exports:
 
 ```js
 module.exports = require.addon()
@@ -511,15 +511,14 @@ Resolve the `specifier` string relative to the URL `parentURL` as an addon and r
 
 Resolve the `specifier` relative to the `parentURL` and return the path of the asset as a string.
 
-Can be used to load assets, for example the following loads `./foo.txt` from the
-local files:
+Can be used to load assets, for example the following loads `./foo.txt` from the local files:
 
 ```js
 const fs = require('bare-fs')
 const contents = fs.readFileSync(require.asset('./foo.txt'))
 ```
 
-### ECMAScript Module Import Methods
+### ECMAScript modules
 
 #### `import defaultExport, * as name, { export1, export2 as alias2, ... } from 'specifier' with { type: 'json' }`
 
