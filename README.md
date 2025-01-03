@@ -485,6 +485,10 @@ The module representing the entry script where the program was launched. The sam
 
 A cache of loaded modules for this module. The same value as `module.cache` for the current module.
 
+#### `const path = require.resolve(specifier[, parentURL])`
+
+Use the internal machinery of `require()` to resolve the `specifier` string relative to the URL `parentURL` and return the path string.
+
 #### `require.addon([specifier][, parentURL])`
 
 Also used to import modules but specifically loads only addon modules. `specifier` is resolved relative to `parentURL` using the [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm) algorithm.
