@@ -462,7 +462,7 @@ Unloads the module.
 
 #### `require(specifier[, options])`
 
-Used to import modules, JSON and local files. Relative paths (e.g. `./`, `./foo`, `./bar/baz`, `../foo`) will be resolved against the directory named by `__dirname` (if defined) or the current working directory. The relative paths of POSIX style are resolved in an OS independent fashion, meaning that the examples above will work on Windows in the same way they would on Unix systems.
+Used to import JavaScript or JSON modules and local files. Relative paths such as `./`, `./foo`, `./bar/baz`, and `../foo` will be resolved against the directory named by `__dirname`. POSIX style paths are resolved in an OS independent fashion, meaning that the examples above will work on Windows in the same way they would on POSIX systems.
 
 Returns the exported module contents.
 
