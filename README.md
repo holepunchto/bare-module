@@ -485,7 +485,7 @@ The module representing the entry script where the program was launched. The sam
 
 A cache of loaded modules for this module. The same value as `module.cache` for the current module.
 
-#### `require.addon(specifier = '.', parentURL = referrer.url)`
+#### `require.addon([specifier][, parentURL])`
 
 Also used to import modules but specifically loads only addon modules. `specifier` is resolved relative to `parentURL` using the [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm) algorithm.
 
