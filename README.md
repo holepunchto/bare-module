@@ -460,7 +460,7 @@ Unloads the module.
 
 ### CommonJS Import Methods
 
-#### `require(specifier, options = {})`
+#### `require(specifier[, options])`
 
 Used to import modules, JSON and local files. Relative paths (e.g. `./`, `./foo`, `./bar/baz`, `../foo`) will be resolved against the directory named by `__dirname` (if defined) or the current working directory. The relative paths of POSIX style are resolved in an OS independent fashion, meaning that the examples above will work on Windows in the same way they would on Unix systems.
 
