@@ -448,9 +448,11 @@ module.exports = exports = class Module {
             canonicalExtensionForType(type) || path.extname(url.pathname)
 
           if (extension in self._extensions === false) {
-            if (defaultType)
+            if (defaultType) {
               extension = canonicalExtensionForType(defaultType) || '.js'
-            else extension = '.js'
+            } else {
+              extension = '.js'
+            }
           }
 
           self._extensions[extension](module, source, referrer)
@@ -513,7 +515,7 @@ module.exports = exports = class Module {
         case 'builtin:':
           return resolution
         default:
-          if (protocol.exists(resolution)) {
+          if (protocol.exists(resolution, type)) {
             return protocol.postresolve(resolution)
           }
       }
@@ -524,7 +526,7 @@ module.exports = exports = class Module {
     )
 
     function readPackage(packageURL) {
-      if (protocol.exists(packageURL)) {
+      if (protocol.exists(packageURL, constants.types.JSON)) {
         return Module.load(packageURL, { protocol })._exports
       }
 
@@ -566,7 +568,7 @@ module.exports = exports = class Module {
       },
       readPackage
     )) {
-      if (protocol.exists(resolution)) {
+      if (protocol.exists(resolution, constants.types.ASSET)) {
         return protocol.postresolve(
           protocol.asset ? protocol.asset(resolution) : resolution
         )
@@ -578,7 +580,7 @@ module.exports = exports = class Module {
     )
 
     function readPackage(packageURL) {
-      if (protocol.exists(packageURL)) {
+      if (protocol.exists(packageURL, constants.types.JSON)) {
         return Module.load(packageURL, { protocol })._exports
       }
 
@@ -799,7 +801,7 @@ Module._extensions['.js'] = function (module, source, referrer) {
       break
     }
 
-    if (protocol.exists(packageURL)) {
+    if (protocol.exists(packageURL, constants.types.JSON)) {
       pkg = self.load(packageURL, { protocol })
       break
     }
@@ -969,10 +971,15 @@ Module._protocol = new Protocol({
     }
   },
 
-  exists(url) {
+  exists(url, type = 0) {
     switch (url.protocol) {
       case 'file:':
-        return binding.exists(fileURLToPath(url))
+        return binding.exists(
+          fileURLToPath(url),
+          type === constants.types.ASSET
+            ? binding.FILE | binding.DIR
+            : binding.FILE
+        )
       default:
         return false
     }
