@@ -2846,6 +2846,24 @@ test('load non-file: URL with missing import using the default protocol', (t) =>
   }
 })
 
+test('resolve file: asset URL using the default protocol', (t) => {
+  t.teardown(onteardown)
+
+  t.alike(
+    Module.asset('./test/fixtures/foo.js', pathToFileURL(__dirname + '/')),
+    pathToFileURL(__dirname + '/test/fixtures/foo.js')
+  )
+})
+
+test('resolve file: asset directory URL using the default protocol', (t) => {
+  t.teardown(onteardown)
+
+  t.alike(
+    Module.asset('./test/fixtures', pathToFileURL(__dirname + '/')),
+    pathToFileURL(__dirname + '/test/fixtures')
+  )
+})
+
 test('extend the default protocol', (t) => {
   t.teardown(onteardown)
 

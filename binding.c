@@ -529,16 +529,20 @@ bare_module_exists(js_env_t *env, js_callback_info_t *info) {
   err = js_get_env_loop(env, &loop);
   assert(err == 0);
 
-  js_value_t *argv[1];
-  size_t argc = 1;
+  js_value_t *argv[2];
+  size_t argc = 2;
 
   err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
   assert(err == 0);
 
-  assert(argc == 1);
+  assert(argc == 2);
 
   utf8_t path[4096];
   err = js_get_value_string_utf8(env, argv[0], path, 4096, NULL);
+  assert(err == 0);
+
+  uint32_t mode;
+  err = js_get_value_uint32(env, argv[1], &mode);
   assert(err == 0);
 
   uv_fs_t req;
@@ -547,7 +551,7 @@ bare_module_exists(js_env_t *env, js_callback_info_t *info) {
   uv_stat_t *st = req.result < 0 ? NULL : req.ptr;
 
   js_value_t *result;
-  err = js_get_boolean(env, st && st->st_mode & S_IFREG, &result);
+  err = js_get_boolean(env, st && st->st_mode & mode, &result);
   assert(err == 0);
 
   uv_fs_req_cleanup(&req);
@@ -705,6 +709,19 @@ bare_module_exports(js_env_t *env, js_value_t *exports) {
   V("exists", bare_module_exists)
   V("realpath", bare_module_realpath)
   V("read", bare_module_read)
+#undef V
+
+#define V(name, n) \
+  { \
+    js_value_t *val; \
+    err = js_create_uint32(env, n, &val); \
+    assert(err == 0); \
+    err = js_set_named_property(env, exports, name, val); \
+    assert(err == 0); \
+  }
+
+  V("FILE", S_IFREG)
+  V("DIR", S_IFDIR)
 #undef V
 
   return exports;
