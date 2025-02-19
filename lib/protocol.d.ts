@@ -2,8 +2,6 @@ import URL from 'bare-url'
 import Buffer from 'bare-buffer'
 import { type ImportsMap } from 'bare-module-resolve'
 
-type JSON = string | number | boolean | JSON[] | { [key: string]: JSON }
-
 interface ModuleProtocol {
   preresolve(specifier: string, parentURL: URL): string
 
@@ -13,7 +11,7 @@ interface ModuleProtocol {
 
   exists(url: URL, type: number): boolean
 
-  read(url: URL): Buffer | JSON | null
+  read(url: URL): Buffer | string | null
 
   addon(url: URL): URL
 
