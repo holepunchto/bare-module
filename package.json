@@ -2,9 +2,16 @@
   "name": "bare-module",
   "version": "4.8.0",
   "description": "Module support for JavaScript",
-  "main": "index.js",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./package": "./package.json"
+  },
   "files": [
     "index.js",
+    "index.d.ts",
     "binding.c",
     "binding.js",
     "CMakeLists.txt",
@@ -33,9 +40,18 @@
     "bare-url": "^2.0.1"
   },
   "devDependencies": {
+    "bare-buffer": "^3.0.2",
     "brittle": "^3.1.1",
     "cmake-bare": "^1.1.6",
     "prettier": "^3.3.3",
     "prettier-config-standard": "^7.0.0"
+  },
+  "peerDependencies": {
+    "bare-buffer": "*"
+  },
+  "peerDependenciesMeta": {
+    "bare-buffer": {
+      "optional": true
+    }
   }
 }
