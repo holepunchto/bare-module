@@ -7,49 +7,49 @@ import {
   type ImportsMap,
   type ResolutionsMap
 } from 'bare-module-resolve'
-import ModuleProtocol from './lib/protocol'
+import Protocol from './lib/protocol'
 import constants from './lib/constants'
 
-type CacheMap = { [href: string]: Module }
+type Cache = { [href: string]: Module }
 
 type Attributes = { type: Lowercase<keyof typeof constants.types> }
 
-interface ModuleOptions {
+interface Options {
   attributes?: Attributes
   builtins?: Builtins
-  cache?: CacheMap
+  cache?: Cache
   conditions?: Conditions
   defaultType?: number
   imports?: ImportsMap
   main?: Module
-  protocol?: ModuleProtocol
+  protocol?: Protocol
   referrer?: Module
   resolutions?: ResolutionsMap
   type?: number
 }
 
-interface ModuleLoadOptions extends ModuleOptions {
+interface LoadOptions extends Options {
   isDynamicImport?: boolean
   isImport?: boolean
 }
 
-interface ModuleResolveOptions extends ModuleOptions {
+interface ResolveOptions extends Options {
   isImport?: boolean
 }
 
 interface Module {
   readonly builtins: Builtins
-  readonly cache: CacheMap
+  readonly cache: Cache
   readonly conditions: Conditions
   readonly defaultType: number
-  readonly dirnamedirname: string
+  readonly dirname: string
   exports: unknown
   readonly filename: string
   readonly id: string
   readonly imports: ImportsMap
   readonly main: Module
   readonly path: string
-  readonly protocol: ModuleProtocol
+  readonly protocol: Protocol
   readonly resolutions: ResolutionsMap
   readonly type: number
   readonly url: URL
@@ -58,23 +58,15 @@ interface Module {
 }
 
 declare class Module {
-  static readonly protocol: ModuleProtocol
-  static readonly cache: CacheMap
+  static readonly protocol: Protocol
+  static readonly cache: Cache
 
-  static load(url: URL, opts: ModuleLoadOptions): Module
-  static load(
-    url: URL,
-    source?: Buffer | string,
-    opts?: ModuleLoadOptions
-  ): Module
+  static load(url: URL, opts: LoadOptions): Module
+  static load(url: URL, source?: Buffer | string, opts?: LoadOptions): Module
 
-  static resolve(
-    specifier: string,
-    parentURL: URL,
-    opts?: ModuleResolveOptions
-  ): URL
+  static resolve(specifier: string, parentURL: URL, opts?: ResolveOptions): URL
 
-  static asset(specifier: string, parentURL: URL, opts?: ModuleOptions): URL
+  static asset(specifier: string, parentURL: URL, opts?: Options): URL
 
   constructor(url: URL)
 }
@@ -82,19 +74,20 @@ declare class Module {
 declare namespace Module {
   export {
     type Attributes,
-    type CacheMap,
-    type ModuleOptions,
-    type ModuleLoadOptions,
-    type ModuleResolveOptions
+    type Cache,
+    type Options,
+    type LoadOptions,
+    type ResolveOptions,
+    Protocol,
+    Bundle,
+    constants
   }
-
-  export { ModuleProtocol as Protocol, Bundle, constants }
 
   export const builtinModules: Module[]
 
   export function isBuiltin(): boolean
 
-  export interface CreateRequireOptions extends ModuleOptions {
+  export interface CreateRequireOptions extends Options {
     module?: Module
   }
 
@@ -111,7 +104,7 @@ declare namespace Module {
   export interface Require {
     (parentURL: string | URL, opts?: RequireOptions): unknown
     main: Module
-    cache: CacheMap
+    cache: Cache
     resolve: (specifier: string, parentURL?: URL) => string
     addon: RequireAddon
     asset: (specifier: string, parentURL?: URL) => string
