@@ -10,9 +10,13 @@ import {
 import Protocol from './lib/protocol'
 import constants from './lib/constants'
 
-type Cache = { [href: string]: Module }
+interface Cache {
+  [href: string]: Module
+}
 
-type Attributes = { type: Lowercase<keyof typeof constants.types> }
+interface Attributes {
+  type: Lowercase<keyof typeof constants.types>
+}
 
 interface Options {
   attributes?: Attributes
