@@ -907,10 +907,9 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
 
   referrer = module
 
-  const bundle = (module._bundle = Bundle.from(source).mount(
-    module._url.href + '/'
-  ))
+  const bundle = Bundle.from(source).mount(module._url.href + '/')
 
+  module._bundle = bundle
   module._imports = bundle.imports
   module._resolutions = bundle.resolutions
 
