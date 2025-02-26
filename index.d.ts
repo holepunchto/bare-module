@@ -66,7 +66,11 @@ declare class Module {
   static readonly cache: Cache
 
   static load(url: URL, opts: LoadOptions): Module
-  static load(url: URL, source?: Buffer | string, opts?: LoadOptions): Module
+  static load(
+    url: URL,
+    source?: Buffer | string | Bundle | null,
+    opts?: LoadOptions
+  ): Module
 
   static resolve(specifier: string, parentURL: URL, opts?: ResolveOptions): URL
 

@@ -390,6 +390,7 @@ module.exports = exports = class Module {
 
     if (
       !ArrayBuffer.isView(source) &&
+      !Bundle.isBundle(source) &&
       typeof source !== 'string' &&
       source !== null
     ) {
