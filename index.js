@@ -158,7 +158,11 @@ module.exports = exports = class Module {
           const referrer = module
 
           for (const { specifier, type } of result.imports) {
-            if (type & lex.constants.REEXPORT) {
+            if (
+              (type & lex.constants.REEXPORT) !== 0 &&
+              (type & lex.constants.ADDON) === 0 &&
+              (type & lex.constants.ASSET) === 0
+            ) {
               const resolved = Module.resolve(specifier, referrer._url, {
                 isImport: true,
                 referrer
