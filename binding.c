@@ -377,7 +377,6 @@ bare_module_create_synthetic_module(js_env_t *env, js_callback_info_t *info) {
     goto err;
   }
 
-
   bare_module_context_t *context;
   err = js_get_arraybuffer_info(env, argv[2], (void **) &context, NULL);
   if (err < 0) goto err;
