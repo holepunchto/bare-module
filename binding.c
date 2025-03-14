@@ -282,9 +282,11 @@ bare_module_create_function(js_env_t *env, js_callback_info_t *info) {
 
   js_value_t **args = malloc(sizeof(js_value_t *) * args_len);
 
-  for (int i = 0; i < args_len; i++) {
-    err = js_get_element(env, argv[1], i, &args[i]);
-    if (err < 0) goto err;
+  uint32_t fetched;
+  err = js_get_array_elements(env, argv[1], args, args_len, 0, &fetched);
+
+  if (err < 0 || fetched != args_len) {
+    goto err;
   }
 
   js_value_t *source = argv[2];
@@ -368,9 +370,11 @@ bare_module_create_synthetic_module(js_env_t *env, js_callback_info_t *info) {
 
   js_value_t **export_names = malloc(sizeof(js_value_t *) * names_len);
 
-  for (int i = 0; i < names_len; i++) {
-    err = js_get_element(env, argv[1], i, &export_names[i]);
-    if (err < 0) goto err;
+  uint32_t fetched;
+  err = js_get_array_elements(env, argv[1], export_names, names_len, 0, &fetched);
+
+  if (err < 0 || fetched != names_len) {
+    goto err;
   }
 
   bare_module_context_t *context;
