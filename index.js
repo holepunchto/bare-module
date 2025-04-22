@@ -501,6 +501,8 @@ module.exports = exports = class Module {
 
     if (resolution) return protocol.postresolve(resolution)
 
+    const candidates = []
+
     for (const resolution of resolve(
       resolved,
       parentURL,
@@ -516,6 +518,8 @@ module.exports = exports = class Module {
       },
       readPackage
     )) {
+      candidates.push(resolution)
+
       switch (resolution.protocol) {
         case 'builtin:':
           return resolution
@@ -526,9 +530,14 @@ module.exports = exports = class Module {
       }
     }
 
-    throw errors.MODULE_NOT_FOUND(
-      `Cannot find module '${specifier}' imported from '${parentURL.href}'`
-    )
+    let message = `Cannot find module '${specifier}' imported from '${parentURL.href}`
+
+    if (candidates.length > 0) {
+      message += '\nCandidates:'
+      message += '\n' + candidates.map((url) => '- ' + url.href).join('\n')
+    }
+
+    throw errors.MODULE_NOT_FOUND(message, candidates)
 
     function readPackage(packageURL) {
       if (protocol.exists(packageURL, constants.types.JSON)) {
