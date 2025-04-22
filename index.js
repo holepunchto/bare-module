@@ -533,11 +533,11 @@ module.exports = exports = class Module {
     let message = `Cannot find module '${specifier}' imported from '${parentURL.href}`
 
     if (candidates.length > 0) {
-      message += '\nAttempted:'
+      message += '\nCandidates:'
       message += '\n' + candidates.map((url) => '- ' + url.href).join('\n')
     }
 
-    throw errors.MODULE_NOT_FOUND(message)
+    throw errors.MODULE_NOT_FOUND(message, candidates)
 
     function readPackage(packageURL) {
       if (protocol.exists(packageURL, constants.types.JSON)) {
