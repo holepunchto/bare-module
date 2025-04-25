@@ -1281,6 +1281,54 @@ test('load .mjs with dynamic .cjs import', (t) => {
   Module.load(new URL(root + '/foo.mjs'), { protocol })
 })
 
+test('load .cjs with static and dynamic .cjs import', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return "require('/bar'); import('/bar')"
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load(new URL(root + '/foo.cjs'), { protocol })
+})
+
+test('load .cjs with static and dynamic .mjs import', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.mjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return "require('/bar'); import('/bar')"
+      }
+
+      if (url.href === root + '/bar.mjs') {
+        return 'export default 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load(new URL(root + '/foo.cjs'), { protocol })
+})
+
 test('load .cjs with bare specifier require and import map', (t) => {
   t.teardown(onteardown)
 
@@ -3217,11 +3265,6 @@ test('load .js with .txt require, asserted type mismatch', (t) => {
   }
 })
 
-function onteardown() {
-  // TODO Provide a public API for clearing the cache.
-  Module._cache = Object.create(null)
-}
-
 test('extend module with exports property', (t) => {
   t.teardown(onteardown)
 
@@ -3250,3 +3293,8 @@ test('extend module with exports property', (t) => {
     t.comment(err.message)
   }
 })
+
+function onteardown() {
+  // TODO Provide a public API for clearing the cache.
+  Module._cache = Object.create(null)
+}
