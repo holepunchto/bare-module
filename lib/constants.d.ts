@@ -2,6 +2,7 @@ declare const constants: {
   states: {
     EVALUATED: number
     SYNTHESIZED: number
+    RUN: number
     DESTROYED: number
   }
   types: {

@@ -114,14 +114,9 @@ module.exports = exports = class Module {
     Module._modules.delete(this)
   }
 
-  _run() {
-    binding.runModule(this._handle, Module._handle, Module._onrun)
-  }
-
   _transform(isImport, isDynamicImport) {
     if (isDynamicImport) {
-      this._synthesize()
-      this._evaluate(true /* eagerRun */)
+      this._run()
     } else if (isImport) {
       this._synthesize()
     } else {
@@ -205,7 +200,7 @@ module.exports = exports = class Module {
     )
   }
 
-  _evaluate(eagerRun = false) {
+  _evaluate() {
     if ((this._state & constants.states.EVALUATED) !== 0) return
 
     this._state |= constants.states.EVALUATED
@@ -224,15 +219,21 @@ module.exports = exports = class Module {
         urlToPath(this._url),
         urlToDirname(this._url)
       )
-
-      if (eagerRun) this._run()
     } else if (this._type === constants.types.MODULE) {
       this._run()
 
       this._exports = binding.getNamespace(this._handle)
-    } else if (eagerRun) {
-      this._run()
     }
+  }
+
+  _run() {
+    if ((this._state & constants.states.RUN) !== 0) return
+
+    this._state |= constants.states.RUN
+
+    this._synthesize()
+
+    binding.runModule(this._handle, Module._handle, Module._onrun)
   }
 
   [Symbol.for('bare.inspect')]() {
