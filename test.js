@@ -1,4 +1,3 @@
-/* global Bare */
 const test = require('brittle')
 const { pathToFileURL } = require('bare-url')
 const Module = require('.')

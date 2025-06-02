@@ -1,4 +1,3 @@
-/* global Bare */
 const path = require('bare-path')
 const resolve = require('bare-module-resolve')
 const lex = require('bare-module-lexer')
