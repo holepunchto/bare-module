@@ -978,7 +978,9 @@ Module._protocol = new Protocol({
   postresolve(url) {
     switch (url.protocol) {
       case 'file:':
-        return pathToFileURL(binding.realpath(fileURLToPath(url)))
+        return pathToFileURL(
+          binding.realpath(path.toNamespacedPath(fileURLToPath(url)))
+        )
       default:
         return url
     }
@@ -988,7 +990,7 @@ Module._protocol = new Protocol({
     switch (url.protocol) {
       case 'file:':
         return binding.exists(
-          fileURLToPath(url),
+          path.toNamespacedPath(fileURLToPath(url)),
           type === constants.types.ASSET
             ? binding.FILE | binding.DIR
             : binding.FILE
@@ -1001,7 +1003,9 @@ Module._protocol = new Protocol({
   read(url) {
     switch (url.protocol) {
       case 'file:':
-        return Buffer.from(binding.read(fileURLToPath(url)))
+        return Buffer.from(
+          binding.read(path.toNamespacedPath(fileURLToPath(url)))
+        )
       default:
         throw errors.UNKNOWN_PROTOCOL(`Cannot load module '${url.href}'`)
     }
