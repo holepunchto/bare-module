@@ -595,7 +595,8 @@ bare_module_realpath(js_env_t *env, js_callback_info_t *info) {
   return result;
 
 err:
-  js_throw_error(env, uv_err_name(err), uv_strerror(err));
+  err = js_throw_error(env, uv_err_name(err), uv_strerror(err));
+  assert(err == 0);
 
   return NULL;
 }
@@ -673,7 +674,8 @@ bare_module_read(js_env_t *env, js_callback_info_t *info) {
   return result;
 
 err:
-  js_throw_error(env, uv_err_name(err), uv_strerror(err));
+  err = js_throw_error(env, uv_err_name(err), uv_strerror(err));
+  assert(err == 0);
 
   return NULL;
 }
