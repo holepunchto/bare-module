@@ -635,13 +635,6 @@ methods = {
   // A function that returns the source code of a URL represented as a string or
   // buffer.
   read,
-  // function (url): object
-  // A function that returns the evaluated exports for the url. This is
-  // only called for Javascript modules (extensions `.js`, `.cjs` & `.mjs`)
-  // by default. If defined, this function will skip calling `read()` and
-  // evaluating the source method for the default implementations of the
-  // Javascript extensions.
-  load,
   // function (url): URL
   // A function used to post process URLs for addons before `postresolve()`.
   addon,

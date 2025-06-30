@@ -17,8 +17,7 @@ module.exports = exports = class Module {
     this._url = url
     this._state = 0
     this._type = 0
-    this._defaultType = this._type
-    this._cache = null
+    this._defaultType = 0
     this._main = null
     this._exports = null
     this._imports = null
@@ -26,7 +25,8 @@ module.exports = exports = class Module {
     this._builtins = null
     this._conditions = null
     this._protocol = null
-    this._bundle = null
+    this._cache = null
+    this._source = null
     this._function = null
     this._names = null
     this._handle = null
@@ -40,24 +40,12 @@ module.exports = exports = class Module {
     return this._url
   }
 
-  get filename() {
-    return urlToPath(this._url)
-  }
-
-  get dirname() {
-    return urlToDirname(this._url)
-  }
-
   get type() {
     return this._type
   }
 
   get defaultType() {
     return this._defaultType
-  }
-
-  get cache() {
-    return this._cache
   }
 
   get main() {
@@ -90,6 +78,20 @@ module.exports = exports = class Module {
 
   get protocol() {
     return this._protocol
+  }
+
+  get cache() {
+    return this._cache
+  }
+
+  // For Node.js compatibility
+  get filename() {
+    return urlToPath(this._url)
+  }
+
+  // For Node.js compatibility
+  get dirname() {
+    return urlToDirname(this._url)
   }
 
   // For Node.js compatibility
@@ -145,7 +147,7 @@ module.exports = exports = class Module {
 
       switch (module._type) {
         case constants.types.SCRIPT: {
-          const result = lex(module._function.toString())
+          const result = lex(module._source)
 
           for (const { name } of result.exports) names.add(name)
 
@@ -837,20 +839,18 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
 
   module._type = constants.types.SCRIPT
 
-  if (protocol.load) {
-    module._exports = protocol.load(module._url)
-  } else {
-    if (source === null) source = protocol.read(module._url)
+  if (source === null) source = protocol.read(module._url)
 
-    if (typeof source !== 'string') source = Buffer.coerce(source).toString()
+  if (typeof source === 'string') source = Buffer.from(source)
 
-    module._function = binding.createFunction(
-      module._url.href,
-      ['require', 'module', 'exports', '__filename', '__dirname'],
-      source,
-      0
-    )
-  }
+  module._source = source
+
+  module._function = binding.createFunction(
+    module._url.href,
+    ['require', 'module', 'exports', '__filename', '__dirname'],
+    source.toString(),
+    0
+  )
 }
 
 Module._extensions['.mjs'] = function (module, source, referrer) {
@@ -860,20 +860,18 @@ Module._extensions['.mjs'] = function (module, source, referrer) {
 
   module._type = constants.types.MODULE
 
-  if (protocol.load) {
-    module._exports = protocol.load(module._url)
-  } else {
-    if (source === null) source = protocol.read(module._url)
+  if (source === null) source = protocol.read(module._url)
 
-    if (typeof source !== 'string') source = Buffer.coerce(source).toString()
+  if (typeof source === 'string') source = Buffer.from(source)
 
-    module._handle = binding.createModule(
-      module._url.href,
-      source,
-      0,
-      self._handle
-    )
-  }
+  module._source = source
+
+  module._handle = binding.createModule(
+    module._url.href,
+    source.toString(),
+    0,
+    self._handle
+  )
 }
 
 Module._extensions['.json'] = function (module, source, referrer) {
@@ -881,15 +879,12 @@ Module._extensions['.json'] = function (module, source, referrer) {
 
   module._type = constants.types.JSON
 
-  if (protocol.load) {
-    module._exports = protocol.load(module._url)
-  } else {
-    if (source === null) source = protocol.read(module._url)
+  if (source === null) source = protocol.read(module._url)
 
-    if (typeof source !== 'string') source = Buffer.coerce(source).toString()
+  if (typeof source === 'string') source = Buffer.from(source)
 
-    module._exports = JSON.parse(source)
-  }
+  module._source = source
+  module._exports = JSON.parse(source.toString())
 }
 
 Module._extensions['.bare'] = function (module, source, referrer) {
@@ -923,7 +918,7 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
 
   const bundle = Bundle.from(source).mount(module._url.href + '/')
 
-  module._bundle = bundle
+  module._source = source
   module._imports = bundle.imports
   module._resolutions = bundle.resolutions
 
@@ -959,7 +954,7 @@ Module._extensions['.bin'] = function (module, source, referrer) {
 
   if (typeof source === 'string') source = Buffer.from(source)
 
-  module._exports = source
+  module._source = module._exports = source
 }
 
 Module._extensions['.txt'] = function (module, source, referrer) {
@@ -969,9 +964,10 @@ Module._extensions['.txt'] = function (module, source, referrer) {
 
   if (source === null) source = protocol.read(module._url)
 
-  if (typeof source !== 'string') source = Buffer.coerce(source).toString()
+  if (typeof source === 'string') source = Buffer.from(source)
 
-  module._exports = source
+  module._source = source
+  module._exports = source.toString()
 }
 
 Module._protocol = new Protocol({
