@@ -2748,7 +2748,7 @@ test('syntax error in .cjs', (t) => {
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/foo.cjs') {
-        return 'foo bar'
+        return '1 + ()'
       }
 
       t.fail()
@@ -2769,7 +2769,7 @@ test('syntax error in .cjs, load again', (t) => {
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/foo.cjs') {
-        return 'foo bar'
+        return '1 + ()'
       }
 
       t.fail()
@@ -2805,7 +2805,7 @@ test('syntax error in .cjs imported from .cjs', (t) => {
       }
 
       if (url.href === root + '/bar.cjs') {
-        return 'foo bar'
+        return '1 + ()'
       }
 
       t.fail()
@@ -2826,7 +2826,7 @@ test('syntax error in .mjs', (t) => {
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/foo.mjs') {
-        return 'foo bar'
+        return '1 + ()'
       }
 
       t.fail()
@@ -2855,7 +2855,7 @@ test('syntax error in .mjs imported from .mjs', (t) => {
       }
 
       if (url.href === root + '/bar.mjs') {
-        return 'foo bar'
+        return '1 + ()'
       }
 
       t.fail()
