@@ -8,11 +8,17 @@ const constants = require('./lib/constants')
 const errors = require('./lib/errors')
 const binding = require('./binding')
 
+const kind = Symbol.for('bare.module.kind')
+
 const isWindows = Bare.platform === 'win32'
 
 const { startsWithWindowsDriveLetter } = resolve
 
 module.exports = exports = class Module {
+  static get [kind]() {
+    return 0 // Compatibility version
+  }
+
   constructor(url) {
     this._url = url
     this._state = 0
@@ -32,8 +38,10 @@ module.exports = exports = class Module {
     this._handle = null
 
     Object.preventExtensions(this)
+  }
 
-    Module._modules.add(this)
+  get [kind]() {
+    return Module[kind]
   }
 
   get url() {
@@ -102,17 +110,6 @@ module.exports = exports = class Module {
   // For Node.js compatibility
   get path() {
     return this.dirname
-  }
-
-  destroy() {
-    this._state |= constants.states.DESTROYED
-
-    if (this._handle) {
-      binding.deleteModule(this._handle)
-      this._handle = null
-    }
-
-    Module._modules.delete(this)
   }
 
   _transform(isImport, isDynamicImport) {
@@ -207,7 +204,7 @@ module.exports = exports = class Module {
     this._state |= constants.states.EVALUATED
 
     if (this._type === constants.types.SCRIPT) {
-      const require = createRequire(this._url, { module: this })
+      const require = exports.createRequire(this._url, { module: this })
 
       this._exports = {}
 
@@ -256,7 +253,6 @@ module.exports = exports = class Module {
   static _extensions = Object.create(null)
   static _protocol = null
   static _cache = module.cache || Object.create(null)
-  static _modules = new Set()
   static _conditions = ['bare', 'node', Bare.platform, Bare.arch]
 
   static _handle = binding.init(
@@ -407,7 +403,6 @@ module.exports = exports = class Module {
     const {
       isImport = false,
       isDynamicImport = false,
-
       referrer = null,
       attributes,
       type = typeForAttributes(attributes),
@@ -485,7 +480,6 @@ module.exports = exports = class Module {
 
     const {
       isImport = false,
-
       referrer = null,
       attributes,
       type = typeForAttributes(attributes),
@@ -694,7 +688,6 @@ function typeForAttributes(attributes) {
 }
 
 exports.Protocol = Protocol
-exports.Bundle = Bundle
 
 exports.constants = constants
 
@@ -706,15 +699,11 @@ exports.isBuiltin = function isBuiltin() {
   return false
 }
 
-const createRequire = (exports.createRequire = function createRequire(
-  parentURL,
-  opts = {}
-) {
+exports.createRequire = function createRequire(parentURL, opts = {}) {
   const self = Module
 
   let {
     module = null,
-
     referrer = null,
     type = constants.types.SCRIPT,
     defaultType = referrer ? referrer._defaultType : constants.types.SCRIPT,
@@ -797,7 +786,7 @@ const createRequire = (exports.createRequire = function createRequire(
   }
 
   return require
-})
+}
 
 if (Bare.simulator) Module._conditions.push('simulator')
 
@@ -1006,14 +995,6 @@ Module._protocol = new Protocol({
         throw errors.UNKNOWN_PROTOCOL(`Cannot load module '${url.href}'`)
     }
   }
-})
-
-Bare.prependListener('teardown', () => {
-  for (const module of Module._modules) {
-    module.destroy()
-  }
-
-  binding.destroy(Module._handle)
 })
 
 function toURL(value, base) {
