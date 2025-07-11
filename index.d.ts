@@ -57,8 +57,6 @@ interface Module {
   readonly resolutions: ResolutionsMap
   readonly type: number
   readonly url: URL
-
-  destroy(): void
 }
 
 declare class Module {
@@ -87,7 +85,6 @@ declare namespace Module {
     type LoadOptions,
     type ResolveOptions,
     Protocol,
-    Bundle,
     constants
   }
 

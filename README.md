@@ -268,7 +268,6 @@ The flags for the current state of a module.
 | :------------ | :------------------------------------------- |
 | `EVALUATED`   | The module has been evaluated.               |
 | `SYNTHESIZED` | The module named exports have been detected. |
-| `DESTROYED`   | The module has been unloaded.                |
 
 #### `Module.constants.types`
 
@@ -289,6 +288,9 @@ The default `ModuleProtocol` class for resolving, reading and loading modules. S
 #### `Module.cache`
 
 The global cache of loaded modules.
+
+> [!WARNING]
+> The cache may contain `Module` instances from several independent versions of `bare-module` as the cache is inherited through the module graph.
 
 #### `const url = Module.resolve(specifier, parentURL[, options])`
 
@@ -453,10 +455,6 @@ An array of conditions used to resolve dependencies while loading the module. Se
 #### `module.protocol`
 
 The `ModuleProtocol` class used for resolving, reading and loading modules. See [Protocols](#protocols).
-
-#### `module.destroy()`
-
-Unloads the module.
 
 ### CommonJS modules
 
@@ -643,12 +641,6 @@ methods = {
   asset
 }
 ```
-
-### Bundles
-
-#### `const bundle = new Module.Bundle()`
-
-See <https://github.com/holepunchto/bare-bundle>.
 
 ## License
 

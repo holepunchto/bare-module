@@ -3,7 +3,6 @@ declare const constants: {
     EVALUATED: number
     SYNTHESIZED: number
     RUN: number
-    DESTROYED: number
   }
   types: {
     SCRIPT: number

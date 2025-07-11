@@ -1,5 +1,6 @@
 const test = require('brittle')
 const { pathToFileURL } = require('bare-url')
+const Bundle = require('bare-bundle')
 const Module = require('.')
 
 const isWindows = Bare.platform === 'win32'
@@ -917,7 +918,7 @@ test('load .mjs with dynamic .bare import', async (t) => {
 test('load .bundle', (t) => {
   t.teardown(onteardown)
 
-  const bundle = new Module.Bundle()
+  const bundle = new Bundle()
     .write('/foo.js', "module.exports = require('./bar')", { main: true })
     .write('/bar.js', 'module.exports = 42')
     .toBuffer()
@@ -928,7 +929,7 @@ test('load .bundle', (t) => {
 test('load .bundle with .mjs', (t) => {
   t.teardown(onteardown)
 
-  const bundle = new Module.Bundle()
+  const bundle = new Bundle()
     .write('/foo.mjs', "export { default } from './bar'", { main: true })
     .write('/bar.mjs', 'export default 42')
     .toBuffer()
@@ -939,7 +940,7 @@ test('load .bundle with .mjs', (t) => {
 test('load .bundle with bare specifier', (t) => {
   t.teardown(onteardown)
 
-  const bundle = new Module.Bundle()
+  const bundle = new Bundle()
     .write('/foo.js', "module.exports = require('bar')", { main: true })
     .write('/node_modules/bar/package.json', '{}')
     .write('/node_modules/bar/index.js', 'module.exports = 42')
@@ -951,7 +952,7 @@ test('load .bundle with bare specifier', (t) => {
 test('load .bundle with bare specifier, nested', (t) => {
   t.teardown(onteardown)
 
-  const bundle = new Module.Bundle()
+  const bundle = new Bundle()
     .write('/foo.js', "module.exports = require('bar')", { main: true })
     .write('/node_modules/bar/package.json', '{}')
     .write('/node_modules/bar/index.js', "module.exports = require('baz')")
@@ -965,7 +966,7 @@ test('load .bundle with bare specifier, nested', (t) => {
 test('load .bundle with bare specifier and import map', (t) => {
   t.teardown(onteardown)
 
-  const bundle = new Module.Bundle()
+  const bundle = new Bundle()
     .write('/foo.js', "module.exports = require('baz')", { main: true })
     .write('/bar.js', 'module.exports = 42', { alias: 'baz' })
     .toBuffer()
@@ -976,7 +977,7 @@ test('load .bundle with bare specifier and import map', (t) => {
 test.skip('load specific module within .bundle', (t) => {
   t.teardown(onteardown)
 
-  const bundle = new Module.Bundle()
+  const bundle = new Bundle()
     .write('/foo.js', "module.exports = require('./bar')")
     .write('/bar.js', 'module.exports = 42')
     .toBuffer()
@@ -1000,11 +1001,11 @@ test.skip('load specific module within .bundle', (t) => {
 test.skip('load specific module within nested .bundle', (t) => {
   t.teardown(onteardown)
 
-  const bundleA = new Module.Bundle()
+  const bundleA = new Bundle()
     .write('/bar.js', 'module.exports = 42')
     .toBuffer()
 
-  const bundleB = new Module.Bundle().write('/bar.bundle', bundleA).toBuffer()
+  const bundleB = new Bundle().write('/bar.bundle', bundleA).toBuffer()
 
   const protocol = new Module.Protocol({
     read(url) {
@@ -1026,7 +1027,7 @@ test.skip('load specific module within nested .bundle', (t) => {
 test.skip('load .bundle with type option and no .bundle extension', async (t) => {
   t.teardown(onteardown)
 
-  const bundle = new Module.Bundle()
+  const bundle = new Bundle()
     .write('/foo.js', 'module.exports = 42', { main: true })
     .toBuffer()
 
@@ -1046,7 +1047,7 @@ test('load .bundle with builtin require', (t) => {
     bar: 42
   }
 
-  const bundle = new Module.Bundle()
+  const bundle = new Bundle()
     .write('/foo.js', "module.exports = require('bar')", { main: true })
     .toBuffer()
 
@@ -1056,7 +1057,7 @@ test('load .bundle with builtin require', (t) => {
 test('load .bundle with resolutions map', (t) => {
   t.teardown(onteardown)
 
-  const bundle = new Module.Bundle()
+  const bundle = new Bundle()
     .write('/dir/foo.js', "module.exports = require('./bar')", { main: true })
     .write('/dir/bar/index.js', 'module.exports = 42')
 
@@ -1072,7 +1073,7 @@ test('load .bundle with resolutions map', (t) => {
 test('load .bundle with resolutions map, missing entry', async (t) => {
   t.teardown(onteardown)
 
-  const bundle = new Module.Bundle()
+  const bundle = new Bundle()
     .write('/dir/foo.js', "module.exports = require('./bar')", { main: true })
     .write('/dir/bar/index.js', 'module.exports = 42')
 
@@ -1086,7 +1087,7 @@ test('load .bundle with resolutions map, missing entry', async (t) => {
 test.skip('resolve specific module within .bundle', (t) => {
   t.teardown(onteardown)
 
-  const bundle = new Module.Bundle()
+  const bundle = new Bundle()
     .write('/foo.js', "module.exports = require('./bar')")
     .write('/bar.js', 'module.exports = 42')
     .toBuffer()
@@ -1110,11 +1111,11 @@ test.skip('resolve specific module within .bundle', (t) => {
 test.skip('resolve specific module within nested .bundle', (t) => {
   t.teardown(onteardown)
 
-  const bundleA = new Module.Bundle()
+  const bundleA = new Bundle()
     .write('/bar.js', 'module.exports = 42')
     .toBuffer()
 
-  const bundleB = new Module.Bundle().write('/bar.bundle', bundleA).toBuffer()
+  const bundleB = new Bundle().write('/bar.bundle', bundleA).toBuffer()
 
   const protocol = new Module.Protocol({
     read(url) {
@@ -3035,7 +3036,7 @@ test('load .js with asset import, asset method', (t) => {
 test('load .bundle with asset import', (t) => {
   t.teardown(onteardown)
 
-  const bundle = new Module.Bundle()
+  const bundle = new Bundle()
     .write('/foo.js', "module.exports = require.asset('./bar.txt')", {
       main: true
     })
@@ -3051,7 +3052,7 @@ test('load .bundle with asset import', (t) => {
 test('load .bundle with asset import, asset method', (t) => {
   t.teardown(onteardown)
 
-  const bundle = new Module.Bundle()
+  const bundle = new Bundle()
     .write('/foo.js', "module.exports = require.asset('./bar.txt')", {
       main: true
     })
@@ -3077,7 +3078,7 @@ test('load .bundle with asset import, asset method', (t) => {
 test('load .bundle with asset import, resolutions map', (t) => {
   t.teardown(onteardown)
 
-  const bundle = new Module.Bundle()
+  const bundle = new Bundle()
     .write('/foo.js', "module.exports = require.asset('./bar.txt')", {
       main: true
     })
@@ -3106,7 +3107,7 @@ test('load .bundle with asset import, resolutions map pointing outside .bundle',
     }
   })
 
-  const bundle = new Module.Bundle()
+  const bundle = new Bundle()
     .write('/foo.js', "module.exports = require.asset('./bar.txt')", {
       main: true
     })

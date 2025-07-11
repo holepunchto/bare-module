@@ -9,6 +9,7 @@
 #include <uv.h>
 
 typedef struct {
+  js_env_t *env;
   js_ref_t *ctx;
   js_ref_t *on_import;
   js_ref_t *on_evaluate;
@@ -192,6 +193,27 @@ err:
   assert(err == 0);
 }
 
+static void
+bare_module__on_teardown(void *data) {
+  int err;
+
+  bare_module_context_t *context = data;
+
+  js_env_t *env = context->env;
+
+  err = js_delete_reference(env, context->on_import);
+  assert(err == 0);
+
+  err = js_delete_reference(env, context->on_evaluate);
+  assert(err == 0);
+
+  err = js_delete_reference(env, context->on_meta);
+  assert(err == 0);
+
+  err = js_delete_reference(env, context->ctx);
+  assert(err == 0);
+}
+
 static js_value_t *
 bare_module_init(js_env_t *env, js_callback_info_t *info) {
   int err;
@@ -208,7 +230,9 @@ bare_module_init(js_env_t *env, js_callback_info_t *info) {
 
   js_value_t *result;
   err = js_create_unsafe_arraybuffer(env, sizeof(bare_module_context_t), (void **) &context, &result);
-  if (err < 0) return NULL;
+  assert(err == 0);
+
+  context->env = env;
 
   err = js_create_reference(env, argv[0], 1, &context->ctx);
   assert(err == 0);
@@ -222,41 +246,13 @@ bare_module_init(js_env_t *env, js_callback_info_t *info) {
   err = js_create_reference(env, argv[3], 1, &context->on_meta);
   assert(err == 0);
 
+  err = js_add_teardown_callback(env, bare_module__on_teardown, context);
+  assert(err == 0);
+
   err = js_on_dynamic_import(env, bare_module__on_dynamic_import, (void *) context);
   assert(err == 0);
 
   return result;
-}
-
-static js_value_t *
-bare_module_destroy(js_env_t *env, js_callback_info_t *info) {
-  int err;
-
-  size_t argc = 1;
-  js_value_t *argv[1];
-
-  err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
-  assert(err == 0);
-
-  assert(argc == 1);
-
-  bare_module_context_t *context;
-  err = js_get_arraybuffer_info(env, argv[0], (void **) &context, NULL);
-  if (err < 0) return NULL;
-
-  err = js_delete_reference(env, context->on_import);
-  assert(err == 0);
-
-  err = js_delete_reference(env, context->on_evaluate);
-  assert(err == 0);
-
-  err = js_delete_reference(env, context->on_meta);
-  assert(err == 0);
-
-  err = js_delete_reference(env, context->ctx);
-  assert(err == 0);
-
-  return NULL;
 }
 
 static js_value_t *
@@ -305,6 +301,16 @@ err:
   return NULL;
 }
 
+static void
+bare_module__on_finalize(js_env_t *env, void *data, void *finalize_hint) {
+  int err;
+
+  js_module_t *module = data;
+
+  err = js_delete_module(env, module);
+  assert(err == 0);
+}
+
 static js_value_t *
 bare_module_create_module(js_env_t *env, js_callback_info_t *info) {
   int err;
@@ -337,7 +343,7 @@ bare_module_create_module(js_env_t *env, js_callback_info_t *info) {
   if (err < 0) return NULL;
 
   js_value_t *result;
-  err = js_create_external(env, (void *) module, NULL, NULL, &result);
+  err = js_create_external(env, (void *) module, bare_module__on_finalize, NULL, &result);
   if (err < 0) return NULL;
 
   return result;
@@ -387,28 +393,6 @@ bare_module_create_synthetic_module(js_env_t *env, js_callback_info_t *info) {
 
 err:
   free(export_names);
-
-  return NULL;
-}
-
-static js_value_t *
-bare_module_delete_module(js_env_t *env, js_callback_info_t *info) {
-  int err;
-
-  size_t argc = 1;
-  js_value_t *argv[1];
-
-  err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
-  assert(err == 0);
-
-  assert(argc == 1);
-
-  js_module_t *module;
-  err = js_get_value_external(env, argv[0], (void **) &module);
-  if (err < 0) return NULL;
-
-  err = js_delete_module(env, module);
-  assert(err == 0);
 
   return NULL;
 }
@@ -694,12 +678,10 @@ bare_module_exports(js_env_t *env, js_value_t *exports) {
   }
 
   V("init", bare_module_init)
-  V("destroy", bare_module_destroy)
 
   V("createFunction", bare_module_create_function)
   V("createModule", bare_module_create_module)
   V("createSyntheticModule", bare_module_create_synthetic_module)
-  V("deleteModule", bare_module_delete_module)
   V("setExport", bare_module_set_export)
   V("runModule", bare_module_run_module)
   V("getNamespace", bare_module_get_namespace)
