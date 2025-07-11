@@ -3330,6 +3330,42 @@ test('load .js with imports attribute', (t) => {
   t.is(Module.load(new URL(root + '/foo.js'), { protocol }).exports, 42)
 })
 
+test('load .js with imports attribute, imports expansion', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/bar.js' ||
+        url.href === root + '/baz.js' ||
+        url.href === root + '/imports.json'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.js') {
+        return "module.exports = require('./bar.js', { with: { imports: './imports.json' } })"
+      }
+
+      if (url.href === root + '/bar.js') {
+        return "module.exports = require('baz')"
+      }
+
+      if (url.href === root + '/baz.js') {
+        return 'module.exports = 42'
+      }
+
+      if (url.href === root + '/imports.json') {
+        return '{ "imports": { "baz": "/baz.js" } }'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load(new URL(root + '/foo.js'), { protocol }).exports, 42)
+})
+
 test('load .js with imports attribute, invalid map', (t) => {
   t.teardown(onteardown)
 
