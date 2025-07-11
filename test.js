@@ -3399,6 +3399,45 @@ test('load .js with imports attribute, invalid map', (t) => {
   }
 })
 
+test('load .mjs with imports attribute', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/bar.js' ||
+        url.href === root + '/baz.js' ||
+        url.href === root + '/imports.json'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return "export { default } from './bar.js' with { imports: './imports.json' }"
+      }
+
+      if (url.href === root + '/bar.js') {
+        return "module.exports = require('baz')"
+      }
+
+      if (url.href === root + '/baz.js') {
+        return 'module.exports = 42'
+      }
+
+      if (url.href === root + '/imports.json') {
+        return '{ "baz": "/baz.js" }'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(
+    Module.load(new URL(root + '/foo.mjs'), { protocol }).exports.default,
+    42
+  )
+})
+
 function onteardown() {
   // TODO Provide a public API for clearing the cache.
   Module._cache = Object.create(null)
