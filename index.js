@@ -446,6 +446,27 @@ module.exports = exports = class Module {
           module._builtins = builtins
           module._conditions = conditions
 
+          if (
+            typeof attributes === 'object' &&
+            attributes !== null &&
+            typeof attributes.imports === 'string'
+          ) {
+            const resolved = self.resolve(attributes.imports, url, {
+              referrer: module
+            })
+
+            const imports = self.load(resolved, {
+              referrer: module,
+              type: constants.types.JSON
+            })
+
+            module._imports = mixinImports(
+              module._imports,
+              imports._exports,
+              resolved
+            )
+          }
+
           let extension =
             canonicalExtensionForType(type) || path.extname(url.pathname)
 
@@ -685,6 +706,20 @@ function typeForAttributes(attributes) {
     default:
       return 0
   }
+}
+
+function mixinImports(target, imports, url) {
+  if (typeof imports === 'object' && imports !== null && 'imports' in imports) {
+    imports = imports.imports
+  }
+
+  if (typeof imports !== 'object' || imports === null) {
+    throw errors.INVALID_IMPORTS_MAP(
+      `Imports map at '${url.href}' is not valid`
+    )
+  }
+
+  return { ...target, ...imports }
 }
 
 exports.Protocol = Protocol
