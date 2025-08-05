@@ -384,7 +384,7 @@ bare_module_create_synthetic_module(js_env_t *env, js_callback_info_t *info) {
   if (err < 0) goto err;
 
   js_value_t *result;
-  err = js_create_external(env, (void *) module, NULL, NULL, &result);
+  err = js_create_external(env, (void *) module, bare_module__on_finalize, NULL, &result);
   if (err < 0) goto err;
 
   free(export_names);
