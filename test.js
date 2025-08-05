@@ -3320,7 +3320,7 @@ test('load .js with imports attribute', (t) => {
       }
 
       if (url.href === root + '/imports.json') {
-        return '{ "baz": "/baz.js" }'
+        return '{ "baz": "./baz.js" }'
       }
 
       t.fail()
@@ -3356,7 +3356,7 @@ test('load .js with imports attribute, imports expansion', (t) => {
       }
 
       if (url.href === root + '/imports.json') {
-        return '{ "imports": { "baz": "/baz.js" } }'
+        return '{ "imports": { "baz": "./baz.js" } }'
       }
 
       t.fail()
@@ -3425,7 +3425,7 @@ test('load .mjs with imports attribute', (t) => {
       }
 
       if (url.href === root + '/imports.json') {
-        return '{ "baz": "/baz.js" }'
+        return '{ "baz": "./baz.js" }'
       }
 
       t.fail()
