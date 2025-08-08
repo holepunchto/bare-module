@@ -451,7 +451,7 @@ module.exports = exports = class Module {
             attributes !== null &&
             typeof attributes.imports === 'string'
           ) {
-            const resolved = self.resolve(attributes.imports, url, {
+            const resolved = self.resolve(attributes.imports, referrer._url, {
               referrer: module
             })
 
