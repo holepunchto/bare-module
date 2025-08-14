@@ -66,14 +66,14 @@ err:
   return NULL;
 }
 
-static js_module_t *
+static js_value_t *
 bare_module__on_dynamic_import(js_env_t *env, js_value_t *specifier, js_value_t *assertions, js_value_t *referrer, void *data) {
   bare_module_context_t *context = (bare_module_context_t *) data;
 
   int err;
 
-  js_handle_scope_t *scope;
-  err = js_open_handle_scope(env, &scope);
+  js_escapable_handle_scope_t *scope;
+  err = js_open_escapable_handle_scope(env, &scope);
   assert(err == 0);
 
   js_value_t *ctx;
@@ -93,17 +93,16 @@ bare_module__on_dynamic_import(js_env_t *env, js_value_t *specifier, js_value_t 
   err = js_call_function(env, ctx, on_import, 4, args, &result);
   if (err < 0) goto err;
 
-  js_module_t *module;
-  err = js_get_value_external(env, result, (void **) &module);
-  if (err < 0) goto err;
-
-  err = js_close_handle_scope(env, scope);
+  err = js_escape_handle(env, scope, result, &result);
   assert(err == 0);
 
-  return module;
+  err = js_close_escapable_handle_scope(env, scope);
+  assert(err == 0);
+
+  return result;
 
 err:
-  err = js_close_handle_scope(env, scope);
+  err = js_close_escapable_handle_scope(env, scope);
   assert(err == 0);
 
   return NULL;
@@ -249,7 +248,7 @@ bare_module_init(js_env_t *env, js_callback_info_t *info) {
   err = js_add_teardown_callback(env, bare_module__on_teardown, context);
   assert(err == 0);
 
-  err = js_on_dynamic_import(env, bare_module__on_dynamic_import, (void *) context);
+  err = js_on_deferred_dynamic_import(env, bare_module__on_dynamic_import, (void *) context);
   assert(err == 0);
 
   return result;
@@ -477,7 +476,7 @@ bare_module_run_module(js_env_t *env, js_callback_info_t *info) {
     js_call_function(env, ctx, argv[2], 3, args, NULL);
   }
 
-  return NULL;
+  return promise;
 }
 
 static js_value_t *
