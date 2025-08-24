@@ -547,7 +547,7 @@ module.exports = exports = class Module {
       }
     }
 
-    let message = `Cannot find module '${specifier}' imported from '${parentURL.href}`
+    let message = `Cannot find module '${specifier}' imported from '${parentURL.href}'`
 
     if (candidates.length > 0) {
       message += '\nCandidates:'
