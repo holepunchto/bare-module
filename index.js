@@ -16,7 +16,7 @@ const { startsWithWindowsDriveLetter } = resolve
 
 module.exports = exports = class Module {
   static get [kind]() {
-    return 0 // Compatibility version
+    return 1 // Compatibility version
   }
 
   constructor(url) {
