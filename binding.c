@@ -248,6 +248,9 @@ bare_module_init(js_env_t *env, js_callback_info_t *info) {
   err = js_add_teardown_callback(env, bare_module__on_teardown, context);
   assert(err == 0);
 
+  err = js_on_dynamic_import(env, NULL, NULL);
+  assert(err == 0);
+
   err = js_on_dynamic_import_transitional(env, bare_module__on_dynamic_import, (void *) context);
   assert(err == 0);
 
