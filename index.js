@@ -16,7 +16,7 @@ const { startsWithWindowsDriveLetter } = resolve
 
 module.exports = exports = class Module {
   static get [kind]() {
-    return 0 // Compatibility version
+    return 1 // Compatibility version
   }
 
   constructor(url) {
@@ -35,6 +35,7 @@ module.exports = exports = class Module {
     this._source = null
     this._function = null
     this._names = null
+    this._promise = null
     this._handle = null
 
     Object.preventExtensions(this)
@@ -231,7 +232,11 @@ module.exports = exports = class Module {
 
     this._synthesize()
 
-    binding.runModule(this._handle, Module._handle, Module._onrun)
+    this._promise = binding.runModule(
+      this._handle,
+      Module._handle,
+      Module._onrun
+    )
   }
 
   [Symbol.for('bare.inspect')]() {
@@ -284,7 +289,9 @@ module.exports = exports = class Module {
       attributes
     })
 
-    return module._handle
+    return isDynamicImport
+      ? module._promise.then(() => binding.getNamespace(module._handle))
+      : module._handle
   }
 
   static _onevaluate(href) {
