@@ -256,8 +256,14 @@ module.exports = exports = class Module {
   }
 
   static _extensions = Object.create(null)
+
   static _protocol = null
-  static _cache = module.cache || Object.create(null)
+
+  static _cache =
+    module[kind] === Module[kind]
+      ? module.cache || Object.create(null)
+      : Object.create(null)
+
   static _conditions = ['bare', 'node', Bare.platform, Bare.arch]
 
   static _handle = binding.init(
