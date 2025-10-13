@@ -64,11 +64,7 @@ declare class Module {
   static readonly cache: Cache
 
   static load(url: URL, opts: LoadOptions): Module
-  static load(
-    url: URL,
-    source?: Buffer | string | Bundle | null,
-    opts?: LoadOptions
-  ): Module
+  static load(url: URL, source?: Buffer | string | Bundle | null, opts?: LoadOptions): Module
 
   static resolve(specifier: string, parentURL: URL, opts?: ResolveOptions): URL
 
@@ -115,10 +111,7 @@ declare namespace Module {
     asset: (specifier: string, parentURL?: URL) => string
   }
 
-  export function createRequire(
-    parentURL: string | URL,
-    opts?: CreateRequireOptions
-  ): Require
+  export function createRequire(parentURL: string | URL, opts?: CreateRequireOptions): Require
 }
 
 export = Module
