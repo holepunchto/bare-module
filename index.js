@@ -192,11 +192,7 @@ module.exports = exports = class Module {
 
     this._names = Array.from(names)
 
-    this._handle = binding.createSyntheticModule(
-      this._url.href,
-      this._names,
-      Module._handle
-    )
+    this._handle = binding.createSyntheticModule(this._url.href, this._names, Module._handle)
   }
 
   _evaluate() {
@@ -211,13 +207,7 @@ module.exports = exports = class Module {
 
       const fn = this._function // Bind to variable to ensure proper stack trace
 
-      fn(
-        require,
-        this,
-        this._exports,
-        urlToPath(this._url),
-        urlToDirname(this._url)
-      )
+      fn(require, this, this._exports, urlToPath(this._url), urlToDirname(this._url))
     } else if (this._type === constants.types.MODULE) {
       this._run()
 
@@ -232,11 +222,7 @@ module.exports = exports = class Module {
 
     this._synthesize()
 
-    this._promise = binding.runModule(
-      this._handle,
-      Module._handle,
-      Module._onrun
-    )
+    this._promise = binding.runModule(this._handle, Module._handle, Module._onrun)
   }
 
   [Symbol.for('bare.inspect')]() {
@@ -260,18 +246,11 @@ module.exports = exports = class Module {
   static _protocol = null
 
   static _cache =
-    module[kind] === Module[kind]
-      ? module.cache || Object.create(null)
-      : Object.create(null)
+    module[kind] === Module[kind] ? module.cache || Object.create(null) : Object.create(null)
 
   static _conditions = ['bare', 'node', Bare.platform, Bare.arch]
 
-  static _handle = binding.init(
-    this,
-    this._onimport,
-    this._onevaluate,
-    this._onmeta
-  )
+  static _handle = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
 
   static _onimport(specifier, attributes, referrerHref, isDynamicImport) {
     const referrer = this._cache[referrerHref] || null
@@ -349,21 +328,14 @@ module.exports = exports = class Module {
     }
 
     meta.addon = function addon(specifier = '.', parentURL = referrer._url) {
-      const resolved = Bare.Addon.resolve(
-        specifier,
-        toURL(parentURL, referrer._url),
-        { referrer }
-      )
+      const resolved = Bare.Addon.resolve(specifier, toURL(parentURL, referrer._url), { referrer })
 
       const addon = Bare.Addon.load(resolved, { referrer })
 
       return addon._exports
     }
 
-    meta.addon.resolve = function resolve(
-      specifier = '.',
-      parentURL = referrer._url
-    ) {
+    meta.addon.resolve = function resolve(specifier = '.', parentURL = referrer._url) {
       return Bare.Addon.resolve(specifier, toURL(parentURL, referrer._url), {
         referrer
       }).href
@@ -473,15 +445,10 @@ module.exports = exports = class Module {
               type: constants.types.JSON
             })
 
-            module._imports = mixinImports(
-              module._imports,
-              imports._exports,
-              resolved
-            )
+            module._imports = mixinImports(module._imports, imports._exports, resolved)
           }
 
-          let extension =
-            canonicalExtensionForType(type) || path.extname(url.pathname)
+          let extension = canonicalExtensionForType(type) || path.extname(url.pathname)
 
           if (extension in self._extensions === false) {
             if (defaultType) {
@@ -537,9 +504,7 @@ module.exports = exports = class Module {
       resolved,
       parentURL,
       {
-        conditions: isImport
-          ? ['import', ...conditions]
-          : ['require', ...conditions],
+        conditions: isImport ? ['import', ...conditions] : ['require', ...conditions],
         imports,
         resolutions,
         extensions,
@@ -613,9 +578,7 @@ module.exports = exports = class Module {
       readPackage
     )) {
       if (protocol.exists(resolution, constants.types.ASSET)) {
-        return protocol.postresolve(
-          protocol.asset ? protocol.asset(resolution) : resolution
-        )
+        return protocol.postresolve(protocol.asset ? protocol.asset(resolution) : resolution)
       }
     }
 
@@ -727,9 +690,7 @@ function mixinImports(target, imports, url) {
   }
 
   if (typeof imports !== 'object' || imports === null) {
-    throw errors.INVALID_IMPORTS_MAP(
-      `Imports map at '${url.href}' is not valid`
-    )
+    throw errors.INVALID_IMPORTS_MAP(`Imports map at '${url.href}' is not valid`)
   }
 
   return { ...target, ...imports }
@@ -797,17 +758,11 @@ exports.createRequire = function createRequire(parentURL, opts = {}) {
   require.cache = module._cache
 
   require.resolve = function resolve(specifier, parentURL = referrer._url) {
-    return urlToPath(
-      self.resolve(specifier, toURL(parentURL, referrer._url), { referrer })
-    )
+    return urlToPath(self.resolve(specifier, toURL(parentURL, referrer._url), { referrer }))
   }
 
   require.addon = function addon(specifier = '.', parentURL = referrer._url) {
-    const resolved = Bare.Addon.resolve(
-      specifier,
-      toURL(parentURL, referrer._url),
-      { referrer }
-    )
+    const resolved = Bare.Addon.resolve(specifier, toURL(parentURL, referrer._url), { referrer })
 
     const addon = Bare.Addon.load(resolved, { referrer })
 
@@ -816,10 +771,7 @@ exports.createRequire = function createRequire(parentURL, opts = {}) {
 
   require.addon.host = Bare.Addon.host
 
-  require.addon.resolve = function resolve(
-    specifier = '.',
-    parentURL = referrer._url
-  ) {
+  require.addon.resolve = function resolve(specifier = '.', parentURL = referrer._url) {
     return urlToPath(
       Bare.Addon.resolve(specifier, toURL(parentURL, referrer._url), {
         referrer
@@ -828,9 +780,7 @@ exports.createRequire = function createRequire(parentURL, opts = {}) {
   }
 
   require.asset = function asset(specifier, parentURL = referrer._url) {
-    return urlToPath(
-      self.asset(specifier, toURL(parentURL, referrer._url), { referrer })
-    )
+    return urlToPath(self.asset(specifier, toURL(parentURL, referrer._url), { referrer }))
   }
 
   return require
@@ -903,12 +853,7 @@ Module._extensions['.mjs'] = function (module, source, referrer) {
 
   module._source = source
 
-  module._handle = binding.createModule(
-    module._url.href,
-    source.toString(),
-    0,
-    self._handle
-  )
+  module._handle = binding.createModule(module._url.href, source.toString(), 0, self._handle)
 }
 
 Module._extensions['.json'] = function (module, source, referrer) {
@@ -974,11 +919,9 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
   })
 
   if (bundle.main) {
-    module._exports = self.load(
-      new URL(bundle.main),
-      bundle.read(bundle.main),
-      { referrer }
-    )._exports
+    module._exports = self.load(new URL(bundle.main), bundle.read(bundle.main), {
+      referrer
+    })._exports
   }
 }
 
@@ -1011,9 +954,7 @@ Module._protocol = new Protocol({
   postresolve(url) {
     switch (url.protocol) {
       case 'file:':
-        return pathToFileURL(
-          binding.realpath(path.toNamespacedPath(fileURLToPath(url)))
-        )
+        return pathToFileURL(binding.realpath(path.toNamespacedPath(fileURLToPath(url))))
       default:
         return url
     }
@@ -1024,9 +965,7 @@ Module._protocol = new Protocol({
       case 'file:':
         return binding.exists(
           path.toNamespacedPath(fileURLToPath(url)),
-          type === constants.types.ASSET
-            ? binding.FILE | binding.DIR
-            : binding.FILE
+          type === constants.types.ASSET ? binding.FILE | binding.DIR : binding.FILE
         )
       default:
         return false
@@ -1036,9 +975,7 @@ Module._protocol = new Protocol({
   read(url) {
     switch (url.protocol) {
       case 'file:':
-        return Buffer.from(
-          binding.read(path.toNamespacedPath(fileURLToPath(url)))
-        )
+        return Buffer.from(binding.read(path.toNamespacedPath(fileURLToPath(url))))
       default:
         throw errors.UNKNOWN_PROTOCOL(`Cannot load module '${url.href}'`)
     }
@@ -1060,15 +997,11 @@ function urlToPath(url) {
 
   if (isWindows) {
     if (/%2f|%5c/i.test(url.pathname)) {
-      throw errors.INVALID_URL_PATH(
-        'The URL path must not include encoded \\ or / characters'
-      )
+      throw errors.INVALID_URL_PATH('The URL path must not include encoded \\ or / characters')
     }
   } else {
     if (/%2f/i.test(url.pathname)) {
-      throw errors.INVALID_URL_PATH(
-        'The URL path must not include encoded / characters'
-      )
+      throw errors.INVALID_URL_PATH('The URL path must not include encoded / characters')
     }
   }
 
@@ -1080,15 +1013,11 @@ function urlToDirname(url) {
 
   if (isWindows) {
     if (/%2f|%5c/i.test(url.pathname)) {
-      throw errors.INVALID_URL_PATH(
-        'The URL path must not include encoded \\ or / characters'
-      )
+      throw errors.INVALID_URL_PATH('The URL path must not include encoded \\ or / characters')
     }
   } else {
     if (/%2f/i.test(url.pathname)) {
-      throw errors.INVALID_URL_PATH(
-        'The URL path must not include encoded / characters'
-      )
+      throw errors.INVALID_URL_PATH('The URL path must not include encoded / characters')
     }
   }
 

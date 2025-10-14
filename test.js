@@ -86,10 +86,8 @@ test('load resolved bare specifier with source', (t) => {
   })
 
   t.is(
-    Module.load(
-      Module.resolve('foo', new URL(root + '/'), { protocol }),
-      'module.exports = 42'
-    ).exports,
+    Module.load(Module.resolve('foo', new URL(root + '/'), { protocol }), 'module.exports = 42')
+      .exports,
     42
   )
 })
@@ -248,9 +246,7 @@ test('load .cjs with top-level await', async (t) => {
     }
   })
 
-  await t.exception.all(() =>
-    Module.load(new URL(root + '/index.cjs'), { protocol })
-  )
+  await t.exception.all(() => Module.load(new URL(root + '/index.cjs'), { protocol }))
 })
 
 test('load .cjs with top-level await .mjs require', async (t) => {
@@ -440,10 +436,7 @@ test('load .mjs with named default .cjs import', (t) => {
     }
   })
 
-  t.is(
-    Module.load(new URL(root + '/index.mjs'), { protocol }).exports.default,
-    42
-  )
+  t.is(Module.load(new URL(root + '/index.mjs'), { protocol }).exports.default, 42)
 })
 
 test('load .mjs with .cjs import with reexports from .cjs import', (t) => {
@@ -810,12 +803,7 @@ test('load .cjs with .bare import', async (t) => {
 
   const resolutions = {
     [root + '/index.cjs']: {
-      '/native.bare':
-        'file:///' +
-        __dirname +
-        '/prebuilds/' +
-        Bare.Addon.host +
-        '/bare-module.bare'
+      '/native.bare': 'file:///' + __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
     }
   }
 
@@ -841,12 +829,7 @@ test('load .cjs with dynamic .bare import', async (t) => {
 
   const resolutions = {
     [root + '/index.cjs']: {
-      '/native.bare':
-        'file:///' +
-        __dirname +
-        '/prebuilds/' +
-        Bare.Addon.host +
-        '/bare-module.bare'
+      '/native.bare': 'file:///' + __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
     }
   }
 
@@ -872,12 +855,7 @@ test('load .mjs with .bare import', async (t) => {
 
   const resolutions = {
     [root + '/index.mjs']: {
-      '/native.bare':
-        'file:///' +
-        __dirname +
-        '/prebuilds/' +
-        Bare.Addon.host +
-        '/bare-module.bare'
+      '/native.bare': 'file:///' + __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
     }
   }
 
@@ -903,12 +881,7 @@ test('load .mjs with dynamic .bare import', async (t) => {
 
   const resolutions = {
     [root + '/index.mjs']: {
-      '/native.bare':
-        'file:///' +
-        __dirname +
-        '/prebuilds/' +
-        Bare.Addon.host +
-        '/bare-module.bare'
+      '/native.bare': 'file:///' + __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
     }
   }
 
@@ -992,18 +965,13 @@ test.skip('load specific module within .bundle', (t) => {
     }
   })
 
-  t.is(
-    Module.load(new URL(root + '/app.bundle/foo.js'), { protocol }).exports,
-    42
-  )
+  t.is(Module.load(new URL(root + '/app.bundle/foo.js'), { protocol }).exports, 42)
 })
 
 test.skip('load specific module within nested .bundle', (t) => {
   t.teardown(onteardown)
 
-  const bundleA = new Bundle()
-    .write('/bar.js', 'module.exports = 42')
-    .toBuffer()
+  const bundleA = new Bundle().write('/bar.js', 'module.exports = 42').toBuffer()
 
   const bundleB = new Bundle().write('/bar.bundle', bundleA).toBuffer()
 
@@ -1017,19 +985,13 @@ test.skip('load specific module within nested .bundle', (t) => {
     }
   })
 
-  t.is(
-    Module.load(new URL(root + '/foo.bundle/bar.bundle/bar.js'), { protocol })
-      .exports,
-    42
-  )
+  t.is(Module.load(new URL(root + '/foo.bundle/bar.bundle/bar.js'), { protocol }).exports, 42)
 })
 
 test.skip('load .bundle with type option and no .bundle extension', async (t) => {
   t.teardown(onteardown)
 
-  const bundle = new Bundle()
-    .write('/foo.js', 'module.exports = 42', { main: true })
-    .toBuffer()
+  const bundle = new Bundle().write('/foo.js', 'module.exports = 42', { main: true }).toBuffer()
 
   await t.exception(
     () =>
@@ -1111,9 +1073,7 @@ test.skip('resolve specific module within .bundle', (t) => {
 test.skip('resolve specific module within nested .bundle', (t) => {
   t.teardown(onteardown)
 
-  const bundleA = new Bundle()
-    .write('/bar.js', 'module.exports = 42')
-    .toBuffer()
+  const bundleA = new Bundle().write('/bar.js', 'module.exports = 42').toBuffer()
 
   const bundleB = new Bundle().write('/bar.bundle', bundleA).toBuffer()
 
@@ -1416,10 +1376,7 @@ test.skip('load .mjs with data: protocol import', (t) => {
     }
   })
 
-  t.is(
-    Module.load(new URL(root + '/foo.mjs'), { protocol }).exports.default,
-    42
-  )
+  t.is(Module.load(new URL(root + '/foo.mjs'), { protocol }).exports.default, 42)
 })
 
 test('import map with protocol', (t) => {
@@ -1543,10 +1500,7 @@ test('import attributes', (t) => {
     }
   })
 
-  t.alike(
-    Module.load(new URL(root + '/foo.mjs'), { protocol }).exports.default,
-    { hello: 'world' }
-  )
+  t.alike(Module.load(new URL(root + '/foo.mjs'), { protocol }).exports.default, { hello: 'world' })
 })
 
 test('dynamic import attributes', async (t) => {
@@ -1570,9 +1524,7 @@ test('dynamic import attributes', async (t) => {
     }
   })
 
-  t.comment(
-    await Module.load(new URL(root + '/foo.mjs'), { protocol }).exports.default
-  )
+  t.comment(await Module.load(new URL(root + '/foo.mjs'), { protocol }).exports.default)
 })
 
 test('require attributes', (t) => {
@@ -1653,9 +1605,7 @@ test('main in package.json', (t) => {
 
   const protocol = new Module.Protocol({
     exists(url) {
-      return (
-        url.href === root + '/package.json' || url.href === root + '/foo.js'
-      )
+      return url.href === root + '/package.json' || url.href === root + '/foo.js'
     },
 
     read(url) {
@@ -1667,10 +1617,7 @@ test('main in package.json', (t) => {
     }
   })
 
-  t.is(
-    Module.resolve('/', new URL(root + '/'), { protocol }).href,
-    root + '/foo.js'
-  )
+  t.is(Module.resolve('/', new URL(root + '/'), { protocol }).href, root + '/foo.js')
 })
 
 test('exports in package.json', (t) => {
@@ -1678,9 +1625,7 @@ test('exports in package.json', (t) => {
 
   const protocol = new Module.Protocol({
     exists(url) {
-      return (
-        url.href === root + '/package.json' || url.href === root + '/foo.js'
-      )
+      return url.href === root + '/package.json' || url.href === root + '/foo.js'
     },
 
     read(url) {
@@ -1692,10 +1637,7 @@ test('exports in package.json', (t) => {
     }
   })
 
-  t.is(
-    Module.resolve('/', new URL(root + '/'), { protocol }).href,
-    root + '/foo.js'
-  )
+  t.is(Module.resolve('/', new URL(root + '/'), { protocol }).href, root + '/foo.js')
 })
 
 test('conditional exports in package.json', (t) => {
@@ -1719,10 +1661,7 @@ test('conditional exports in package.json', (t) => {
     }
   })
 
-  t.is(
-    Module.resolve('/', new URL(root + '/'), { protocol }).href,
-    root + '/foo.cjs'
-  )
+  t.is(Module.resolve('/', new URL(root + '/'), { protocol }).href, root + '/foo.cjs')
   t.is(
     Module.resolve('/', new URL(root + '/'), { isImport: true, protocol }).href,
     root + '/foo.mjs'
@@ -1750,10 +1689,7 @@ test('conditional exports in package.json, array of conditions', (t) => {
     }
   })
 
-  t.is(
-    Module.resolve('/', new URL(root + '/'), { protocol }).href,
-    root + '/foo.cjs'
-  )
+  t.is(Module.resolve('/', new URL(root + '/'), { protocol }).href, root + '/foo.cjs')
   t.is(
     Module.resolve('/', new URL(root + '/'), { isImport: true, protocol }).href,
     root + '/foo.mjs'
@@ -1781,10 +1717,7 @@ test('conditional exports in package.json, runtime condition', (t) => {
     }
   })
 
-  t.is(
-    Module.resolve('/', new URL(root + '/'), { protocol }).href,
-    root + '/foo.bare.js'
-  )
+  t.is(Module.resolve('/', new URL(root + '/'), { protocol }).href, root + '/foo.bare.js')
 })
 
 test('conditional exports in package.json, platform condition', (t) => {
@@ -1889,9 +1822,7 @@ test('import unexported module in node_modules', async (t) => {
     }
   })
 
-  await t.exception(() =>
-    Module.resolve('foo/bar', new URL(root + '/'), { protocol })
-  )
+  await t.exception(() => Module.resolve('foo/bar', new URL(root + '/'), { protocol }))
 })
 
 test('imports in package.json', (t) => {
@@ -1899,9 +1830,7 @@ test('imports in package.json', (t) => {
 
   const protocol = new Module.Protocol({
     exists(url) {
-      return (
-        url.href === root + '/package.json' || url.href === root + '/baz.js'
-      )
+      return url.href === root + '/package.json' || url.href === root + '/baz.js'
     },
 
     read(url) {
@@ -1929,9 +1858,7 @@ test('imports in package.json, no match', (t) => {
 
   const protocol = new Module.Protocol({
     exists(url) {
-      return (
-        url.href === root + '/package.json' || url.href === root + '/baz.js'
-      )
+      return url.href === root + '/package.json' || url.href === root + '/baz.js'
     },
 
     read(url) {
@@ -2023,9 +1950,7 @@ test('conditional imports in package.json, asset', (t) => {
 
   const protocol = new Module.Protocol({
     exists(url) {
-      return (
-        url.href === root + '/package.json' || url.href === root + '/bar.txt'
-      )
+      return url.href === root + '/package.json' || url.href === root + '/bar.txt'
     },
 
     read(url) {
@@ -2169,10 +2094,7 @@ test('resolve and load builtin', (t) => {
     foo: 42
   }
 
-  t.is(
-    Module.resolve('foo', new URL(root + '/'), { builtins }).href,
-    'builtin:foo'
-  )
+  t.is(Module.resolve('foo', new URL(root + '/'), { builtins }).href, 'builtin:foo')
   t.is(Module.load(new URL('builtin:foo'), { builtins }).exports, 42)
 })
 
@@ -2193,10 +2115,7 @@ test('load builtin from .cjs', (t) => {
     }
   })
 
-  t.is(
-    Module.load(new URL(root + '/foo.cjs'), { protocol, builtins }).exports,
-    42
-  )
+  t.is(Module.load(new URL(root + '/foo.cjs'), { protocol, builtins }).exports, 42)
 })
 
 test('load builtin from .mjs', (t) => {
@@ -2216,11 +2135,7 @@ test('load builtin from .mjs', (t) => {
     }
   })
 
-  t.is(
-    Module.load(new URL(root + '/foo.mjs'), { protocol, builtins }).exports
-      .default,
-    42
-  )
+  t.is(Module.load(new URL(root + '/foo.mjs'), { protocol, builtins }).exports.default, 42)
 })
 
 test('load file that cannot be read', async (t) => {
@@ -2236,10 +2151,7 @@ test('load file that cannot be read', async (t) => {
     }
   })
 
-  await t.exception(
-    () => Module.load(new URL(root + '/foo.cjs'), { protocol }),
-    /file missing/
-  )
+  await t.exception(() => Module.load(new URL(root + '/foo.cjs'), { protocol }), /file missing/)
 })
 
 test('resolve already valid URL', (t) => {
@@ -2927,10 +2839,7 @@ test('extend the default protocol', (t) => {
     }
   })
 
-  t.is(
-    Module.load(pathToFileURL('test/fixtures/foo.js'), { protocol }).exports,
-    'modified'
-  )
+  t.is(Module.load(pathToFileURL('test/fixtures/foo.js'), { protocol }).exports, 'modified')
 })
 
 test('load .js with asset import', (t) => {
@@ -2996,10 +2905,7 @@ test('load .mjs with asset import', (t) => {
     }
   })
 
-  t.is(
-    Module.load(new URL(root + '/index.mjs'), { protocol }).exports.default,
-    root + '/foo.txt'
-  )
+  t.is(Module.load(new URL(root + '/index.mjs'), { protocol }).exports.default, root + '/foo.txt')
 })
 
 test('load .js with asset import, asset method', (t) => {
@@ -3122,8 +3028,7 @@ test('load .bundle with asset import, resolutions map pointing outside .bundle',
   }
 
   t.is(
-    Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), { protocol })
-      .exports,
+    Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), { protocol }).exports,
     isWindows ? 'c:\\bar.txt' : '/bar.txt'
   )
 })
@@ -3176,10 +3081,7 @@ test('load .js with .txt require', (t) => {
     }
   })
 
-  t.is(
-    Module.load(new URL(root + '/index.js'), { protocol }).exports,
-    'hello world'
-  )
+  t.is(Module.load(new URL(root + '/index.js'), { protocol }).exports, 'hello world')
 })
 
 test('load .js with .bin require, asserted type', (t) => {
@@ -3230,10 +3132,7 @@ test('load .js with .txt require, asserted type', (t) => {
     }
   })
 
-  t.is(
-    Module.load(new URL(root + '/index.js'), { protocol }).exports,
-    'hello world'
-  )
+  t.is(Module.load(new URL(root + '/index.js'), { protocol }).exports, 'hello world')
 })
 
 test('load .js with .txt require, asserted type mismatch', (t) => {
@@ -3432,10 +3331,7 @@ test('load .mjs with imports attribute', (t) => {
     }
   })
 
-  t.is(
-    Module.load(new URL(root + '/foo.mjs'), { protocol }).exports.default,
-    42
-  )
+  t.is(Module.load(new URL(root + '/foo.mjs'), { protocol }).exports.default, 42)
 })
 
 function onteardown() {
