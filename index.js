@@ -257,7 +257,9 @@ module.exports = exports = class Module {
 
     if (referrer === null) {
       throw errors.MODULE_NOT_FOUND(
-        `Cannot find referrer for module '${specifier}' imported from '${referrerHref}'`
+        `Cannot find referrer for module '${specifier}' imported from '${referrerHref}'`,
+        specifier,
+        referrer
       )
     }
 
@@ -283,7 +285,7 @@ module.exports = exports = class Module {
     const module = this._cache[href] || null
 
     if (module === null) {
-      throw errors.MODULE_NOT_FOUND(`Cannot find module '${href}'`)
+      throw errors.MODULE_NOT_FOUND(`Cannot find module '${href}'`, href)
     }
 
     module._evaluate()
@@ -312,7 +314,7 @@ module.exports = exports = class Module {
     const module = this._cache[href] || null
 
     if (module === null) {
-      throw errors.MODULE_NOT_FOUND(`Cannot find module '${href}'`)
+      throw errors.MODULE_NOT_FOUND(`Cannot find module '${href}'`, href)
     }
 
     const referrer = module
@@ -532,7 +534,7 @@ module.exports = exports = class Module {
       message += '\n' + candidates.map((url) => '- ' + url.href).join('\n')
     }
 
-    throw errors.MODULE_NOT_FOUND(message, candidates)
+    throw errors.MODULE_NOT_FOUND(message, specifier, parentURL, candidates)
 
     function readPackage(packageURL) {
       if (protocol.exists(packageURL, constants.types.JSON)) {
@@ -566,6 +568,8 @@ module.exports = exports = class Module {
 
     if (resolution) return protocol.postresolve(resolution)
 
+    const candidates = []
+
     for (const resolution of resolve(
       resolved,
       parentURL,
@@ -577,14 +581,21 @@ module.exports = exports = class Module {
       },
       readPackage
     )) {
+      candidates.push(resolution)
+
       if (protocol.exists(resolution, constants.types.ASSET)) {
         return protocol.postresolve(protocol.asset ? protocol.asset(resolution) : resolution)
       }
     }
 
-    throw errors.ASSET_NOT_FOUND(
-      `Cannot find asset '${specifier}' imported from '${parentURL.href}'`
-    )
+    let message = `Cannot find asset '${specifier}' imported from '${parentURL.href}'`
+
+    if (candidates.length > 0) {
+      message += '\nCandidates:'
+      message += '\n' + candidates.map((url) => '- ' + url.href).join('\n')
+    }
+
+    throw errors.ASSET_NOT_FOUND(message, specifier, parentURL, candidates)
 
     function readPackage(packageURL) {
       if (protocol.exists(packageURL, constants.types.JSON)) {
