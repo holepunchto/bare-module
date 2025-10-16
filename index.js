@@ -618,7 +618,7 @@ function extensionsForType(type) {
     case constants.types.JSON:
       return ['.json']
     case constants.types.BUNDLE:
-      return ['.json']
+      return ['.bundle']
     case constants.types.ADDON:
       return ['.bare', '.node']
     case constants.types.BINARY:
