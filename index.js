@@ -920,8 +920,8 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
       return bundle.exists(url.href) ? url : context.postresolve(url)
     },
 
-    exists(context, url) {
-      return bundle.exists(url.href) || context.exists(url)
+    exists(context, url, type) {
+      return bundle.exists(url.href) || context.exists(url, type)
     },
 
     read(context, url) {
