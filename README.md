@@ -332,6 +332,30 @@ options = {
 }
 ```
 
+#### `const url = Module.asset(specifier, parentURL[, options])`
+
+Get the asset URL by resolving `specifier` relative to `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`.
+
+Options include:
+
+```js
+options = {
+  // The referring module.
+  referrer: null,
+  // The ModuleProtocol to use resolve the specifier. Defaults to referrer's
+  // protocol if defined, otherwise defaults to Module.protocol
+  protocol,
+  // A default "imports" map to apply to all specifiers. Follows the same
+  // syntax and rules as the "imports" property defined in `package.json`.
+  imports,
+  // A map of preresolved imports with keys being serialized parent URLs and
+  // values being "imports" maps.
+  resolutions,
+  // The supported import conditions. "default" is always recognized.
+  conditions
+}
+```
+
 #### `const module = Module.load(url[, source][, options])`
 
 Load a module with the provided `url`. `url` is a WHATWG `URL`. If provided, the `source` will be passed to the matching `extension` for the `url`.
@@ -380,41 +404,17 @@ options = {
 }
 ```
 
-#### `const url = Module.asset(specifier, parentURL[, options])`
-
-Get the asset URL by resolving `specifier` relative to `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`.
-
-Options include:
-
-```js
-options = {
-  // The referring module.
-  referrer: null,
-  // The ModuleProtocol to use resolve the specifier. Defaults to referrer's
-  // protocol if defined, otherwise defaults to Module.protocol
-  protocol,
-  // A default "imports" map to apply to all specifiers. Follows the same
-  // syntax and rules as the "imports" property defined in `package.json`.
-  imports,
-  // A map of preresolved imports with keys being serialized parent URLs and
-  // values being "imports" maps.
-  resolutions,
-  // The supported import conditions. "default" is always recognized.
-  conditions
-}
-```
-
 #### `module.url`
 
-The WHATWG `URL` instance for the module.
+The WHATWG `URL` identifier of the module.
 
 #### `module.filename`
 
-The pathname of the `module.url`.
+The file portion of `module.url`.
 
 #### `module.dirname`
 
-The directory name of the module.
+The directory portion of `module.url`.
 
 #### `module.type`
 
@@ -454,7 +454,7 @@ An array of conditions used to resolve dependencies while loading the module. Se
 
 #### `module.protocol`
 
-The `ModuleProtocol` class used for resolving, reading and loading modules. See [Protocols](#protocols).
+The `ModuleProtocol` class used for resolving, reading, and loading modules. See [Protocols](#protocols).
 
 ### CommonJS modules
 
