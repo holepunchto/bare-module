@@ -131,7 +131,7 @@ The following conditions are supported, listed in order from most specific to le
 | `"node"`       | Matches for any Node.js environment.                                                                                                |
 | `"<platform>"` | Matches when equal to `Bare.platform`. See [`Bare.platform`](https://github.com/holepunchto/bare#bareplatform) for possible values. |
 | `"<arch>"`     | Matches when equal to `Bare.arch`. See [`Bare.arch`](https://github.com/holepunchto/bare#barearch) for possible values.             |
-| `"simulator"`  | Matches when Bare was compiled for a simulator, i.e. when `Bare.simulator` is `true`.                                               |
+| `"simulator"`  | Matches when Bare was compiled for a simulator.                                                                                     |
 | `"default"`    | The fallback that always matches. This condition should always be last.                                                             |
 
 Export conditions are evaluated in the order they are defined in the `"exports"` field. This means that less specific conditionals defined first will override more specific conditions define later. For example, the following will always call `./fallback.js` because `"default"` always matches and is defined first.
@@ -237,7 +237,7 @@ The following conditions are supported, listed in order from most specific to le
 | `"node"`       | Matches for any Node.js environment.                                                                                                |
 | `"<platform>"` | Matches when equal to `Bare.platform`. See [`Bare.platform`](https://github.com/holepunchto/bare#bareplatform) for possible values. |
 | `"<arch>"`     | Matches when equal to `Bare.arch`. See [`Bare.arch`](https://github.com/holepunchto/bare#barearch) for possible values.             |
-| `"simulator"`  | Matches when Bare was compiled for a simulator, ie when `Bare.simulator` is `true`.                                                 |
+| `"simulator"`  | Matches when Bare was compiled for a simulator.                                                                                     |
 | `"default"`    | The fallback that always matches. This condition should always be last.                                                             |
 
 The general rule is that conditions should be from most specific to least specific when defined.
@@ -503,7 +503,7 @@ See [`bare-addon`](https://github.com/holepunchto/bare-addon) for a template of 
 
 #### `require.addon.host`
 
-Returns the string representation of the platform and architecture used when resolving addons with the pattern `<platform>-<arch>[-simulator]`. Returns the same value as `Bare.Addon.host`.
+Returns the string representation of the platform and architecture used when resolving addons with the pattern `<platform>-<arch>[-<environment>]`. Returns the same value as `Bare.Addon.host`.
 
 #### `const path = require.addon.resolve([specifier][, parentURL])`
 
@@ -552,7 +552,7 @@ Returns the exported module contents.
 
 #### `import.meta.addon.host`
 
-Returns the string representation of the platform and architecture used when resolving addons with the pattern `<platform>-<arch>[-simulator]`. Returns the same value as `Bare.Addon.host`.
+Returns the string representation of the platform and architecture used when resolving addons with the pattern `<platform>-<arch>[-<environment>]`. Returns the same value as `Bare.Addon.host`.
 
 #### `const href = import.meta.addon.resolve([specifier][, parentURL])`
 
