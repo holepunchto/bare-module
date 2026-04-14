@@ -540,6 +540,14 @@ A boolean representing whether the current module is the entry script where the 
 
 A cache of loaded modules for this module. The same value as `module.cache` for the current module.
 
+#### `import.meta.dirname`
+
+The directory name of the current module.
+
+#### `import.meta.filename`
+
+The file name of the current module.
+
 #### `const href = import.meta.resolve(specifier[, parentURL])`
 
 A module-relative resolution function which returns the URL string for the module. The `specifier` is a string which is resolved relative to the `parentURL` which is a WHATWG URL.

@@ -1469,13 +1469,13 @@ test('import.meta', (t) => {
     }
   })
 
-  const { default: meta } = Module.load(new URL(root + '/foo.mjs'), {
-    protocol
-  }).exports
+  const { default: meta } = Module.load(new URL(root + '/foo.mjs'), { protocol }).exports
 
   t.is(meta.url, root + '/foo.mjs')
   t.is(meta.main, true)
   t.is(meta.resolve('/bar'), root + '/bar.mjs')
+  t.is(meta.dirname, isWindows ? 'c:\\' : '/')
+  t.is(meta.filename, isWindows ? 'c:\\foo.mjs' : '/foo.mjs')
   t.comment(meta.addon.host)
 })
 
