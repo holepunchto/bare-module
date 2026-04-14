@@ -1474,8 +1474,8 @@ test('import.meta', (t) => {
   t.is(meta.url, root + '/foo.mjs')
   t.is(meta.main, true)
   t.is(meta.resolve('/bar'), root + '/bar.mjs')
-  t.is(meta.dirname, '/')
-  t.is(meta.filename, '/foo.mjs')
+  t.is(meta.dirname, isWindows ? 'c:\\' : '/')
+  t.is(meta.filename, isWindows ? 'c:\\foo.mjs' : '/foo.mjs')
   t.comment(meta.addon.host)
 })
 
