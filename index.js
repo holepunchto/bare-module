@@ -323,6 +323,9 @@ module.exports = exports = class Module {
     meta.main = module._main === module
     meta.cache = module._cache
 
+    meta.dirname = module.dirname // For Node.js compatibility
+    meta.filename = module.filename // For Node.js compatibility
+
     meta.resolve = function resolve(specifier, parentURL = referrer._url) {
       return self.resolve(specifier, toURL(parentURL, referrer._url), {
         referrer
