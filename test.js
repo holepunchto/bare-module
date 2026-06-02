@@ -3334,6 +3334,23 @@ test('load .mjs with imports attribute', (t) => {
   t.is(Module.load(new URL(root + '/foo.mjs'), { protocol }).exports.default, 42)
 })
 
+test('load .bundle with imports attribute', (t) => {
+  t.teardown(onteardown)
+
+  const bundle = new Bundle()
+    .write(
+      '/foo.js',
+      "module.exports = require('./bar.js', { with: { imports: './imports.json' } })",
+      { main: true }
+    )
+    .write('/bar.js', "module.exports = require('baz')")
+    .write('/baz.js', 'module.exports = 42')
+    .write('/imports.json', '{ "baz": "./baz.js" }')
+    .toBuffer()
+
+  t.is(Module.load(new URL(root + '/app.bundle'), bundle).exports, 42)
+})
+
 function onteardown() {
   // TODO Provide a public API for clearing the cache.
   Module._cache = Object.create(null)
