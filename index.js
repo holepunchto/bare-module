@@ -913,7 +913,7 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
   const bundle = Bundle.from(source).mount(module._url.href + '/')
 
   module._source = source
-  module._imports = { ...module._imports, ...bundle.imports }
+  module._imports = bundle.imports
   module._resolutions = bundle.resolutions
 
   module._protocol = protocol.extend({
