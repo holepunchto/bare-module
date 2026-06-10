@@ -764,6 +764,43 @@ test('load .cjs and .mjs from .mjs', (t) => {
   t.alike(order, ['b.mjs', 'c.cjs', 'd.mjs', 'e.cjs', 'a.mjs'])
 })
 
+test('load .ts', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    read(url) {
+      if (url.href === root + '/index.ts') {
+        return 'const a: number = 42; module.exports = a'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load(new URL(root + '/index.ts'), { protocol }).exports, 42)
+})
+
+test('load .ts, non-erasable', (t) => {
+  t.teardown(onteardown)
+
+  const protocol = new Module.Protocol({
+    read(url) {
+      if (url.href === root + '/index.ts') {
+        return 'enum foo {}'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    Module.load(new URL(root + '/index.ts'), { protocol })
+    t.fail()
+  } catch (err) {
+    t.comment(err.message)
+  }
+})
+
 test('load .json', (t) => {
   t.teardown(onteardown)
 
