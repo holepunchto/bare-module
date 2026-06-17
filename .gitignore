@@ -1,4 +1,5 @@
 build
+coverage
 prebuilds
 sandbox
 node_modules
