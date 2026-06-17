@@ -67,7 +67,7 @@ err:
 }
 
 static js_value_t *
-bare_module__on_dynamic_import(js_env_t *env, js_value_t *specifier, js_value_t *assertions, js_value_t *referrer, void *data) {
+bare_module__on_dynamic_import(js_env_t *env, js_value_t *specifier, js_value_t *assertions, js_value_t *referrer, js_value_t *id, void *data) {
   bare_module_context_t *context = (bare_module_context_t *) data;
 
   int err;
@@ -248,10 +248,7 @@ bare_module_init(js_env_t *env, js_callback_info_t *info) {
   err = js_add_teardown_callback(env, bare_module__on_teardown, context);
   assert(err == 0);
 
-  err = js_on_dynamic_import(env, NULL, NULL);
-  assert(err == 0);
-
-  err = js_on_dynamic_import(env, bare_module__on_dynamic_import, (void *) context);
+  err = js_on_dynamic_import_transitional(env, bare_module__on_dynamic_import, (void *) context);
   assert(err == 0);
 
   return result;
