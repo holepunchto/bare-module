@@ -1,6 +1,7 @@
 const path = require('bare-path')
 const resolve = require('bare-module-resolve')
 const lex = require('bare-module-lexer')
+const strip = require('bare-type-stripper')
 const { isURL, fileURLToPath, pathToFileURL } = require('bare-url')
 const Bundle = require('bare-bundle')
 const Protocol = require('./lib/protocol')
@@ -615,9 +616,9 @@ const Module = exports
 function extensionsForType(type) {
   switch (type) {
     case constants.types.SCRIPT:
-      return ['.js', '.cjs']
+      return ['.js', '.cjs', '.ts', '.cts']
     case constants.types.MODULE:
-      return ['.js', '.mjs']
+      return ['.js', '.mjs', '.ts', '.mts']
     case constants.types.JSON:
       return ['.json']
     case constants.types.BUNDLE:
@@ -629,7 +630,7 @@ function extensionsForType(type) {
     case constants.types.TEXT:
       return ['.txt']
     default:
-      return ['.js', '.cjs', '.mjs', '.json', '.bare', '.node']
+      return ['.js', '.cjs', '.mjs', '.ts', '.cts', '.mts', '.json', '.bare', '.node']
   }
 }
 
@@ -839,7 +840,6 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
   module._type = constants.types.SCRIPT
 
   if (source === null) source = protocol.read(module._url)
-
   if (typeof source === 'string') source = Buffer.from(source)
 
   module._source = source
@@ -860,12 +860,44 @@ Module._extensions['.mjs'] = function (module, source, referrer) {
   module._type = constants.types.MODULE
 
   if (source === null) source = protocol.read(module._url)
-
   if (typeof source === 'string') source = Buffer.from(source)
 
   module._source = source
 
   module._handle = binding.createModule(module._url.href, source.toString(), 0, self._handle)
+}
+
+Module._extensions['.ts'] = function (module, source, referrer) {
+  const self = Module
+
+  const protocol = module._protocol
+
+  if (source === null) source = protocol.read(module._url)
+  if (typeof source === 'string') source = Buffer.from(source)
+
+  return self._extensions['.js'](module, strip(source), referrer)
+}
+
+Module._extensions['.cts'] = function (module, source, referrer) {
+  const self = Module
+
+  const protocol = module._protocol
+
+  if (source === null) source = protocol.read(module._url)
+  if (typeof source === 'string') source = Buffer.from(source)
+
+  return self._extensions['.cjs'](module, strip(source), referrer)
+}
+
+Module._extensions['.mts'] = function (module, source, referrer) {
+  const self = Module
+
+  const protocol = module._protocol
+
+  if (source === null) source = protocol.read(module._url)
+  if (typeof source === 'string') source = Buffer.from(source)
+
+  return self._extensions['.mjs'](module, strip(source), referrer)
 }
 
 Module._extensions['.json'] = function (module, source, referrer) {
@@ -874,7 +906,6 @@ Module._extensions['.json'] = function (module, source, referrer) {
   module._type = constants.types.JSON
 
   if (source === null) source = protocol.read(module._url)
-
   if (typeof source === 'string') source = Buffer.from(source)
 
   module._source = source
@@ -905,7 +936,6 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
   module._type = constants.types.BUNDLE
 
   if (source === null) source = protocol.read(module._url)
-
   if (typeof source === 'string') source = Buffer.from(source)
 
   referrer = module
@@ -943,7 +973,6 @@ Module._extensions['.bin'] = function (module, source, referrer) {
   module._type = constants.types.BINARY
 
   if (source === null) source = protocol.read(module._url)
-
   if (typeof source === 'string') source = Buffer.from(source)
 
   module._source = module._exports = source
@@ -955,7 +984,6 @@ Module._extensions['.txt'] = function (module, source, referrer) {
   module._type = constants.types.TEXT
 
   if (source === null) source = protocol.read(module._url)
-
   if (typeof source === 'string') source = Buffer.from(source)
 
   module._source = source
