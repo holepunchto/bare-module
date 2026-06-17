@@ -251,7 +251,7 @@ bare_module_init(js_env_t *env, js_callback_info_t *info) {
   err = js_on_dynamic_import(env, NULL, NULL);
   assert(err == 0);
 
-  err = js_on_dynamic_import_transitional(env, bare_module__on_dynamic_import, (void *) context);
+  err = js_on_dynamic_import(env, bare_module__on_dynamic_import, (void *) context);
   assert(err == 0);
 
   return result;
