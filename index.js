@@ -391,20 +391,22 @@ module.exports = exports = class Module {
       source = null
     }
 
+    const referrer = opts.referrer || null
+    const inherited = inherit(referrer)
+
     const {
       isImport = false,
       isDynamicImport = false,
-      referrer = null,
       attributes,
       type = typeForAttributes(attributes),
-      defaultType = referrer ? referrer._defaultType : 0,
-      cache = referrer ? referrer._cache : self._cache,
-      main = referrer ? referrer._main : null,
-      protocol = referrer ? referrer._protocol : self._protocol,
-      imports = referrer ? referrer._imports : null,
-      resolutions = referrer ? referrer._resolutions : null,
-      builtins = referrer ? referrer._builtins : null,
-      conditions = referrer ? referrer._conditions : self._conditions
+      defaultType = inherited.defaultType,
+      cache = inherited.cache,
+      main = inherited.main,
+      protocol = inherited.protocol,
+      imports = inherited.imports,
+      resolutions = inherited.resolutions,
+      builtins = inherited.builtins,
+      conditions = inherited.conditions
     } = opts
 
     let module = cache[url.href] || null
@@ -477,25 +479,25 @@ module.exports = exports = class Module {
   }
 
   static resolve(specifier, parentURL, opts = {}) {
-    const self = Module
-
     if (typeof specifier !== 'string') {
       throw new TypeError(
         `Specifier must be a string. Received type ${typeof specifier} (${specifier})`
       )
     }
 
+    const referrer = opts.referrer || null
+    const inherited = inherit(referrer)
+
     const {
       isImport = false,
-      referrer = null,
       attributes,
       type = typeForAttributes(attributes),
       extensions = extensionsForType(type),
-      protocol = referrer ? referrer._protocol : self._protocol,
-      imports = referrer ? referrer._imports : null,
-      resolutions = referrer ? referrer._resolutions : null,
-      builtins = referrer ? referrer._builtins : null,
-      conditions = referrer ? referrer._conditions : self._conditions
+      protocol = inherited.protocol,
+      imports = inherited.imports,
+      resolutions = inherited.resolutions,
+      builtins = inherited.builtins,
+      conditions = inherited.conditions
     } = opts
 
     const resolved = protocol.preresolve(specifier, parentURL)
@@ -517,7 +519,7 @@ module.exports = exports = class Module {
         builtins: builtins ? Object.keys(builtins) : [],
         engines: Bare.versions
       },
-      readPackage
+      readPackageFor(protocol)
     )) {
       candidates.push(resolution)
 
@@ -531,39 +533,29 @@ module.exports = exports = class Module {
       }
     }
 
-    let message = `Cannot find module '${specifier}' imported from '${parentURL.href}'`
-
-    if (candidates.length > 0) {
-      message += '\nCandidates:'
-      message += '\n' + candidates.map((url) => '- ' + url.href).join('\n')
-    }
-
-    throw errors.MODULE_NOT_FOUND(message, specifier, parentURL, candidates)
-
-    function readPackage(packageURL) {
-      if (protocol.exists(packageURL, constants.types.JSON)) {
-        return Module.load(packageURL, { protocol })._exports
-      }
-
-      return null
-    }
+    throw errors.MODULE_NOT_FOUND(
+      notFound('module', specifier, parentURL, candidates),
+      specifier,
+      parentURL,
+      candidates
+    )
   }
 
   static asset(specifier, parentURL, opts = {}) {
-    const self = Module
-
     if (typeof specifier !== 'string') {
       throw new TypeError(
         `Specifier must be a string. Received type ${typeof specifier} (${specifier})`
       )
     }
 
+    const referrer = opts.referrer || null
+    const inherited = inherit(referrer)
+
     const {
-      referrer = null,
-      protocol = referrer ? referrer._protocol : self._protocol,
-      imports = referrer ? referrer._imports : null,
-      resolutions = referrer ? referrer._resolutions : null,
-      conditions = referrer ? referrer._conditions : self._conditions
+      protocol = inherited.protocol,
+      imports = inherited.imports,
+      resolutions = inherited.resolutions,
+      conditions = inherited.conditions
     } = opts
 
     const resolved = protocol.preresolve(specifier, parentURL)
@@ -583,7 +575,7 @@ module.exports = exports = class Module {
         resolutions,
         engines: Bare.versions
       },
-      readPackage
+      readPackageFor(protocol)
     )) {
       candidates.push(resolution)
 
@@ -592,111 +584,122 @@ module.exports = exports = class Module {
       }
     }
 
-    let message = `Cannot find asset '${specifier}' imported from '${parentURL.href}'`
-
-    if (candidates.length > 0) {
-      message += '\nCandidates:'
-      message += '\n' + candidates.map((url) => '- ' + url.href).join('\n')
-    }
-
-    throw errors.ASSET_NOT_FOUND(message, specifier, parentURL, candidates)
-
-    function readPackage(packageURL) {
-      if (protocol.exists(packageURL, constants.types.JSON)) {
-        return Module.load(packageURL, { protocol })._exports
-      }
-
-      return null
-    }
+    throw errors.ASSET_NOT_FOUND(
+      notFound('asset', specifier, parentURL, candidates),
+      specifier,
+      parentURL,
+      candidates
+    )
   }
 }
 
 const Module = exports
 
-function extensionsForType(type) {
-  switch (type) {
-    case constants.types.SCRIPT:
-      return ['.js', '.cjs', '.ts', '.cts']
-    case constants.types.MODULE:
-      return ['.js', '.mjs', '.ts', '.mts']
-    case constants.types.JSON:
-      return ['.json']
-    case constants.types.BUNDLE:
-      return ['.bundle']
-    case constants.types.ADDON:
-      return ['.bare', '.node']
-    case constants.types.BINARY:
-      return ['.bin']
-    case constants.types.TEXT:
-      return ['.txt']
-    default:
-      return ['.js', '.cjs', '.mjs', '.ts', '.cts', '.mts', '.json', '.bare', '.node']
+function inherit(referrer) {
+  const self = Module
+
+  return {
+    defaultType: referrer ? referrer._defaultType : 0,
+    cache: referrer ? referrer._cache : self._cache,
+    main: referrer ? referrer._main : null,
+    protocol: referrer ? referrer._protocol : self._protocol,
+    imports: referrer ? referrer._imports : null,
+    resolutions: referrer ? referrer._resolutions : null,
+    builtins: referrer ? referrer._builtins : null,
+    conditions: referrer ? referrer._conditions : self._conditions
   }
+}
+
+function readPackageFor(protocol) {
+  return function readPackage(packageURL) {
+    if (protocol.exists(packageURL, constants.types.JSON)) {
+      return Module.load(packageURL, { protocol })._exports
+    }
+
+    return null
+  }
+}
+
+function notFound(kind, specifier, parentURL, candidates) {
+  let message = `Cannot find ${kind} '${specifier}' imported from '${parentURL.href}'`
+
+  if (candidates.length > 0) {
+    message += '\nCandidates:'
+    message += '\n' + candidates.map((url) => '- ' + url.href).join('\n')
+  }
+
+  return message
+}
+
+const typeInfo = {
+  [constants.types.SCRIPT]: {
+    name: 'script',
+    attribute: 'script',
+    canonicalExtension: '.cjs',
+    extensions: ['.js', '.cjs', '.ts', '.cts']
+  },
+  [constants.types.MODULE]: {
+    name: 'module',
+    attribute: 'module',
+    canonicalExtension: '.mjs',
+    extensions: ['.js', '.mjs', '.ts', '.mts']
+  },
+  [constants.types.JSON]: {
+    name: 'json',
+    attribute: 'json',
+    canonicalExtension: '.json',
+    extensions: ['.json']
+  },
+  [constants.types.BUNDLE]: {
+    name: 'bundle',
+    attribute: 'bundle',
+    canonicalExtension: '.bundle',
+    extensions: ['.bundle']
+  },
+  [constants.types.ADDON]: {
+    name: 'bare',
+    attribute: 'addon',
+    canonicalExtension: '.bare',
+    extensions: ['.bare', '.node']
+  },
+  [constants.types.BINARY]: {
+    name: 'binary',
+    attribute: 'binary',
+    canonicalExtension: '.bin',
+    extensions: ['.bin']
+  },
+  [constants.types.TEXT]: {
+    name: 'text',
+    attribute: 'text',
+    canonicalExtension: '.txt',
+    extensions: ['.txt']
+  }
+}
+
+const defaultExtensions = ['.js', '.cjs', '.mjs', '.ts', '.cts', '.mts', '.json', '.bare', '.node']
+
+const typeByAttribute = Object.create(null)
+
+for (const type in typeInfo) {
+  typeByAttribute[typeInfo[type].attribute] = +type
+}
+
+function extensionsForType(type) {
+  return type in typeInfo ? typeInfo[type].extensions : defaultExtensions
 }
 
 function canonicalExtensionForType(type) {
-  switch (type) {
-    case constants.types.SCRIPT:
-      return '.cjs'
-    case constants.types.MODULE:
-      return '.esm'
-    case constants.types.JSON:
-      return '.json'
-    case constants.types.BUNDLE:
-      return '.bundle'
-    case constants.types.ADDON:
-      return '.bare'
-    case constants.types.BINARY:
-      return '.bin'
-    case constants.types.TEXT:
-      return '.txt'
-    default:
-      return null
-  }
+  return type in typeInfo ? typeInfo[type].canonicalExtension : null
 }
 
 function nameOfType(type) {
-  switch (type) {
-    case constants.types.SCRIPT:
-      return 'script'
-    case constants.types.MODULE:
-      return 'module'
-    case constants.types.JSON:
-      return 'json'
-    case constants.types.BUNDLE:
-      return 'bundle'
-    case constants.types.ADDON:
-      return 'bare'
-    case constants.types.BINARY:
-      return 'binary'
-    case constants.types.TEXT:
-      return 'text'
-    default:
-      return null
-  }
+  return type in typeInfo ? typeInfo[type].name : null
 }
 
 function typeForAttributes(attributes) {
   if (typeof attributes !== 'object' || attributes === null) return 0
 
-  switch (attributes.type) {
-    case 'script':
-      return constants.types.SCRIPT
-    case 'module':
-      return constants.types.MODULE
-    case 'json':
-      return constants.types.JSON
-    case 'bundle':
-      return constants.types.BUNDLE
-    case 'addon':
-      return constants.types.ADDON
-    case 'binary':
-      return constants.types.BINARY
-    case 'text':
-      return constants.types.TEXT
-    default:
-      return 0
-  }
+  return typeByAttribute[attributes.type] || 0
 }
 
 function mixinImports(target, imports, url) {
@@ -726,19 +729,21 @@ exports.isBuiltin = function isBuiltin() {
 exports.createRequire = function createRequire(parentURL, opts = {}) {
   const self = Module
 
-  let {
-    module = null,
-    referrer = null,
+  const inherited = inherit(opts.referrer)
+
+  const {
     type = constants.types.SCRIPT,
-    defaultType = referrer ? referrer._defaultType : constants.types.SCRIPT,
-    cache = referrer ? referrer._cache : self._cache,
-    main = referrer ? referrer._main : null,
-    protocol = referrer ? referrer._protocol : self._protocol,
-    imports = referrer ? referrer._imports : null,
-    resolutions = referrer ? referrer._resolutions : null,
-    builtins = referrer ? referrer._builtins : null,
-    conditions = referrer ? referrer._conditions : self._conditions
+    defaultType = inherited.defaultType || constants.types.SCRIPT,
+    cache = inherited.cache,
+    main = inherited.main,
+    protocol = inherited.protocol,
+    imports = inherited.imports,
+    resolutions = inherited.resolutions,
+    builtins = inherited.builtins,
+    conditions = inherited.conditions
   } = opts
+
+  let module = opts.module || null
 
   if (module === null) {
     module = new Module(toURL(parentURL))
@@ -754,7 +759,7 @@ exports.createRequire = function createRequire(parentURL, opts = {}) {
     module._conditions = conditions
   }
 
-  referrer = module
+  const referrer = module
 
   function require(specifier, opts = {}) {
     const attributes = opts && opts.with
@@ -801,6 +806,14 @@ exports.createRequire = function createRequire(parentURL, opts = {}) {
   return require
 }
 
+function readSource(module, source) {
+  if (source === null) source = module._protocol.read(module._url)
+
+  if (typeof source === 'string') source = Buffer.from(source)
+
+  return source
+}
+
 Module._extensions['.js'] = function (module, source, referrer) {
   const self = Module
 
@@ -835,12 +848,9 @@ Module._extensions['.js'] = function (module, source, referrer) {
 }
 
 Module._extensions['.cjs'] = function (module, source, referrer) {
-  const protocol = module._protocol
-
   module._type = constants.types.SCRIPT
 
-  if (source === null) source = protocol.read(module._url)
-  if (typeof source === 'string') source = Buffer.from(source)
+  source = readSource(module, source)
 
   module._source = source
 
@@ -855,72 +865,35 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
 Module._extensions['.mjs'] = function (module, source, referrer) {
   const self = Module
 
-  const protocol = module._protocol
-
   module._type = constants.types.MODULE
 
-  if (source === null) source = protocol.read(module._url)
-  if (typeof source === 'string') source = Buffer.from(source)
+  source = readSource(module, source)
 
   module._source = source
 
   module._handle = binding.createModule(module._url.href, source.toString(), 0, self._handle)
 }
 
-Module._extensions['.ts'] = function (module, source, referrer) {
-  const self = Module
-
-  const protocol = module._protocol
-
-  if (source === null) source = protocol.read(module._url)
-  if (typeof source === 'string') source = Buffer.from(source)
-
-  return self._extensions['.js'](module, strip(source), referrer)
-}
-
-Module._extensions['.cts'] = function (module, source, referrer) {
-  const self = Module
-
-  const protocol = module._protocol
-
-  if (source === null) source = protocol.read(module._url)
-  if (typeof source === 'string') source = Buffer.from(source)
-
-  return self._extensions['.cjs'](module, strip(source), referrer)
-}
-
-Module._extensions['.mts'] = function (module, source, referrer) {
-  const self = Module
-
-  const protocol = module._protocol
-
-  if (source === null) source = protocol.read(module._url)
-  if (typeof source === 'string') source = Buffer.from(source)
-
-  return self._extensions['.mjs'](module, strip(source), referrer)
+for (const [typescript, javascript] of [
+  ['.ts', '.js'],
+  ['.cts', '.cjs'],
+  ['.mts', '.mjs']
+]) {
+  Module._extensions[typescript] = function (module, source, referrer) {
+    return Module._extensions[javascript](module, strip(readSource(module, source)), referrer)
+  }
 }
 
 Module._extensions['.json'] = function (module, source, referrer) {
-  const protocol = module._protocol
-
   module._type = constants.types.JSON
 
-  if (source === null) source = protocol.read(module._url)
-  if (typeof source === 'string') source = Buffer.from(source)
+  source = readSource(module, source)
 
   module._source = source
   module._exports = JSON.parse(source.toString())
 }
 
-Module._extensions['.bare'] = function (module, source, referrer) {
-  module._type = constants.types.ADDON
-
-  referrer = module
-
-  module._exports = Bare.Addon.load(module._url, { referrer }).exports
-}
-
-Module._extensions['.node'] = function (module, source, referrer) {
+Module._extensions['.bare'] = Module._extensions['.node'] = function (module, source, referrer) {
   module._type = constants.types.ADDON
 
   referrer = module
@@ -935,8 +908,7 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
 
   module._type = constants.types.BUNDLE
 
-  if (source === null) source = protocol.read(module._url)
-  if (typeof source === 'string') source = Buffer.from(source)
+  source = readSource(module, source)
 
   referrer = module
 
@@ -968,23 +940,17 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
 }
 
 Module._extensions['.bin'] = function (module, source, referrer) {
-  const protocol = module._protocol
-
   module._type = constants.types.BINARY
 
-  if (source === null) source = protocol.read(module._url)
-  if (typeof source === 'string') source = Buffer.from(source)
+  source = readSource(module, source)
 
   module._source = module._exports = source
 }
 
 Module._extensions['.txt'] = function (module, source, referrer) {
-  const protocol = module._protocol
-
   module._type = constants.types.TEXT
 
-  if (source === null) source = protocol.read(module._url)
-  if (typeof source === 'string') source = Buffer.from(source)
+  source = readSource(module, source)
 
   module._source = source
   module._exports = source.toString()
@@ -1035,15 +1001,7 @@ function toURL(value, base) {
 function urlToPath(url) {
   if (url.protocol === 'file:') return fileURLToPath(url)
 
-  if (isWindows) {
-    if (/%2f|%5c/i.test(url.pathname)) {
-      throw errors.INVALID_URL_PATH('The URL path must not include encoded \\ or / characters')
-    }
-  } else {
-    if (/%2f/i.test(url.pathname)) {
-      throw errors.INVALID_URL_PATH('The URL path must not include encoded / characters')
-    }
-  }
+  assertValidURLPath(url)
 
   return decodeURIComponent(url.pathname)
 }
@@ -1051,6 +1009,12 @@ function urlToPath(url) {
 function urlToDirname(url) {
   if (url.protocol === 'file:') return path.dirname(fileURLToPath(url))
 
+  assertValidURLPath(url)
+
+  return decodeURIComponent(new URL('.', url).pathname).replace(/\/$/, '')
+}
+
+function assertValidURLPath(url) {
   if (isWindows) {
     if (/%2f|%5c/i.test(url.pathname)) {
       throw errors.INVALID_URL_PATH('The URL path must not include encoded \\ or / characters')
@@ -1060,6 +1024,4 @@ function urlToDirname(url) {
       throw errors.INVALID_URL_PATH('The URL path must not include encoded / characters')
     }
   }
-
-  return decodeURIComponent(new URL('.', url).pathname).replace(/\/$/, '')
 }
