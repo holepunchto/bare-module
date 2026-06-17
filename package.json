@@ -1,6 +1,6 @@
 {
   "name": "bare-module",
-  "version": "6.3.1",
+  "version": "6.3.2",
   "description": "Module support for JavaScript",
   "exports": {
     ".": {
