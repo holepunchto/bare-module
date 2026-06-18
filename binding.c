@@ -34,14 +34,11 @@ bare_module__on_static_import(js_env_t *env, js_value_t *specifier, js_value_t *
   err = js_get_reference_value(env, context->on_import, &on_import);
   assert(err == 0);
 
-  const char *name;
-  err = js_get_module_name(env, referrer, &name);
+  js_value_t *id;
+  err = js_get_module_id(env, referrer, &id);
   assert(err == 0);
 
-  js_value_t *args[4] = {specifier, assertions};
-
-  err = js_create_string_utf8(env, (utf8_t *) name, -1, &args[2]);
-  if (err < 0) goto err;
+  js_value_t *args[4] = {specifier, assertions, id};
 
   err = js_get_boolean(env, false, &args[3]);
   assert(err == 0);
@@ -84,7 +81,7 @@ bare_module__on_dynamic_import(js_env_t *env, js_value_t *specifier, js_value_t 
   err = js_get_reference_value(env, context->on_import, &on_import);
   assert(err == 0);
 
-  js_value_t *args[4] = {specifier, assertions, referrer};
+  js_value_t *args[4] = {specifier, assertions, id};
 
   err = js_get_boolean(env, true, &args[3]);
   assert(err == 0);
@@ -126,14 +123,11 @@ bare_module__on_evaluate(js_env_t *env, js_module_t *module, void *data) {
   err = js_get_reference_value(env, context->on_evaluate, &on_evaluate);
   assert(err == 0);
 
-  const char *name;
-  err = js_get_module_name(env, module, &name);
+  js_value_t *id;
+  err = js_get_module_id(env, module, &id);
   assert(err == 0);
 
-  js_value_t *args[1];
-
-  err = js_create_string_utf8(env, (utf8_t *) name, -1, &args[0]);
-  if (err < 0) goto err;
+  js_value_t *args[1] = {id};
 
   js_value_t *result;
   err = js_call_function(env, ctx, on_evaluate, 1, args, &result);
@@ -167,16 +161,11 @@ bare_module__on_meta(js_env_t *env, js_module_t *module, js_value_t *meta, void 
   err = js_get_reference_value(env, context->on_meta, &on_meta);
   assert(err == 0);
 
-  const char *name;
-  err = js_get_module_name(env, module, &name);
+  js_value_t *id;
+  err = js_get_module_id(env, module, &id);
   assert(err == 0);
 
-  js_value_t *args[2];
-
-  err = js_create_string_utf8(env, (utf8_t *) name, -1, &args[0]);
-  if (err < 0) goto err;
-
-  args[1] = meta;
+  js_value_t *args[2] = {id, meta};
 
   js_value_t *result;
   err = js_call_function(env, ctx, on_meta, 2, args, &result);
@@ -300,6 +289,23 @@ err:
   return NULL;
 }
 
+static js_value_t *
+bare_module_get_function_id(js_env_t *env, js_callback_info_t *info) {
+  int err;
+
+  size_t argc = 1;
+  js_value_t *argv[1];
+
+  err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
+  assert(err == 0);
+
+  js_value_t *result;
+  err = js_get_function_id(env, argv[0], &result);
+  if (err < 0) return NULL;
+
+  return result;
+}
+
 static void
 bare_module__on_finalize(js_env_t *env, void *data, void *finalize_hint) {
   int err;
@@ -397,7 +403,7 @@ err:
 }
 
 static js_value_t *
-bare_module_set_export(js_env_t *env, js_callback_info_t *info) {
+bare_module_set_module_export(js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 3;
@@ -480,7 +486,7 @@ bare_module_run_module(js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-bare_module_get_namespace(js_env_t *env, js_callback_info_t *info) {
+bare_module_get_module_namespace(js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 1;
@@ -495,6 +501,27 @@ bare_module_get_namespace(js_env_t *env, js_callback_info_t *info) {
 
   js_value_t *result;
   err = js_get_module_namespace(env, module, &result);
+  if (err < 0) return NULL;
+
+  return result;
+}
+
+static js_value_t *
+bare_module_get_module_id(js_env_t *env, js_callback_info_t *info) {
+  int err;
+
+  size_t argc = 1;
+  js_value_t *argv[1];
+
+  err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
+  assert(err == 0);
+
+  js_module_t *module;
+  err = js_get_value_external(env, argv[0], (void **) &module);
+  if (err < 0) return NULL;
+
+  js_value_t *result;
+  err = js_get_module_id(env, module, &result);
   if (err < 0) return NULL;
 
   return result;
@@ -679,11 +706,14 @@ bare_module_exports(js_env_t *env, js_value_t *exports) {
   V("init", bare_module_init)
 
   V("createFunction", bare_module_create_function)
+  V("getFunctionID", bare_module_get_function_id)
+
   V("createModule", bare_module_create_module)
   V("createSyntheticModule", bare_module_create_synthetic_module)
-  V("setExport", bare_module_set_export)
+  V("setModuleExport", bare_module_set_module_export)
   V("runModule", bare_module_run_module)
-  V("getNamespace", bare_module_get_namespace)
+  V("getModuleID", bare_module_get_module_id)
+  V("getModuleNamespace", bare_module_get_module_namespace)
 
   V("exists", bare_module_exists)
   V("realpath", bare_module_realpath)

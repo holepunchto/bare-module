@@ -194,6 +194,10 @@ module.exports = exports = class Module {
     this._names = Array.from(names)
 
     this._handle = binding.createSyntheticModule(this._url.href, this._names, Module._handle)
+
+    const id = binding.getModuleID(this._handle)
+
+    Module._registry.set(id, this)
   }
 
   _evaluate() {
@@ -212,7 +216,7 @@ module.exports = exports = class Module {
     } else if (this._type === constants.types.MODULE) {
       this._run()
 
-      this._exports = binding.getNamespace(this._handle)
+      this._exports = binding.getModuleNamespace(this._handle)
     }
   }
 
@@ -246,6 +250,8 @@ module.exports = exports = class Module {
 
   static _protocol = null
 
+  static _registry = new WeakMap()
+
   static _cache =
     module[kind] === Module[kind] ? module.cache || Object.create(null) : Object.create(null)
 
@@ -253,15 +259,11 @@ module.exports = exports = class Module {
 
   static _handle = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
 
-  static _onimport(specifier, attributes, referrerHref, isDynamicImport) {
-    const referrer = this._cache[referrerHref] || null
+  static _onimport(specifier, attributes, id, isDynamicImport) {
+    const referrer = this._registry.get(id) || null
 
     if (referrer === null) {
-      throw errors.MODULE_NOT_FOUND(
-        `Cannot find referrer for module '${specifier}' imported from '${referrerHref}'`,
-        specifier,
-        referrer
-      )
+      throw errors.MODULE_NOT_FOUND(`Cannot find referrer for module '${specifier}'`, specifier)
     }
 
     const resolved = this.resolve(specifier, referrer._url, {
@@ -278,15 +280,15 @@ module.exports = exports = class Module {
     })
 
     return isDynamicImport
-      ? module._promise.then(() => binding.getNamespace(module._handle))
+      ? module._promise.then(() => binding.getModuleNamespace(module._handle))
       : module._handle
   }
 
-  static _onevaluate(href) {
-    const module = this._cache[href] || null
+  static _onevaluate(id) {
+    const module = this._registry.get(id) || null
 
     if (module === null) {
-      throw errors.MODULE_NOT_FOUND(`Cannot find module '${href}'`, href)
+      throw errors.MODULE_NOT_FOUND('Cannot find module')
     }
 
     module._evaluate()
@@ -305,17 +307,15 @@ module.exports = exports = class Module {
         value = module._exports[name]
       }
 
-      binding.setExport(module._handle, name, value)
+      binding.setModuleExport(module._handle, name, value)
     }
   }
 
-  static _onmeta(href, meta) {
-    const self = Module
-
-    const module = this._cache[href] || null
+  static _onmeta(id, meta) {
+    const module = this._registry.get(id) || null
 
     if (module === null) {
-      throw errors.MODULE_NOT_FOUND(`Cannot find module '${href}'`, href)
+      throw errors.MODULE_NOT_FOUND('Cannot find module')
     }
 
     const referrer = module
@@ -328,7 +328,7 @@ module.exports = exports = class Module {
     meta.filename = module.filename // For Node.js compatibility
 
     meta.resolve = function resolve(specifier, parentURL = referrer._url) {
-      return self.resolve(specifier, toURL(parentURL, referrer._url), {
+      return Module.resolve(specifier, toURL(parentURL, referrer._url), {
         referrer
       }).href
     }
@@ -350,7 +350,7 @@ module.exports = exports = class Module {
     meta.addon.host = Bare.Addon.host
 
     meta.asset = function asset(specifier, parentURL = referrer._url) {
-      return self.asset(specifier, toURL(parentURL, referrer._url), {
+      return Module.asset(specifier, toURL(parentURL, referrer._url), {
         referrer
       }).href
     }
@@ -379,8 +379,6 @@ module.exports = exports = class Module {
   }
 
   static load(url, source = null, opts = {}) {
-    const self = Module
-
     if (
       !ArrayBuffer.isView(source) &&
       !Bundle.isBundle(source) &&
@@ -444,11 +442,11 @@ module.exports = exports = class Module {
             attributes !== null &&
             typeof attributes.imports === 'string'
           ) {
-            const resolved = self.resolve(attributes.imports, referrer._url, {
+            const resolved = Module.resolve(attributes.imports, referrer._url, {
               referrer: module
             })
 
-            const imports = self.load(resolved, {
+            const imports = Module.load(resolved, {
               referrer: module,
               type: constants.types.JSON
             })
@@ -458,7 +456,7 @@ module.exports = exports = class Module {
 
           let extension = canonicalExtensionForType(type) || path.extname(url.pathname)
 
-          if (extension in self._extensions === false) {
+          if (extension in Module._extensions === false) {
             if (defaultType) {
               extension = canonicalExtensionForType(defaultType) || '.js'
             } else {
@@ -466,7 +464,7 @@ module.exports = exports = class Module {
             }
           }
 
-          self._extensions[extension](module, source, referrer)
+          Module._extensions[extension](module, source, referrer)
         }
       }
 
@@ -493,6 +491,7 @@ module.exports = exports = class Module {
       attributes,
       type = typeForAttributes(attributes),
       extensions = extensionsForType(type),
+      cache = referrer ? referrer._cache : Object.create(null),
       protocol = inherited.protocol,
       imports = inherited.imports,
       resolutions = inherited.resolutions,
@@ -519,7 +518,7 @@ module.exports = exports = class Module {
         builtins: builtins ? Object.keys(builtins) : [],
         engines: Bare.versions
       },
-      readPackageFor(protocol)
+      readPackageFor(protocol, cache)
     )) {
       candidates.push(resolution)
 
@@ -552,6 +551,7 @@ module.exports = exports = class Module {
     const inherited = inherit(referrer)
 
     const {
+      cache = referrer ? referrer._cache : Object.create(null),
       protocol = inherited.protocol,
       imports = inherited.imports,
       resolutions = inherited.resolutions,
@@ -575,7 +575,7 @@ module.exports = exports = class Module {
         resolutions,
         engines: Bare.versions
       },
-      readPackageFor(protocol)
+      readPackageFor(protocol, cache)
     )) {
       candidates.push(resolution)
 
@@ -596,24 +596,22 @@ module.exports = exports = class Module {
 const Module = exports
 
 function inherit(referrer) {
-  const self = Module
-
   return {
     defaultType: referrer ? referrer._defaultType : 0,
-    cache: referrer ? referrer._cache : self._cache,
+    cache: referrer ? referrer._cache : Module._cache,
     main: referrer ? referrer._main : null,
-    protocol: referrer ? referrer._protocol : self._protocol,
+    protocol: referrer ? referrer._protocol : Module._protocol,
     imports: referrer ? referrer._imports : null,
     resolutions: referrer ? referrer._resolutions : null,
     builtins: referrer ? referrer._builtins : null,
-    conditions: referrer ? referrer._conditions : self._conditions
+    conditions: referrer ? referrer._conditions : Module._conditions
   }
 }
 
-function readPackageFor(protocol) {
+function readPackageFor(protocol, cache) {
   return function readPackage(packageURL) {
     if (protocol.exists(packageURL, constants.types.JSON)) {
-      return Module.load(packageURL, { protocol })._exports
+      return Module.load(packageURL, { protocol, cache })._exports
     }
 
     return null
@@ -727,8 +725,6 @@ exports.isBuiltin = function isBuiltin() {
 }
 
 exports.createRequire = function createRequire(parentURL, opts = {}) {
-  const self = Module
-
   const inherited = inherit(opts.referrer)
 
   const {
@@ -764,12 +760,12 @@ exports.createRequire = function createRequire(parentURL, opts = {}) {
   function require(specifier, opts = {}) {
     const attributes = opts && opts.with
 
-    const resolved = self.resolve(specifier, referrer._url, {
+    const resolved = Module.resolve(specifier, referrer._url, {
       referrer,
       attributes
     })
 
-    const module = self.load(resolved, { referrer, attributes })
+    const module = Module.load(resolved, { referrer, attributes })
 
     return module._exports
   }
@@ -778,7 +774,7 @@ exports.createRequire = function createRequire(parentURL, opts = {}) {
   require.cache = module._cache
 
   require.resolve = function resolve(specifier, parentURL = referrer._url) {
-    return urlToPath(self.resolve(specifier, toURL(parentURL, referrer._url), { referrer }))
+    return urlToPath(Module.resolve(specifier, toURL(parentURL, referrer._url), { referrer }))
   }
 
   require.addon = function addon(specifier = '.', parentURL = referrer._url) {
@@ -800,7 +796,7 @@ exports.createRequire = function createRequire(parentURL, opts = {}) {
   }
 
   require.asset = function asset(specifier, parentURL = referrer._url) {
-    return urlToPath(self.asset(specifier, toURL(parentURL, referrer._url), { referrer }))
+    return urlToPath(Module.asset(specifier, toURL(parentURL, referrer._url), { referrer }))
   }
 
   return require
@@ -815,8 +811,7 @@ function readSource(module, source) {
 }
 
 Module._extensions['.js'] = function (module, source, referrer) {
-  const self = Module
-
+  const cache = module._cache
   const protocol = module._protocol
   const resolutions = module._resolutions
 
@@ -825,13 +820,13 @@ Module._extensions['.js'] = function (module, source, referrer) {
   for (const packageURL of resolve.lookupPackageScope(module._url, {
     resolutions
   })) {
-    if (self._cache[packageURL.href]) {
-      pkg = self._cache[packageURL.href]
+    if (cache[packageURL.href]) {
+      pkg = cache[packageURL.href]
       break
     }
 
     if (protocol.exists(packageURL, constants.types.JSON)) {
-      pkg = self.load(packageURL, { protocol })
+      pkg = Module.load(packageURL, { protocol, cache })
       break
     }
   }
@@ -844,7 +839,7 @@ Module._extensions['.js'] = function (module, source, referrer) {
     // The package is explicitly declared as an ES module.
     (info && info.type === 'module')
 
-  return self._extensions[isESM ? '.mjs' : '.cjs'](module, source, referrer)
+  return Module._extensions[isESM ? '.mjs' : '.cjs'](module, source, referrer)
 }
 
 Module._extensions['.cjs'] = function (module, source, referrer) {
@@ -860,18 +855,24 @@ Module._extensions['.cjs'] = function (module, source, referrer) {
     source.toString(),
     0
   )
+
+  const id = binding.getFunctionID(module._function)
+
+  Module._registry.set(id, module)
 }
 
 Module._extensions['.mjs'] = function (module, source, referrer) {
-  const self = Module
-
   module._type = constants.types.MODULE
 
   source = readSource(module, source)
 
   module._source = source
 
-  module._handle = binding.createModule(module._url.href, source.toString(), 0, self._handle)
+  module._handle = binding.createModule(module._url.href, source.toString(), 0, Module._handle)
+
+  const id = binding.getModuleID(module._handle)
+
+  Module._registry.set(id, module)
 }
 
 for (const [typescript, javascript] of [
@@ -902,8 +903,6 @@ Module._extensions['.bare'] = Module._extensions['.node'] = function (module, so
 }
 
 Module._extensions['.bundle'] = function (module, source, referrer) {
-  const self = Module
-
   const protocol = module._protocol
 
   module._type = constants.types.BUNDLE
@@ -933,7 +932,7 @@ Module._extensions['.bundle'] = function (module, source, referrer) {
   })
 
   if (bundle.main) {
-    module._exports = self.load(new URL(bundle.main), bundle.read(bundle.main), {
+    module._exports = Module.load(new URL(bundle.main), bundle.read(bundle.main), {
       referrer
     })._exports
   }
