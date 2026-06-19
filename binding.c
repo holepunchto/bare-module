@@ -38,13 +38,16 @@ bare_module__on_static_import(js_env_t *env, js_value_t *specifier, js_value_t *
   err = js_get_module_id(env, referrer, &id);
   assert(err == 0);
 
-  js_value_t *args[4] = {specifier, assertions, id};
+  js_value_t *args[5] = {specifier, assertions, NULL, id};
 
-  err = js_get_boolean(env, false, &args[3]);
+  err = js_get_undefined(env, &args[2]);
+  assert(err == 0);
+
+  err = js_get_boolean(env, false, &args[4]);
   assert(err == 0);
 
   js_value_t *result;
-  err = js_call_function(env, ctx, on_import, 4, args, &result);
+  err = js_call_function(env, ctx, on_import, 5, args, &result);
   if (err < 0) goto err;
 
   js_module_t *module;
@@ -81,13 +84,13 @@ bare_module__on_dynamic_import(js_env_t *env, js_value_t *specifier, js_value_t 
   err = js_get_reference_value(env, context->on_import, &on_import);
   assert(err == 0);
 
-  js_value_t *args[4] = {specifier, assertions, id};
+  js_value_t *args[5] = {specifier, assertions, referrer, id};
 
-  err = js_get_boolean(env, true, &args[3]);
+  err = js_get_boolean(env, true, &args[4]);
   assert(err == 0);
 
   js_value_t *result;
-  err = js_call_function(env, ctx, on_import, 4, args, &result);
+  err = js_call_function(env, ctx, on_import, 5, args, &result);
   if (err < 0) goto err;
 
   err = js_escape_handle(env, scope, result, &result);

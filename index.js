@@ -259,14 +259,20 @@ module.exports = exports = class Module {
 
   static _handle = binding.init(this, this._onimport, this._onevaluate, this._onmeta)
 
-  static _onimport(specifier, attributes, id, isDynamicImport) {
+  static _onimport(specifier, attributes, referrerName, id, isDynamicImport) {
     const referrer = this._registry.get(id) || null
 
-    if (referrer === null) {
+    let parentURL
+
+    if (referrer !== null) {
+      parentURL = referrer._url
+    } else if (isDynamicImport) {
+      parentURL = referrerName ? toURL(referrerName) : pathToFileURL('./')
+    } else {
       throw errors.MODULE_NOT_FOUND(`Cannot find referrer for module '${specifier}'`, specifier)
     }
 
-    const resolved = this.resolve(specifier, referrer._url, {
+    const resolved = this.resolve(specifier, parentURL, {
       isImport: true,
       referrer,
       attributes
