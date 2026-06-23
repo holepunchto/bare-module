@@ -528,12 +528,20 @@ module.exports = exports = class Module {
     )) {
       candidates.push(resolution)
 
+      const condition = isImport ? 'import' : 'require'
+
       switch (resolution.protocol) {
         case 'builtin:':
+          cacheResolution(resolutions, parentURL, resolved, condition, resolution)
+
           return resolution
         default:
           if (protocol.exists(resolution, type)) {
-            return protocol.postresolve(resolution)
+            const postresolved = protocol.postresolve(resolution)
+
+            cacheResolution(resolutions, parentURL, resolved, condition, postresolved)
+
+            return postresolved
           }
       }
     }
@@ -586,7 +594,13 @@ module.exports = exports = class Module {
       candidates.push(resolution)
 
       if (protocol.exists(resolution, constants.types.ASSET)) {
-        return protocol.postresolve(protocol.asset ? protocol.asset(resolution) : resolution)
+        const postresolved = protocol.postresolve(
+          protocol.asset ? protocol.asset(resolution) : resolution
+        )
+
+        cacheResolution(resolutions, parentURL, resolved, 'asset', postresolved)
+
+        return postresolved
       }
     }
 
@@ -608,7 +622,7 @@ function inherit(referrer) {
     main: referrer ? referrer._main : null,
     protocol: referrer ? referrer._protocol : Module._protocol,
     imports: referrer ? referrer._imports : null,
-    resolutions: referrer ? referrer._resolutions : null,
+    resolutions: referrer ? referrer._resolutions : Object.create(null),
     builtins: referrer ? referrer._builtins : null,
     conditions: referrer ? referrer._conditions : Module._conditions
   }
@@ -716,6 +730,25 @@ function mixinImports(target, imports, url) {
   }
 
   return { ...target, ...imports }
+}
+
+function cacheResolution(resolutions, parentURL, specifier, condition, resolved) {
+  if (resolutions === null) return
+
+  let imports = resolutions[parentURL.href]
+
+  if (typeof imports !== 'object' || imports === null) {
+    imports = resolutions[parentURL.href] = Object.create(null)
+  }
+
+  // Don't overwrite any preexisting entries, such as those from a bundle, as
+  // they take precedence over what we resolve ourselves.
+  if (specifier in imports) return
+
+  // Cache the resolution behind the condition that produced it as the same
+  // specifier may resolve differently depending on whether it is imported,
+  // required, or resolved as an asset.
+  imports[specifier] = { [condition]: resolved.href }
 }
 
 exports.Protocol = Protocol

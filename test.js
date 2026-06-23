@@ -3412,3 +3412,134 @@ test('load .mjs with imports attribute', (t) => {
 
   t.is(Module.load(new URL(root + '/foo.mjs'), { protocol, cache }).exports.default, 42)
 })
+
+test('resolve caches the result in resolutions map', (t) => {
+  const resolutions = {}
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/node_modules/foo/package.json' ||
+        url.href === root + '/node_modules/foo/index.js'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/node_modules/foo/package.json') {
+        return '{}'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(
+    Module.resolve('foo', new URL(root + '/'), { protocol, resolutions }).href,
+    root + '/node_modules/foo/index.js'
+  )
+
+  t.is(resolutions[root + '/'].foo.require, root + '/node_modules/foo/index.js')
+})
+
+test('resolve reuses a cached resolution without touching the protocol', (t) => {
+  const resolutions = {
+    [root + '/']: {
+      foo: { require: root + '/node_modules/foo/index.js' }
+    }
+  }
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      // The resolution is already cached, so the only existence check should be
+      // for the resolved candidate itself.
+      return url.href === root + '/node_modules/foo/index.js'
+    },
+
+    read() {
+      t.fail()
+    }
+  })
+
+  t.is(
+    Module.resolve('foo', new URL(root + '/'), { protocol, resolutions }).href,
+    root + '/node_modules/foo/index.js'
+  )
+})
+
+test('resolve does not reuse a require resolution for an import', (t) => {
+  // A resolution cached under the "require" condition must not be reused when
+  // the same specifier is later imported, as conditional exports may differ.
+  const resolutions = {
+    [root + '/']: {
+      foo: { require: root + '/node_modules/foo/require.js' }
+    }
+  }
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/node_modules/foo/package.json' ||
+        url.href === root + '/node_modules/foo/import.js'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/node_modules/foo/package.json') {
+        return '{ "exports": { "import": "./import.js", "require": "./require.js" } }'
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(
+    Module.resolve('foo', new URL(root + '/'), { protocol, resolutions, isImport: true }).href,
+    root + '/node_modules/foo/import.js'
+  )
+})
+
+test('asset caches the result in resolutions map', (t) => {
+  const resolutions = {}
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.txt'
+    },
+
+    read() {
+      t.fail()
+    }
+  })
+
+  t.is(
+    Module.asset('./foo.txt', new URL(root + '/'), { protocol, resolutions }).href,
+    root + '/foo.txt'
+  )
+
+  t.is(resolutions[root + '/']['./foo.txt'].asset, root + '/foo.txt')
+})
+
+test('asset reuses a cached resolution without touching the protocol', (t) => {
+  const resolutions = {
+    [root + '/']: {
+      './foo.txt': { asset: root + '/foo.txt' }
+    }
+  }
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      // The resolution is already cached, so the only existence check should be
+      // for the resolved candidate itself.
+      return url.href === root + '/foo.txt'
+    },
+
+    read() {
+      t.fail()
+    }
+  })
+
+  t.is(
+    Module.asset('./foo.txt', new URL(root + '/'), { protocol, resolutions }).href,
+    root + '/foo.txt'
+  )
+})

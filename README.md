@@ -442,7 +442,7 @@ The import map when the module was loaded.
 
 #### `module.resolutions`
 
-A map of preresolved imports with keys being serialized parent URLs and values being `"imports"` maps.
+A map of preresolved imports with keys being serialized parent URLs and values being `"imports"` maps. Resolutions performed while loading the module are cached in this map, keyed by the condition (`"import"`, `"require"`, or `"asset"`) that produced them, so that repeated resolutions of the same specifier can be served from the cache.
 
 #### `module.builtins`
 
