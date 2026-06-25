@@ -1,7 +1,7 @@
 {
   "name": "bare-module",
   "version": "7.0.0-0",
-  "description": "Module support for JavaScript",
+  "description": "The module system that powers Bare",
   "exports": {
     ".": {
       "types": "./index.d.ts",

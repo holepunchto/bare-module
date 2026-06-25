@@ -1,6 +1,6 @@
 # bare-module
 
-Module support for JavaScript.
+The module system that powers Bare. It resolves and loads CommonJS and ECMAScript modules, as well as JSON, native addons, assets, bundles, binary, and text, and implements `package.json` resolution including the [`"exports"`](#exports), [`"imports"`](#imports), and [conditional](#conditional-exports) fields. Resolution and loading are driven by pluggable [protocols](#protocols), so modules can be served from somewhere other than the file system, such as a [`Hyperdrive`](https://github.com/holepunchto/hyperdrive) or a [`bare-bundle`](https://github.com/holepunchto/bare-bundle).
 
 ```
 npm i bare-module
@@ -8,9 +8,34 @@ npm i bare-module
 
 ## Usage
 
+A module is loaded by its WHATWG `URL`. The source may be read through the module's [protocol](#protocols) or passed in directly:
+
 ```js
 const Module = require('bare-module')
+
+// Load a module directly from source, without it existing on disk.
+const foo = Module.load(
+  new URL('file:///foo.js'),
+  'module.exports = function add (a, b) { return a + b }'
+)
+
+foo.exports(2, 3)
+// 5
 ```
+
+To resolve and load specifiers relative to a directory, as `require()` does, create a `require()` bound to a parent URL:
+
+```js
+const Module = require('bare-module')
+
+const require = Module.createRequire('file:///directory/')
+
+// Resolves and loads `file:///directory/foo.js`, reading it through the
+// default protocol.
+const foo = require('./foo.js')
+```
+
+The same machinery backs the `require()` and `import` available to modules as they run; see [CommonJS modules](#commonjs-modules) and [ECMAScript modules](#ecmascript-modules) for what each exposes.
 
 ## Packages
 
