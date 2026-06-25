@@ -21,7 +21,7 @@ interface Attributes {
 interface Options {
   attributes?: Attributes
   builtins?: Builtins
-  cache?: Cache
+  cache?: Cache | false
   conditions?: Conditions
   defaultType?: number
   imports?: ImportsMap

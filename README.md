@@ -377,7 +377,8 @@ options = {
   // such as `.js`. See Module.constants.types. Inherited from `referrer` if it
   // is defined.
   defaultType: Module.constants.types.SCRIPT,
-  // Cache to use to load the Module. Defaults to `Module.cache`.
+  // Cache to use to load the Module. Defaults to `Module.cache`. Pass `false`
+  // to use a throw-away cache scoped to this load and its module graph.
   cache,
   // The module representing the entry script where the program was launched.
   main,
@@ -593,7 +594,8 @@ options = {
   // is defined, otherwise defaults to SCRIPT.
   defaultType: Module.constants.types.SCRIPT,
   // A cache of loaded modules. Inherited from `referrer` if it is defined,
-  // otherwise defaults to `Module.cache`
+  // otherwise defaults to `Module.cache`. Pass `false` to use a throw-away
+  // cache.
   cache,
   // The module representing the entry script where the program was launched.
   main,

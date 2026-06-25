@@ -32,8 +32,6 @@ test('resolve bare specifier', (t) => {
 })
 
 test('load resolved bare specifier', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return (
@@ -58,15 +56,13 @@ test('load resolved bare specifier', (t) => {
   t.is(
     Module.load(Module.resolve('foo', new URL(root + '/'), { protocol }), {
       protocol,
-      cache
+      cache: false
     }).exports,
     42
   )
 })
 
 test('load resolved bare specifier with source', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return (
@@ -86,15 +82,13 @@ test('load resolved bare specifier with source', (t) => {
 
   t.is(
     Module.load(Module.resolve('foo', new URL(root + '/'), { protocol }), 'module.exports = 42', {
-      cache
+      cache: false
     }).exports,
     42
   )
 })
 
 test('load .js', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/index.js') {
@@ -105,12 +99,10 @@ test('load .js', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/index.js'), { protocol, cache }).exports, 42)
+  t.is(Module.load(new URL(root + '/index.js'), { protocol, cache: false }).exports, 42)
 })
 
 test('load .js with pkg.type module', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/package.json'
@@ -129,12 +121,10 @@ test('load .js with pkg.type module', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/index.js'), { protocol, cache })
+  Module.load(new URL(root + '/index.js'), { protocol, cache: false })
 })
 
 test('load .js with default type', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.js'
@@ -157,15 +147,13 @@ test('load .js with default type', (t) => {
     Module.load(new URL(root + '/foo.js'), {
       protocol,
       defaultType: Module.constants.types.MODULE,
-      cache
+      cache: false
     }).exports.default,
     42
   )
 })
 
 test('load .cjs', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/index.cjs') {
@@ -176,12 +164,10 @@ test('load .cjs', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/index.cjs'), { protocol, cache }).exports, 42)
+  t.is(Module.load(new URL(root + '/index.cjs'), { protocol, cache: false }).exports, 42)
 })
 
 test('load .cjs with bare specifier require', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return (
@@ -207,12 +193,10 @@ test('load .cjs with bare specifier require', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/index.cjs'), { protocol, cache }).exports, 42)
+  t.is(Module.load(new URL(root + '/index.cjs'), { protocol, cache: false }).exports, 42)
 })
 
 test('load .cjs with .mjs require', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.mjs'
@@ -231,12 +215,10 @@ test('load .cjs with .mjs require', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
+  Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false })
 })
 
 test('load .cjs with top-level await', async (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/index.cjs') {
@@ -247,12 +229,10 @@ test('load .cjs with top-level await', async (t) => {
     }
   })
 
-  await t.exception.all(() => Module.load(new URL(root + '/index.cjs'), { protocol, cache }))
+  await t.exception.all(() => Module.load(new URL(root + '/index.cjs'), { protocol, cache: false }))
 })
 
 test('load .cjs with top-level await .mjs require', async (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.mjs'
@@ -272,15 +252,13 @@ test('load .cjs with top-level await .mjs require', async (t) => {
   })
 
   await t.exception.all(
-    () => Module.load(new URL(root + '/foo.cjs'), { protocol, cache }),
+    () => Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false }),
     /cannot access 'default' before initialization/i
   )
 })
 
 test('load .cjs with top-level await .mjs require with throw', async (t) => {
   t.plan(1)
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.mjs'
@@ -301,12 +279,10 @@ test('load .cjs with top-level await .mjs require with throw', async (t) => {
 
   Bare.once('uncaughtException', (err) => t.is(err.message, 'bar'))
 
-  Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
+  Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false })
 })
 
 test('load .cjs with non-file: URL', async (t) => {
-  const cache = Object.create(null)
-
   const root = 'protocol:'
 
   const protocol = new Module.Protocol({
@@ -323,14 +299,12 @@ test('load .cjs with non-file: URL', async (t) => {
     }
   })
 
-  const mod = Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
+  const mod = Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false })
 
   t.is(mod.exports, '/foo.cjs')
 })
 
 test('load .mjs', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/index.mjs') {
@@ -341,12 +315,10 @@ test('load .mjs', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/index.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/index.mjs'), { protocol, cache: false })
 })
 
 test('load .mjs with import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.mjs'
@@ -365,12 +337,10 @@ test('load .mjs with import', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/index.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/index.mjs'), { protocol, cache: false })
 })
 
 test('load .mjs with .cjs import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.cjs'
@@ -389,12 +359,10 @@ test('load .mjs with .cjs import', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/index.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/index.mjs'), { protocol, cache: false })
 })
 
 test('load .mjs with named .cjs import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.cjs'
@@ -413,12 +381,10 @@ test('load .mjs with named .cjs import', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/index.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/index.mjs'), { protocol, cache: false })
 })
 
 test('load .mjs with named default .cjs import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.cjs'
@@ -437,12 +403,10 @@ test('load .mjs with named default .cjs import', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/index.mjs'), { protocol, cache }).exports.default, 42)
+  t.is(Module.load(new URL(root + '/index.mjs'), { protocol, cache: false }).exports.default, 42)
 })
 
 test('load .mjs with .cjs import with reexports from .cjs import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.cjs' || url.href === root + '/bar.cjs'
@@ -465,12 +429,10 @@ test('load .mjs with .cjs import with reexports from .cjs import', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/index.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/index.mjs'), { protocol, cache: false })
 })
 
 test('load .mjs with .cjs import with cyclic reexports from .cjs import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.cjs' || url.href === root + '/bar.cjs'
@@ -493,12 +455,10 @@ test('load .mjs with .cjs import with cyclic reexports from .cjs import', (t) =>
     }
   })
 
-  Module.load(new URL(root + '/index.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/index.mjs'), { protocol, cache: false })
 })
 
 test('load .mjs with .cjs import with reexports from .mjs import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.cjs' || url.href === root + '/bar.mjs'
@@ -521,12 +481,10 @@ test('load .mjs with .cjs import with reexports from .mjs import', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/index.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/index.mjs'), { protocol, cache: false })
 })
 
 test('load .mjs with .cjs import with reexports from .json import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.cjs' || url.href === root + '/bar.json'
@@ -549,12 +507,10 @@ test('load .mjs with .cjs import with reexports from .json import', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/index.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/index.mjs'), { protocol, cache: false })
 })
 
 test('load .mjs with .js import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.js'
@@ -573,12 +529,10 @@ test('load .mjs with .js import', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/index.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/index.mjs'), { protocol, cache: false })
 })
 
 test('load .mjs with missing import', async (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/index.mjs') {
@@ -590,14 +544,12 @@ test('load .mjs with missing import', async (t) => {
   })
 
   await t.exception(
-    () => Module.load(new URL(root + '/index.mjs'), { protocol, cache }),
+    () => Module.load(new URL(root + '/index.mjs'), { protocol, cache: false }),
     /cannot find module '\.\/foo'/i
   )
 })
 
 test('load .mjs with nested import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return (
@@ -624,12 +576,10 @@ test('load .mjs with nested import', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
 })
 
 test('load .mjs with cyclic import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.mjs' || url.href === root + '/bar.mjs'
@@ -648,12 +598,10 @@ test('load .mjs with cyclic import', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
 })
 
 test('load .mjs with top-level await', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/index.mjs') {
@@ -664,12 +612,10 @@ test('load .mjs with top-level await', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/index.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/index.mjs'), { protocol, cache: false })
 })
 
 test('load .mjs with top-level await .mjs import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.mjs'
@@ -688,13 +634,11 @@ test('load .mjs with top-level await .mjs import', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
 })
 
 test('load .mjs with top-level await .mjs import with throw', (t) => {
   t.plan(1)
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.mjs'
@@ -715,12 +659,10 @@ test('load .mjs with top-level await .mjs import with throw', (t) => {
 
   Bare.once('uncaughtException', (err) => t.is(err.message, 'bar'))
 
-  Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
 })
 
 test('load .cjs and .mjs from .mjs', (t) => {
-  const cache = Object.create(null)
-
   const order = (global.order = [])
 
   const protocol = new Module.Protocol({
@@ -758,7 +700,7 @@ test('load .cjs and .mjs from .mjs', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/a.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/a.mjs'), { protocol, cache: false })
 
   delete global.order
 
@@ -766,8 +708,6 @@ test('load .cjs and .mjs from .mjs', (t) => {
 })
 
 test('load .ts', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/index.ts') {
@@ -778,12 +718,10 @@ test('load .ts', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/index.ts'), { protocol, cache }).exports, 42)
+  t.is(Module.load(new URL(root + '/index.ts'), { protocol, cache: false }).exports, 42)
 })
 
 test('load .ts, non-erasable', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/index.ts') {
@@ -795,7 +733,7 @@ test('load .ts, non-erasable', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/index.ts'), { protocol, cache })
+    Module.load(new URL(root + '/index.ts'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -803,8 +741,6 @@ test('load .ts, non-erasable', (t) => {
 })
 
 test('load .json', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/native.bare'
@@ -819,12 +755,10 @@ test('load .json', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/index.json'), { protocol, cache }).exports, 42)
+  t.is(Module.load(new URL(root + '/index.json'), { protocol, cache: false }).exports, 42)
 })
 
 test('load .cjs with .bare import', async (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href.endsWith('.bare')
@@ -845,12 +779,10 @@ test('load .cjs with .bare import', async (t) => {
     }
   }
 
-  Module.load(new URL(root + '/index.cjs'), { protocol, resolutions, cache })
+  Module.load(new URL(root + '/index.cjs'), { protocol, resolutions, cache: false })
 })
 
 test('load .cjs with dynamic .bare import', async (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href.endsWith('.bare')
@@ -871,12 +803,10 @@ test('load .cjs with dynamic .bare import', async (t) => {
     }
   }
 
-  Module.load(new URL(root + '/index.cjs'), { protocol, resolutions, cache })
+  Module.load(new URL(root + '/index.cjs'), { protocol, resolutions, cache: false })
 })
 
 test('load .mjs with .bare import', async (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href.endsWith('.bare')
@@ -897,12 +827,10 @@ test('load .mjs with .bare import', async (t) => {
     }
   }
 
-  Module.load(new URL(root + '/index.mjs'), { protocol, resolutions, cache })
+  Module.load(new URL(root + '/index.mjs'), { protocol, resolutions, cache: false })
 })
 
 test('load .mjs with dynamic .bare import', async (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href.endsWith('.bare')
@@ -923,46 +851,38 @@ test('load .mjs with dynamic .bare import', async (t) => {
     }
   }
 
-  Module.load(new URL(root + '/index.mjs'), { protocol, resolutions, cache })
+  Module.load(new URL(root + '/index.mjs'), { protocol, resolutions, cache: false })
 })
 
 test('load .bundle', (t) => {
-  const cache = Object.create(null)
-
   const bundle = new Bundle()
     .write('/foo.js', "module.exports = require('./bar')", { main: true })
     .write('/bar.js', 'module.exports = 42')
     .toBuffer()
 
-  Module.load(new URL(root + '/app.bundle'), bundle, { cache })
+  Module.load(new URL(root + '/app.bundle'), bundle, { cache: false })
 })
 
 test('load .bundle with .mjs', (t) => {
-  const cache = Object.create(null)
-
   const bundle = new Bundle()
     .write('/foo.mjs', "export { default } from './bar'", { main: true })
     .write('/bar.mjs', 'export default 42')
     .toBuffer()
 
-  Module.load(new URL(root + '/app.bundle'), bundle, { cache })
+  Module.load(new URL(root + '/app.bundle'), bundle, { cache: false })
 })
 
 test('load .bundle with bare specifier', (t) => {
-  const cache = Object.create(null)
-
   const bundle = new Bundle()
     .write('/foo.js', "module.exports = require('bar')", { main: true })
     .write('/node_modules/bar/package.json', '{}')
     .write('/node_modules/bar/index.js', 'module.exports = 42')
     .toBuffer()
 
-  Module.load(new URL(root + '/app.bundle'), bundle, { cache })
+  Module.load(new URL(root + '/app.bundle'), bundle, { cache: false })
 })
 
 test('load .bundle with bare specifier, nested', (t) => {
-  const cache = Object.create(null)
-
   const bundle = new Bundle()
     .write('/foo.js', "module.exports = require('bar')", { main: true })
     .write('/node_modules/bar/package.json', '{}')
@@ -971,23 +891,19 @@ test('load .bundle with bare specifier, nested', (t) => {
     .write('/node_modules/baz/index.js', 'module.exports = 42')
     .toBuffer()
 
-  Module.load(new URL(root + '/app.bundle'), bundle, { cache })
+  Module.load(new URL(root + '/app.bundle'), bundle, { cache: false })
 })
 
 test('load .bundle with bare specifier and import map', (t) => {
-  const cache = Object.create(null)
-
   const bundle = new Bundle()
     .write('/foo.js', "module.exports = require('baz')", { main: true })
     .write('/bar.js', 'module.exports = 42', { alias: 'baz' })
     .toBuffer()
 
-  t.is(Module.load(new URL(root + '/app.bundle'), bundle, { cache }).exports, 42)
+  t.is(Module.load(new URL(root + '/app.bundle'), bundle, { cache: false }).exports, 42)
 })
 
 test.skip('load specific module within .bundle', (t) => {
-  const cache = Object.create(null)
-
   const bundle = new Bundle()
     .write('/foo.js', "module.exports = require('./bar')")
     .write('/bar.js', 'module.exports = 42')
@@ -1003,12 +919,10 @@ test.skip('load specific module within .bundle', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/app.bundle/foo.js'), { protocol, cache }).exports, 42)
+  t.is(Module.load(new URL(root + '/app.bundle/foo.js'), { protocol, cache: false }).exports, 42)
 })
 
 test.skip('load specific module within nested .bundle', (t) => {
-  const cache = Object.create(null)
-
   const bundleA = new Bundle().write('/bar.js', 'module.exports = 42').toBuffer()
 
   const bundleB = new Bundle().write('/bar.bundle', bundleA).toBuffer()
@@ -1024,29 +938,26 @@ test.skip('load specific module within nested .bundle', (t) => {
   })
 
   t.is(
-    Module.load(new URL(root + '/foo.bundle/bar.bundle/bar.js'), { protocol, cache }).exports,
+    Module.load(new URL(root + '/foo.bundle/bar.bundle/bar.js'), { protocol, cache: false })
+      .exports,
     42
   )
 })
 
 test.skip('load .bundle with type option and no .bundle extension', async (t) => {
-  const cache = Object.create(null)
-
   const bundle = new Bundle().write('/foo.js', 'module.exports = 42', { main: true }).toBuffer()
 
   await t.exception(
     () =>
       Module.load(new URL(root + '/app'), bundle, {
         type: Module.constants.types.BUNDLE,
-        cache
+        cache: false
       }),
     /invalid extension for bundle '\/app'/i
   )
 })
 
 test('load .bundle with builtin require', (t) => {
-  const cache = Object.create(null)
-
   const builtins = {
     bar: 42
   }
@@ -1055,12 +966,10 @@ test('load .bundle with builtin require', (t) => {
     .write('/foo.js', "module.exports = require('bar')", { main: true })
     .toBuffer()
 
-  Module.load(new URL(root + '/app.bundle'), bundle, { builtins, cache })
+  Module.load(new URL(root + '/app.bundle'), bundle, { builtins, cache: false })
 })
 
 test('load .bundle with resolutions map', (t) => {
-  const cache = Object.create(null)
-
   const bundle = new Bundle()
     .write('/dir/foo.js', "module.exports = require('./bar')", { main: true })
     .write('/dir/bar/index.js', 'module.exports = 42')
@@ -1071,12 +980,10 @@ test('load .bundle with resolutions map', (t) => {
     }
   }
 
-  Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), { cache })
+  Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), { cache: false })
 })
 
 test('load .bundle with resolutions map, missing entry', async (t) => {
-  const cache = Object.create(null)
-
   const bundle = new Bundle()
     .write('/dir/foo.js', "module.exports = require('./bar')", { main: true })
     .write('/dir/bar/index.js', 'module.exports = 42')
@@ -1085,7 +992,7 @@ test('load .bundle with resolutions map, missing entry', async (t) => {
     '/dir/foo.js': {}
   }
 
-  Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), { cache })
+  Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), { cache: false })
 })
 
 test.skip('resolve specific module within .bundle', (t) => {
@@ -1134,8 +1041,6 @@ test.skip('resolve specific module within nested .bundle', (t) => {
 })
 
 test('load unknown extension', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/index.foo') {
@@ -1146,12 +1051,10 @@ test('load unknown extension', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/index.foo'), { protocol, cache }).exports, 42)
+  t.is(Module.load(new URL(root + '/index.foo'), { protocol, cache: false }).exports, 42)
 })
 
 test('load unknown extension with default type', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/index.foo') {
@@ -1166,27 +1069,21 @@ test('load unknown extension with default type', (t) => {
     Module.load(new URL(root + '/index.foo'), {
       protocol,
       defaultType: Module.constants.types.JSON,
-      cache
+      cache: false
     }).exports,
     42
   )
 })
 
 test('load .cjs with hashbang', (t) => {
-  const cache = Object.create(null)
-
-  t.execution(() => Module.load(new URL(root + '/index.cjs'), '#!node', { cache }))
+  t.execution(() => Module.load(new URL(root + '/index.cjs'), '#!node', { cache: false }))
 })
 
 test('load .mjs with hashbang', (t) => {
-  const cache = Object.create(null)
-
-  t.execution(() => Module.load(new URL(root + '/index.mjs'), '#!node', { cache }))
+  t.execution(() => Module.load(new URL(root + '/index.mjs'), '#!node', { cache: false }))
 })
 
 test('load .cjs with dynamic .mjs import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.mjs'
@@ -1205,12 +1102,10 @@ test('load .cjs with dynamic .mjs import', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
+  Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false })
 })
 
 test('load .cjs with dynamic .cjs import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.cjs'
@@ -1229,12 +1124,10 @@ test('load .cjs with dynamic .cjs import', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
+  Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false })
 })
 
 test('load .mjs with dynamic .mjs import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.mjs'
@@ -1253,12 +1146,10 @@ test('load .mjs with dynamic .mjs import', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
 })
 
 test('load .mjs with dynamic .cjs import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.cjs'
@@ -1277,12 +1168,10 @@ test('load .mjs with dynamic .cjs import', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
 })
 
 test('load .cjs with static and dynamic .cjs import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.cjs'
@@ -1301,12 +1190,10 @@ test('load .cjs with static and dynamic .cjs import', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
+  Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false })
 })
 
 test('load .cjs with static and dynamic .mjs import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.mjs'
@@ -1325,7 +1212,7 @@ test('load .cjs with static and dynamic .mjs import', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
+  Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false })
 })
 
 test('dynamic import in .mjs uses the graph cache for referrer lookup', async (t) => {
@@ -1385,8 +1272,6 @@ test('dynamic import in .cjs uses the graph cache for referrer lookup', async (t
 })
 
 test('load .cjs with bare specifier require and import map', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.cjs'
@@ -1410,13 +1295,11 @@ test('load .cjs with bare specifier require and import map', (t) => {
     imports: {
       bar: '/bar.cjs'
     },
-    cache
+    cache: false
   })
 })
 
 test('load .mjs with bare specifier import and import map', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.mjs'
@@ -1440,13 +1323,11 @@ test('load .mjs with bare specifier import and import map', (t) => {
     imports: {
       bar: '/bar.mjs'
     },
-    cache
+    cache: false
   })
 })
 
 test.skip('load .cjs with data: protocol require', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/foo.cjs') {
@@ -1457,12 +1338,10 @@ test.skip('load .cjs with data: protocol require', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/foo.cjs'), { protocol, cache }).exports, 42)
+  t.is(Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false }).exports, 42)
 })
 
 test.skip('load .mjs with data: protocol import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/foo.mjs') {
@@ -1473,12 +1352,10 @@ test.skip('load .mjs with data: protocol import', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/foo.mjs'), { protocol, cache }).exports.default, 42)
+  t.is(Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false }).exports.default, 42)
 })
 
 test('import map with protocol', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.mjs'
@@ -1502,7 +1379,7 @@ test('import map with protocol', (t) => {
     imports: {
       'proto:bar': '/bar.mjs'
     },
-    cache
+    cache: false
   })
 })
 
@@ -1535,8 +1412,6 @@ test('require.main', (t) => {
 })
 
 test('require.addon.host', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/foo.js') {
@@ -1547,12 +1422,10 @@ test('require.addon.host', (t) => {
     }
   })
 
-  t.comment(Module.load(new URL(root + '/foo.js'), { protocol, cache }).exports)
+  t.comment(Module.load(new URL(root + '/foo.js'), { protocol, cache: false }).exports)
 })
 
 test('import.meta', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.mjs'
@@ -1567,7 +1440,10 @@ test('import.meta', (t) => {
     }
   })
 
-  const { default: meta } = Module.load(new URL(root + '/foo.mjs'), { protocol, cache }).exports
+  const { default: meta } = Module.load(new URL(root + '/foo.mjs'), {
+    protocol,
+    cache: false
+  }).exports
 
   t.is(meta.url, root + '/foo.mjs')
   t.is(meta.main, true)
@@ -1578,8 +1454,6 @@ test('import.meta', (t) => {
 })
 
 test('import attributes', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar'
@@ -1598,14 +1472,12 @@ test('import attributes', (t) => {
     }
   })
 
-  t.alike(Module.load(new URL(root + '/foo.mjs'), { protocol, cache }).exports.default, {
+  t.alike(Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false }).exports.default, {
     hello: 'world'
   })
 })
 
 test('dynamic import attributes', async (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar'
@@ -1624,12 +1496,12 @@ test('dynamic import attributes', async (t) => {
     }
   })
 
-  t.comment(await Module.load(new URL(root + '/foo.mjs'), { protocol, cache }).exports.default)
+  t.comment(
+    await Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false }).exports.default
+  )
 })
 
 test('require attributes', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar'
@@ -1648,14 +1520,12 @@ test('require attributes', (t) => {
     }
   })
 
-  t.alike(Module.load(new URL(root + '/foo.js'), { protocol, cache }).exports, {
+  t.alike(Module.load(new URL(root + '/foo.js'), { protocol, cache: false }).exports, {
     hello: 'world'
   })
 })
 
 test('createRequire', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/dir/bar.js'
@@ -1670,14 +1540,12 @@ test('createRequire', (t) => {
     }
   })
 
-  const require = Module.createRequire(root + '/dir/foo.js', { protocol, cache })
+  const require = Module.createRequire(root + '/dir/foo.js', { protocol, cache: false })
 
   t.is(require('./bar'), 42)
 })
 
 test('createRequire with default type', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/dir/bar.js'
@@ -1695,7 +1563,7 @@ test('createRequire with default type', (t) => {
   const require = Module.createRequire(root + '/dir/foo.js', {
     protocol,
     defaultType: Module.constants.types.MODULE,
-    cache
+    cache: false
   })
 
   t.is(require('./bar').default, 42)
@@ -1909,8 +1777,6 @@ test('import unexported module in node_modules', async (t) => {
 })
 
 test('imports in package.json', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/package.json' || url.href === root + '/baz.js'
@@ -1933,12 +1799,10 @@ test('imports in package.json', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/foo.js'), { protocol, cache })
+  Module.load(new URL(root + '/foo.js'), { protocol, cache: false })
 })
 
 test('imports in package.json, no match', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/package.json' || url.href === root + '/baz.js'
@@ -1961,12 +1825,10 @@ test('imports in package.json, no match', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/foo.js'), { protocol, cache })
+  Module.load(new URL(root + '/foo.js'), { protocol, cache: false })
 })
 
 test('conditional imports in package.json, require', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return (
@@ -1993,12 +1855,10 @@ test('conditional imports in package.json, require', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
+  Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false })
 })
 
 test('conditional imports in package.json, import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return (
@@ -2025,12 +1885,10 @@ test('conditional imports in package.json, import', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+  Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
 })
 
 test('conditional imports in package.json, asset', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/package.json' || url.href === root + '/bar.txt'
@@ -2054,14 +1912,12 @@ test('conditional imports in package.json, asset', (t) => {
   })
 
   t.is(
-    Module.load(new URL(root + '/foo.cjs'), { protocol, cache }).exports,
+    Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false }).exports,
     isWindows ? 'c:\\bar.txt' : '/bar.txt'
   )
 })
 
 test('conditional imports in package.json, asset and default', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return (
@@ -2092,15 +1948,13 @@ test('conditional imports in package.json, asset and default', (t) => {
     }
   })
 
-  t.alike(Module.load(new URL(root + '/foo.cjs'), { protocol, cache }).exports, [
+  t.alike(Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false }).exports, [
     isWindows ? 'c:\\bar.txt' : '/bar.txt',
     42
   ])
 })
 
 test('conditional imports in package.json, asset and require without default', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return (
@@ -2132,7 +1986,7 @@ test('conditional imports in package.json, asset and require without default', (
   })
 
   try {
-    Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2140,8 +1994,6 @@ test('conditional imports in package.json, asset and require without default', (
 })
 
 test('imports in node_modules', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return (
@@ -2167,23 +2019,19 @@ test('imports in node_modules', (t) => {
     }
   })
 
-  Module.load(new URL(root + '/node_modules/foo/foo.js'), { protocol, cache })
+  Module.load(new URL(root + '/node_modules/foo/foo.js'), { protocol, cache: false })
 })
 
 test('resolve and load builtin', (t) => {
-  const cache = Object.create(null)
-
   const builtins = {
     foo: 42
   }
 
   t.is(Module.resolve('foo', new URL(root + '/'), { builtins }).href, 'builtin:foo')
-  t.is(Module.load(new URL('builtin:foo'), { builtins, cache }).exports, 42)
+  t.is(Module.load(new URL('builtin:foo'), { builtins, cache: false }).exports, 42)
 })
 
 test('load builtin from .cjs', (t) => {
-  const cache = Object.create(null)
-
   const builtins = {
     bar: 42
   }
@@ -2198,12 +2046,10 @@ test('load builtin from .cjs', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/foo.cjs'), { protocol, builtins, cache }).exports, 42)
+  t.is(Module.load(new URL(root + '/foo.cjs'), { protocol, builtins, cache: false }).exports, 42)
 })
 
 test('load builtin from .mjs', (t) => {
-  const cache = Object.create(null)
-
   const builtins = {
     bar: 42
   }
@@ -2218,12 +2064,13 @@ test('load builtin from .mjs', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/foo.mjs'), { protocol, builtins, cache }).exports.default, 42)
+  t.is(
+    Module.load(new URL(root + '/foo.mjs'), { protocol, builtins, cache: false }).exports.default,
+    42
+  )
 })
 
 test('load file that cannot be read', async (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.cjs'
@@ -2235,7 +2082,7 @@ test('load file that cannot be read', async (t) => {
   })
 
   await t.exception(
-    () => Module.load(new URL(root + '/foo.cjs'), { protocol, cache }),
+    () => Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false }),
     /file missing/
   )
 })
@@ -2303,8 +2150,6 @@ test('pkg.engines with invalid range', (t) => {
 })
 
 test('throw in .cjs', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/foo.cjs') {
@@ -2316,7 +2161,7 @@ test('throw in .cjs', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2324,8 +2169,6 @@ test('throw in .cjs', (t) => {
 })
 
 test('throw in .cjs imported from .cjs', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.cjs'
@@ -2345,7 +2188,7 @@ test('throw in .cjs imported from .cjs', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2381,8 +2224,6 @@ test('throw in .cjs, load again', (t) => {
 })
 
 test('throw in .mjs', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/foo.mjs') {
@@ -2394,7 +2235,7 @@ test('throw in .mjs', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2402,8 +2243,6 @@ test('throw in .mjs', (t) => {
 })
 
 test('throw in .mjs imported from .mjs', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.mjs'
@@ -2423,7 +2262,7 @@ test('throw in .mjs imported from .mjs', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2459,8 +2298,6 @@ test('throw in .mjs, load again', (t) => {
 })
 
 test('type error in .cjs', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/foo.cjs') {
@@ -2472,7 +2309,7 @@ test('type error in .cjs', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2480,8 +2317,6 @@ test('type error in .cjs', (t) => {
 })
 
 test('type error in .cjs imported from .cjs', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.cjs'
@@ -2501,7 +2336,7 @@ test('type error in .cjs imported from .cjs', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2509,8 +2344,6 @@ test('type error in .cjs imported from .cjs', (t) => {
 })
 
 test('type error in .cjs imported from .mjs', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.cjs'
@@ -2530,7 +2363,7 @@ test('type error in .cjs imported from .mjs', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2538,8 +2371,6 @@ test('type error in .cjs imported from .mjs', (t) => {
 })
 
 test('type error in .cjs imported from .mjs with type error', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.cjs'
@@ -2559,7 +2390,7 @@ test('type error in .cjs imported from .mjs with type error', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2568,8 +2399,6 @@ test('type error in .cjs imported from .mjs with type error', (t) => {
 })
 
 test('type error in .cjs imported from .mjs with type error and top-level await', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.cjs'
@@ -2589,7 +2418,7 @@ test('type error in .cjs imported from .mjs with type error and top-level await'
   })
 
   try {
-    Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2626,8 +2455,6 @@ test('type error in .cjs, load again', (t) => {
 })
 
 test('type error in .mjs', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/foo.mjs') {
@@ -2639,7 +2466,7 @@ test('type error in .mjs', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2647,8 +2474,6 @@ test('type error in .mjs', (t) => {
 })
 
 test('type error in .mjs imported from .mjs', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.mjs'
@@ -2668,7 +2493,7 @@ test('type error in .mjs imported from .mjs', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2676,8 +2501,6 @@ test('type error in .mjs imported from .mjs', (t) => {
 })
 
 test('type error in .mjs imported from .mjs with type error', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.mjs'
@@ -2697,7 +2520,7 @@ test('type error in .mjs imported from .mjs with type error', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2706,8 +2529,6 @@ test('type error in .mjs imported from .mjs with type error', (t) => {
 })
 
 test('type error in .mjs imported from .mjs with type error and top-level await', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.mjs'
@@ -2727,7 +2548,7 @@ test('type error in .mjs imported from .mjs with type error and top-level await'
   })
 
   try {
-    Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2736,8 +2557,6 @@ test('type error in .mjs imported from .mjs with type error and top-level await'
 })
 
 test('syntax error in .cjs', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/foo.cjs') {
@@ -2749,7 +2568,7 @@ test('syntax error in .cjs', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2785,8 +2604,6 @@ test('syntax error in .cjs, load again', (t) => {
 })
 
 test('syntax error in .cjs imported from .cjs', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.cjs'
@@ -2806,7 +2623,7 @@ test('syntax error in .cjs imported from .cjs', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.cjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2814,8 +2631,6 @@ test('syntax error in .cjs imported from .cjs', (t) => {
 })
 
 test('syntax error in .mjs', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     read(url) {
       if (url.href === root + '/foo.mjs') {
@@ -2827,7 +2642,7 @@ test('syntax error in .mjs', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2835,8 +2650,6 @@ test('syntax error in .mjs', (t) => {
 })
 
 test('syntax error in .mjs imported from .mjs', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.mjs'
@@ -2856,7 +2669,7 @@ test('syntax error in .mjs imported from .mjs', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+    Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2864,22 +2677,16 @@ test('syntax error in .mjs imported from .mjs', (t) => {
 })
 
 test('load file: URL using the default protocol', (t) => {
-  const cache = Object.create(null)
-
-  t.is(Module.load(pathToFileURL('test/fixtures/foo.js'), null, { cache }).exports, 42)
+  t.is(Module.load(pathToFileURL('test/fixtures/foo.js'), null, { cache: false }).exports, 42)
 })
 
 test('load non-file: URL using the default protocol', (t) => {
-  const cache = Object.create(null)
-
-  t.is(Module.load(new URL('foo:/foo.js'), 'module.exports = 42', { cache }).exports, 42)
+  t.is(Module.load(new URL('foo:/foo.js'), 'module.exports = 42', { cache: false }).exports, 42)
 })
 
 test('load non-file: URL with missing import using the default protocol', (t) => {
-  const cache = Object.create(null)
-
   try {
-    Module.load(new URL('foo:/foo.js'), "module.exports = require('./bar.js')", { cache })
+    Module.load(new URL('foo:/foo.js'), "module.exports = require('./bar.js')", { cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -2901,8 +2708,6 @@ test('resolve file: asset directory URL using the default protocol', (t) => {
 })
 
 test('extend the default protocol', (t) => {
-  const cache = Object.create(null)
-
   const protocol = Module.protocol.extend({
     read(context, url) {
       const buffer = context.read(url)
@@ -2915,12 +2720,13 @@ test('extend the default protocol', (t) => {
     }
   })
 
-  t.is(Module.load(pathToFileURL('test/fixtures/foo.js'), { protocol, cache }).exports, 'modified')
+  t.is(
+    Module.load(pathToFileURL('test/fixtures/foo.js'), { protocol, cache: false }).exports,
+    'modified'
+  )
 })
 
 test('load .js with asset import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.txt'
@@ -2936,14 +2742,12 @@ test('load .js with asset import', (t) => {
   })
 
   t.is(
-    Module.load(new URL(root + '/index.js'), { protocol, cache }).exports,
+    Module.load(new URL(root + '/index.js'), { protocol, cache: false }).exports,
     isWindows ? 'c:\\foo.txt' : '/foo.txt'
   )
 })
 
 test('load .cjs with asset import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.txt'
@@ -2959,14 +2763,12 @@ test('load .cjs with asset import', (t) => {
   })
 
   t.is(
-    Module.load(new URL(root + '/index.cjs'), { protocol, cache }).exports,
+    Module.load(new URL(root + '/index.cjs'), { protocol, cache: false }).exports,
     isWindows ? 'c:\\foo.txt' : '/foo.txt'
   )
 })
 
 test('load .mjs with asset import', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.txt'
@@ -2982,14 +2784,12 @@ test('load .mjs with asset import', (t) => {
   })
 
   t.is(
-    Module.load(new URL(root + '/index.mjs'), { protocol, cache }).exports.default,
+    Module.load(new URL(root + '/index.mjs'), { protocol, cache: false }).exports.default,
     root + '/foo.txt'
   )
 })
 
 test('load .js with asset import, asset method', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.txt'
@@ -3013,14 +2813,12 @@ test('load .js with asset import, asset method', (t) => {
   })
 
   t.is(
-    Module.load(new URL(root + '/index.js'), { protocol, cache }).exports,
+    Module.load(new URL(root + '/index.js'), { protocol, cache: false }).exports,
     isWindows ? 'c:\\bar.txt' : '/bar.txt'
   )
 })
 
 test('load .bundle with asset import', (t) => {
-  const cache = Object.create(null)
-
   const bundle = new Bundle()
     .write('/foo.js', "module.exports = require.asset('./bar.txt')", {
       main: true
@@ -3029,14 +2827,12 @@ test('load .bundle with asset import', (t) => {
     .toBuffer()
 
   t.is(
-    Module.load(new URL(root + '/app.bundle'), bundle, { cache }).exports,
+    Module.load(new URL(root + '/app.bundle'), bundle, { cache: false }).exports,
     isWindows ? 'c:\\app.bundle\\bar.txt' : '/app.bundle/bar.txt'
   )
 })
 
 test('load .bundle with asset import, asset method', (t) => {
-  const cache = Object.create(null)
-
   const bundle = new Bundle()
     .write('/foo.js', "module.exports = require.asset('./bar.txt')", {
       main: true
@@ -3055,14 +2851,12 @@ test('load .bundle with asset import, asset method', (t) => {
   })
 
   t.is(
-    Module.load(new URL(root + '/app.bundle'), bundle, { protocol, cache }).exports,
+    Module.load(new URL(root + '/app.bundle'), bundle, { protocol, cache: false }).exports,
     isWindows ? 'c:\\bar.txt' : '/bar.txt'
   )
 })
 
 test('load .bundle with asset import, resolutions map', (t) => {
-  const cache = Object.create(null)
-
   const bundle = new Bundle()
     .write('/foo.js', "module.exports = require.asset('./bar.txt')", {
       main: true
@@ -3078,14 +2872,12 @@ test('load .bundle with asset import, resolutions map', (t) => {
   }
 
   t.is(
-    Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), { cache }).exports,
+    Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), { cache: false }).exports,
     isWindows ? 'c:\\app.bundle\\baz.txt' : '/app.bundle/baz.txt'
   )
 })
 
 test('load .bundle with asset import, resolutions map pointing outside .bundle', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.txt'
@@ -3107,14 +2899,13 @@ test('load .bundle with asset import, resolutions map pointing outside .bundle',
   }
 
   t.is(
-    Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), { protocol, cache }).exports,
+    Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), { protocol, cache: false })
+      .exports,
     isWindows ? 'c:\\bar.txt' : '/bar.txt'
   )
 })
 
 test('load .js with .bin require', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.bin'
@@ -3134,14 +2925,12 @@ test('load .js with .bin require', (t) => {
   })
 
   t.alike(
-    Module.load(new URL(root + '/index.js'), { protocol, cache }).exports,
+    Module.load(new URL(root + '/index.js'), { protocol, cache: false }).exports,
     Buffer.from('hello world')
   )
 })
 
 test('load .js with .txt require', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.txt'
@@ -3160,12 +2949,10 @@ test('load .js with .txt require', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/index.js'), { protocol, cache }).exports, 'hello world')
+  t.is(Module.load(new URL(root + '/index.js'), { protocol, cache: false }).exports, 'hello world')
 })
 
 test('load .js with .bin require, asserted type', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/asset'
@@ -3185,14 +2972,12 @@ test('load .js with .bin require, asserted type', (t) => {
   })
 
   t.alike(
-    Module.load(new URL(root + '/index.js'), { protocol, cache }).exports,
+    Module.load(new URL(root + '/index.js'), { protocol, cache: false }).exports,
     Buffer.from('hello world')
   )
 })
 
 test('load .js with .txt require, asserted type', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/asset'
@@ -3211,12 +2996,10 @@ test('load .js with .txt require, asserted type', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/index.js'), { protocol, cache }).exports, 'hello world')
+  t.is(Module.load(new URL(root + '/index.js'), { protocol, cache: false }).exports, 'hello world')
 })
 
 test('load .js with .txt require, asserted type mismatch', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/asset'
@@ -3236,7 +3019,7 @@ test('load .js with .txt require, asserted type mismatch', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/index.js'), { protocol, cache })
+    Module.load(new URL(root + '/index.js'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -3244,8 +3027,6 @@ test('load .js with .txt require, asserted type mismatch', (t) => {
 })
 
 test('extend module with exports property', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/bar.js'
@@ -3265,7 +3046,7 @@ test('extend module with exports property', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/foo.js'), { protocol, cache })
+    Module.load(new URL(root + '/foo.js'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -3273,8 +3054,6 @@ test('extend module with exports property', (t) => {
 })
 
 test('load .js with imports attribute', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return (
@@ -3305,12 +3084,10 @@ test('load .js with imports attribute', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/foo.js'), { protocol, cache }).exports, 42)
+  t.is(Module.load(new URL(root + '/foo.js'), { protocol, cache: false }).exports, 42)
 })
 
 test('load .js with imports attribute, imports expansion', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return (
@@ -3341,12 +3118,10 @@ test('load .js with imports attribute, imports expansion', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/foo.js'), { protocol, cache }).exports, 42)
+  t.is(Module.load(new URL(root + '/foo.js'), { protocol, cache: false }).exports, 42)
 })
 
 test('load .js with imports attribute, invalid map', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return (
@@ -3370,7 +3145,7 @@ test('load .js with imports attribute, invalid map', (t) => {
   })
 
   try {
-    Module.load(new URL(root + '/foo.js'), { protocol, cache })
+    Module.load(new URL(root + '/foo.js'), { protocol, cache: false })
     t.fail()
   } catch (err) {
     t.comment(err.message)
@@ -3378,8 +3153,6 @@ test('load .js with imports attribute, invalid map', (t) => {
 })
 
 test('load .mjs with imports attribute', (t) => {
-  const cache = Object.create(null)
-
   const protocol = new Module.Protocol({
     exists(url) {
       return (
@@ -3410,7 +3183,7 @@ test('load .mjs with imports attribute', (t) => {
     }
   })
 
-  t.is(Module.load(new URL(root + '/foo.mjs'), { protocol, cache }).exports.default, 42)
+  t.is(Module.load(new URL(root + '/foo.mjs'), { protocol, cache: false }).exports.default, 42)
 })
 
 test('resolve caches the result in resolutions map', (t) => {
@@ -3542,4 +3315,44 @@ test('asset reuses a cached resolution without touching the protocol', (t) => {
     Module.asset('./foo.txt', new URL(root + '/'), { protocol, resolutions }).href,
     root + '/foo.txt'
   )
+})
+
+test('load with cache', (t) => {
+  const cache = Object.create(null)
+
+  const protocol = new Module.Protocol({
+    read(url) {
+      if (url.href === root + '/index.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const a = Module.load(new URL(root + '/index.cjs'), { protocol, cache })
+  const b = Module.load(new URL(root + '/index.cjs'), { protocol, cache })
+
+  t.is(a.exports, 42)
+  t.is(b.exports, 42)
+  t.is(a, b)
+})
+
+test('load without cache', (t) => {
+  const protocol = new Module.Protocol({
+    read(url) {
+      if (url.href === root + '/index.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const a = Module.load(new URL(root + '/index.cjs'), { protocol, cache: false })
+  const b = Module.load(new URL(root + '/index.cjs'), { protocol, cache: false })
+
+  t.is(a.exports, 42)
+  t.is(b.exports, 42)
+  t.not(a, b)
 })

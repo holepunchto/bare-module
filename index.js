@@ -404,7 +404,6 @@ module.exports = exports = class Module {
       attributes,
       type = typeForAttributes(attributes),
       defaultType = inherited.defaultType,
-      cache = inherited.cache,
       main = inherited.main,
       protocol = inherited.protocol,
       imports = inherited.imports,
@@ -412,6 +411,8 @@ module.exports = exports = class Module {
       builtins = inherited.builtins,
       conditions = inherited.conditions
     } = opts
+
+    const cache = cacheFor(opts.cache, inherited.cache)
 
     let module = cache[url.href] || null
 
@@ -497,13 +498,14 @@ module.exports = exports = class Module {
       attributes,
       type = typeForAttributes(attributes),
       extensions = extensionsForType(type),
-      cache = referrer ? referrer._cache : Object.create(null),
       protocol = inherited.protocol,
       imports = inherited.imports,
       resolutions = inherited.resolutions,
       builtins = inherited.builtins,
       conditions = inherited.conditions
     } = opts
+
+    const cache = cacheFor(opts.cache, referrer ? referrer._cache : undefined)
 
     const resolved = protocol.preresolve(specifier, parentURL)
 
@@ -565,12 +567,13 @@ module.exports = exports = class Module {
     const inherited = inherit(referrer)
 
     const {
-      cache = referrer ? referrer._cache : Object.create(null),
       protocol = inherited.protocol,
       imports = inherited.imports,
       resolutions = inherited.resolutions,
       conditions = inherited.conditions
     } = opts
+
+    const cache = cacheFor(opts.cache, referrer ? referrer._cache : undefined)
 
     const resolved = protocol.preresolve(specifier, parentURL)
 
@@ -626,6 +629,12 @@ function inherit(referrer) {
     builtins: referrer ? referrer._builtins : null,
     conditions: referrer ? referrer._conditions : Module._conditions
   }
+}
+
+function cacheFor(cache, fallback = Object.create(null)) {
+  if (cache === false) return Object.create(null)
+
+  return cache === undefined ? fallback : cache
 }
 
 function readPackageFor(protocol, cache) {
@@ -769,7 +778,6 @@ exports.createRequire = function createRequire(parentURL, opts = {}) {
   const {
     type = constants.types.SCRIPT,
     defaultType = inherited.defaultType || constants.types.SCRIPT,
-    cache = inherited.cache,
     main = inherited.main,
     protocol = inherited.protocol,
     imports = inherited.imports,
@@ -777,6 +785,8 @@ exports.createRequire = function createRequire(parentURL, opts = {}) {
     builtins = inherited.builtins,
     conditions = inherited.conditions
   } = opts
+
+  const cache = cacheFor(opts.cache, inherited.cache)
 
   let module = opts.module || null
 
