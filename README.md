@@ -289,9 +289,6 @@ The default `ModuleProtocol` class for resolving, reading and loading modules. S
 
 The global cache of loaded modules.
 
-> [!WARNING]
-> The cache may contain `Module` instances from several independent versions of `bare-module` as the cache is inherited through the module graph.
-
 #### `const url = Module.resolve(specifier, parentURL[, options])`
 
 Resolve the module `specifier` relative to the `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`.
