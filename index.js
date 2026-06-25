@@ -634,7 +634,7 @@ function inherit(referrer) {
 function cacheFor(cache, fallback = Object.create(null)) {
   if (cache === false) return Object.create(null)
 
-  return cache === undefined ? fallback : cache
+  return cache === undefined || cache === true ? fallback : cache
 }
 
 function readPackageFor(protocol, cache) {
