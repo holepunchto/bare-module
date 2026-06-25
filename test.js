@@ -707,6 +707,77 @@ test('load .cjs and .mjs from .mjs', (t) => {
   t.alike(order, ['b.mjs', 'c.cjs', 'd.mjs', 'e.cjs', 'a.mjs'])
 })
 
+test('load .bundle from .mjs', (t) => {
+  const order = (global.order = [])
+
+  const bundle = new Bundle().write('/main.mjs', "order.push('bundle')", { main: true }).toBuffer()
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/b.mjs' || url.href === root + '/app.bundle'
+    },
+
+    read(url) {
+      if (url.href === root + '/a.mjs') {
+        return "order.push('a.mjs'); import '/b.mjs'; import '/app.bundle'"
+      }
+
+      if (url.href === root + '/b.mjs') {
+        return "order.push('b.mjs')"
+      }
+
+      if (url.href === root + '/app.bundle') {
+        return bundle
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load(new URL(root + '/a.mjs'), { protocol, cache: false })
+
+  delete global.order
+
+  t.alike(order, ['b.mjs', 'bundle', 'a.mjs'])
+})
+
+test('load .bundle from .mjs reexporting a module with a side effect', (t) => {
+  const order = (global.order = [])
+
+  const bundle = new Bundle()
+    .write('/main.mjs', "export * from './lib'", { main: true })
+    .write('/lib.mjs', "order.push('lib'); export const foo = 42")
+    .toBuffer()
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/b.mjs' || url.href === root + '/app.bundle'
+    },
+
+    read(url) {
+      if (url.href === root + '/a.mjs') {
+        return "import '/b.mjs'; import { foo } from '/app.bundle'; order.push('a.mjs')"
+      }
+
+      if (url.href === root + '/b.mjs') {
+        return "order.push('b.mjs')"
+      }
+
+      if (url.href === root + '/app.bundle') {
+        return bundle
+      }
+
+      t.fail()
+    }
+  })
+
+  Module.load(new URL(root + '/a.mjs'), { protocol, cache: false })
+
+  delete global.order
+
+  t.alike(order, ['b.mjs', 'lib', 'a.mjs'])
+})
+
 test('load .ts', (t) => {
   const protocol = new Module.Protocol({
     read(url) {
@@ -870,6 +941,81 @@ test('load .bundle with .mjs', (t) => {
     .toBuffer()
 
   Module.load(new URL(root + '/app.bundle'), bundle, { cache: false })
+})
+
+test('import named exports from .bundle with .mjs main', (t) => {
+  const bundle = new Bundle().write('/foo.mjs', 'export const foo = 42', { main: true }).toBuffer()
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/app.bundle'
+    },
+
+    read(url) {
+      if (url.href === root + '/index.mjs') {
+        return "import { foo } from '/app.bundle'; export default foo"
+      }
+
+      if (url.href === root + '/app.bundle') {
+        return bundle
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load(new URL(root + '/index.mjs'), { protocol, cache: false }).exports.default, 42)
+})
+
+test('import named exports from .bundle with .cjs main', (t) => {
+  const bundle = new Bundle().write('/foo.cjs', 'exports.foo = 42', { main: true }).toBuffer()
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/app.bundle'
+    },
+
+    read(url) {
+      if (url.href === root + '/index.mjs') {
+        return "import { foo } from '/app.bundle'; export default foo"
+      }
+
+      if (url.href === root + '/app.bundle') {
+        return bundle
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load(new URL(root + '/index.mjs'), { protocol, cache: false }).exports.default, 42)
+})
+
+test('import reexported names from .bundle with .mjs main', (t) => {
+  const bundle = new Bundle()
+    .write('/foo.mjs', "export * from './bar'", { main: true })
+    .write('/bar.mjs', 'export const foo = 42')
+    .toBuffer()
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/app.bundle'
+    },
+
+    read(url) {
+      if (url.href === root + '/index.mjs') {
+        return "import { foo } from '/app.bundle'; export default foo"
+      }
+
+      if (url.href === root + '/app.bundle') {
+        return bundle
+      }
+
+      t.fail()
+    }
+  })
+
+  t.is(Module.load(new URL(root + '/index.mjs'), { protocol, cache: false }).exports.default, 42)
 })
 
 test('load .bundle with bare specifier', (t) => {
