@@ -3191,12 +3191,7 @@ test('extend module with exports property', (t) => {
     }
   })
 
-  try {
-    Module.load(new URL(root + '/foo.js'), { protocol, cache: false })
-    t.fail()
-  } catch (err) {
-    t.comment(err.message)
-  }
+  Module.load(new URL(root + '/foo.js'), { protocol, cache: false })
 })
 
 test('load .js with imports attribute', (t) => {
