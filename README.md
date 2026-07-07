@@ -23,15 +23,14 @@ foo.exports(2, 3)
 // 5
 ```
 
-To resolve and load specifiers relative to a directory, as `require()` does, create a `require()` bound to a parent URL:
+To resolve and load specifiers relative to a directory, as `require()` does, create a `require()` bound to a parent URL. The default protocol has no backing store of its own and cannot read from the file system, so pass a [protocol](#protocols) that serves the source:
 
 ```js
 const Module = require('bare-module')
 
-const require = Module.createRequire('file:///directory/')
+const require = Module.createRequire('file:///directory/', { protocol })
 
-// Resolves and loads `file:///directory/foo.js`, reading it through the
-// default protocol.
+// Resolves and loads `file:///directory/foo.js`, reading it through `protocol`.
 const foo = require('./foo.js')
 ```
 
@@ -308,11 +307,11 @@ The flags for the current state of a module.
 
 #### `Module.protocol`
 
-The default `ModuleProtocol` class for resolving, reading and loading modules. See [Protocols](#protocols) for usage.
+The default `ModuleProtocol` instance. It has no capabilities of its own; in particular, it cannot read from the file system. To serve modules from a backing store, provide your own protocol. See [Protocols](#protocols) for usage.
 
 #### `Module.cache`
 
-The global cache of loaded modules.
+The shared cache of loaded modules. Use of this cache is opt-in: pass `cache: true` to load a module into it.
 
 #### `const url = Module.resolve(specifier, parentURL[, options])`
 
@@ -399,8 +398,11 @@ options = {
   // such as `.js`. See Module.constants.types. Inherited from `referrer` if it
   // is defined.
   defaultType: Module.constants.types.SCRIPT,
-  // Cache to use to load the Module. Defaults to `Module.cache`. Pass `false`
-  // to use a throw-away cache scoped to this load and its module graph.
+  // Cache to use to load the Module. When left unspecified, the cache is
+  // inherited from `referrer` so a module graph shares a single cache,
+  // otherwise a fresh cache scoped to this load and its graph is used. Pass
+  // an explicit cache object to use it, `true` to opt in to the shared
+  // `Module.cache`, or `false` to force a fresh cache.
   cache,
   // The module representing the entry script where the program was launched.
   main,
@@ -616,7 +618,8 @@ options = {
   // is defined, otherwise defaults to SCRIPT.
   defaultType: Module.constants.types.SCRIPT,
   // A cache of loaded modules. Inherited from `referrer` if it is defined,
-  // otherwise defaults to `Module.cache`. Pass `false` to use a throw-away
+  // otherwise a fresh cache is used. Pass an explicit cache object to use it,
+  // `true` to opt in to the shared `Module.cache`, or `false` to force a fresh
   // cache.
   cache,
   // The module representing the entry script where the program was launched.

@@ -6,7 +6,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <utf.h>
-#include <uv.h>
 
 typedef struct {
   js_env_t *env;
@@ -516,169 +515,6 @@ bare_module_get_module_namespace(js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-bare_module_exists(js_env_t *env, js_callback_info_t *info) {
-  int err;
-
-  uv_loop_t *loop;
-  err = js_get_env_loop(env, &loop);
-  assert(err == 0);
-
-  js_value_t *argv[2];
-  size_t argc = 2;
-
-  err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
-  assert(err == 0);
-
-  assert(argc == 2);
-
-  utf8_t path[4096];
-  err = js_get_value_string_utf8(env, argv[0], path, 4096, NULL);
-  assert(err == 0);
-
-  uint32_t mode;
-  err = js_get_value_uint32(env, argv[1], &mode);
-  assert(err == 0);
-
-  uv_fs_t req;
-  uv_fs_stat(loop, &req, (char *) path, NULL);
-
-  uv_stat_t *st = req.result < 0 ? NULL : req.ptr;
-
-  js_value_t *result;
-  err = js_get_boolean(env, st && st->st_mode & mode, &result);
-  assert(err == 0);
-
-  uv_fs_req_cleanup(&req);
-
-  return result;
-}
-
-static js_value_t *
-bare_module_realpath(js_env_t *env, js_callback_info_t *info) {
-  int err;
-
-  uv_loop_t *loop;
-  err = js_get_env_loop(env, &loop);
-  assert(err == 0);
-
-  js_value_t *argv[1];
-  size_t argc = 1;
-
-  err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
-  assert(err == 0);
-
-  assert(argc == 1);
-
-  utf8_t path[4096];
-  err = js_get_value_string_utf8(env, argv[0], path, 4096, NULL);
-  assert(err == 0);
-
-  uv_fs_t req;
-  uv_fs_realpath(loop, &req, (char *) path, NULL);
-
-  int res = req.result;
-
-  if (res < 0) {
-    uv_fs_req_cleanup(&req);
-    err = res;
-    goto err;
-  }
-
-  js_value_t *result;
-  err = js_create_string_utf8(env, (utf8_t *) req.ptr, -1, &result);
-  assert(err == 0);
-
-  uv_fs_req_cleanup(&req);
-
-  return result;
-
-err:
-  err = js_throw_error(env, uv_err_name(err), uv_strerror(err));
-  assert(err == 0);
-
-  return NULL;
-}
-
-static js_value_t *
-bare_module_read(js_env_t *env, js_callback_info_t *info) {
-  int err;
-
-  uv_loop_t *loop;
-  err = js_get_env_loop(env, &loop);
-  assert(err == 0);
-
-  js_value_t *argv[1];
-  size_t argc = 1;
-
-  err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
-  assert(err == 0);
-
-  assert(argc == 1);
-
-  utf8_t path[4096];
-  err = js_get_value_string_utf8(env, argv[0], path, 4096, NULL);
-  assert(err == 0);
-
-  uv_fs_t req;
-  uv_fs_open(loop, &req, (char *) path, UV_FS_O_RDONLY, 0, NULL);
-
-  int fd = req.result;
-  uv_fs_req_cleanup(&req);
-
-  if (fd < 0) {
-    err = fd;
-    goto err;
-  }
-
-  uv_fs_fstat(loop, &req, fd, NULL);
-  uv_stat_t *st = req.ptr;
-
-  size_t len = st->st_size;
-  char *base;
-
-  js_value_t *result;
-  err = js_create_arraybuffer(env, len, (void **) &base, &result);
-  assert(err == 0);
-
-  uv_buf_t buffer = uv_buf_init(base, len);
-
-  uv_fs_req_cleanup(&req);
-
-  int64_t read = 0;
-
-  while (true) {
-    uv_fs_read(loop, &req, fd, &buffer, 1, read, NULL);
-
-    int res = req.result;
-    uv_fs_req_cleanup(&req);
-
-    if (res < 0) {
-      uv_fs_close(loop, &req, fd, NULL);
-      uv_fs_req_cleanup(&req);
-      err = res;
-      goto err;
-    }
-
-    buffer.base += res;
-    buffer.len -= res;
-
-    read += res;
-    if (res == 0 || read == len) break;
-  }
-
-  uv_fs_close(loop, &req, fd, NULL);
-  uv_fs_req_cleanup(&req);
-
-  return result;
-
-err:
-  err = js_throw_error(env, uv_err_name(err), uv_strerror(err));
-  assert(err == 0);
-
-  return NULL;
-}
-
-static js_value_t *
 bare_module_exports(js_env_t *env, js_value_t *exports) {
   int err;
 
@@ -701,23 +537,6 @@ bare_module_exports(js_env_t *env, js_value_t *exports) {
   V("setModuleExport", bare_module_set_module_export)
   V("runModule", bare_module_run_module)
   V("getModuleNamespace", bare_module_get_module_namespace)
-
-  V("exists", bare_module_exists)
-  V("realpath", bare_module_realpath)
-  V("read", bare_module_read)
-#undef V
-
-#define V(name, n) \
-  { \
-    js_value_t *val; \
-    err = js_create_uint32(env, n, &val); \
-    assert(err == 0); \
-    err = js_set_named_property(env, exports, name, val); \
-    assert(err == 0); \
-  }
-
-  V("FILE", S_IFREG)
-  V("DIR", S_IFDIR)
 #undef V
 
   return exports;

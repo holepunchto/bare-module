@@ -1,5 +1,4 @@
 const test = require('brittle')
-const { pathToFileURL } = require('bare-url')
 const Bundle = require('bare-bundle')
 const Module = require('.')
 
@@ -2822,10 +2821,6 @@ test('syntax error in .mjs imported from .mjs', (t) => {
   }
 })
 
-test('load file: URL using the default protocol', (t) => {
-  t.is(Module.load(pathToFileURL('test/fixtures/foo.js'), null, { cache: false }).exports, 42)
-})
-
 test('load non-file: URL using the default protocol', (t) => {
   t.is(Module.load(new URL('foo:/foo.js'), 'module.exports = 42', { cache: false }).exports, 42)
 })
@@ -2837,39 +2832,6 @@ test('load non-file: URL with missing import using the default protocol', (t) =>
   } catch (err) {
     t.comment(err.message)
   }
-})
-
-test('resolve file: asset URL using the default protocol', (t) => {
-  t.alike(
-    Module.asset('./test/fixtures/foo.js', pathToFileURL(__dirname + '/')),
-    pathToFileURL(__dirname + '/test/fixtures/foo.js')
-  )
-})
-
-test('resolve file: asset directory URL using the default protocol', (t) => {
-  t.alike(
-    Module.asset('./test/fixtures', pathToFileURL(__dirname + '/')),
-    pathToFileURL(__dirname + '/test/fixtures')
-  )
-})
-
-test('extend the default protocol', (t) => {
-  const protocol = Module.protocol.extend({
-    read(context, url) {
-      const buffer = context.read(url)
-
-      if (url.href.endsWith('/test/fixtures/bar.js')) {
-        return Buffer.from("module.exports = 'modified'")
-      }
-
-      return buffer
-    }
-  })
-
-  t.is(
-    Module.load(pathToFileURL('test/fixtures/foo.js'), { protocol, cache: false }).exports,
-    'modified'
-  )
 })
 
 test('load .js with asset import', (t) => {
@@ -3492,6 +3454,44 @@ test('load without cache', (t) => {
 
   const a = Module.load(new URL(root + '/index.cjs'), { protocol, cache: false })
   const b = Module.load(new URL(root + '/index.cjs'), { protocol, cache: false })
+
+  t.is(a.exports, 42)
+  t.is(b.exports, 42)
+  t.not(a, b)
+})
+
+test('load with the shared cache', (t) => {
+  const protocol = new Module.Protocol({
+    read(url) {
+      if (url.href === root + '/shared.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const a = Module.load(new URL(root + '/shared.cjs'), { protocol, cache: true })
+  const b = Module.load(new URL(root + '/shared.cjs'), { protocol, cache: true })
+
+  t.is(a.exports, 42)
+  t.is(b.exports, 42)
+  t.is(a, b)
+})
+
+test('load without a cache does not use the shared cache', (t) => {
+  const protocol = new Module.Protocol({
+    read(url) {
+      if (url.href === root + '/index.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const a = Module.load(new URL(root + '/index.cjs'), { protocol })
+  const b = Module.load(new URL(root + '/index.cjs'), { protocol })
 
   t.is(a.exports, 42)
   t.is(b.exports, 42)
