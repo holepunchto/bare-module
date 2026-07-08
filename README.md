@@ -284,7 +284,7 @@ The `"engines"` field defines the engine requirements of the package. During mod
 
 ## API
 
-#### `Module.constants.states`
+#### `Module.constants.state`
 
 The flags for the current state of a module.
 
@@ -293,7 +293,7 @@ The flags for the current state of a module.
 | `EVALUATED`   | The module has been evaluated.               |
 | `SYNTHESIZED` | The module named exports have been detected. |
 
-#### `Module.constants.types`
+#### `Module.constants.type`
 
 | Constant | Description                                                                  |
 | :------- | :--------------------------------------------------------------------------- |
@@ -325,7 +325,7 @@ options = {
   isImport: false,
   // The referring module.
   referrer: null,
-  // The type of the module. See Module.constants.types for possible values. The
+  // The type of the module. See Module.constants.type for possible values. The
   // default is the equivalent constant of the `attributes`'s `type` property.
   type,
   // A list of file extensions to look for. The default is based on the `type`
@@ -391,13 +391,13 @@ options = {
   isDynamicImport: false,
   // The referring module.
   referrer: null,
-  // The type of the module. See Module.constants.types for possible values. The
+  // The type of the module. See Module.constants.type for possible values. The
   // default is the equivalent constant of the `attributes`'s `type` property.
   type,
   // The assumed type of a module without a type using an ambiguous extension
-  // such as `.js`. See Module.constants.types. Inherited from `referrer` if it
+  // such as `.js`. See Module.constants.type. Inherited from `referrer` if it
   // is defined.
-  defaultType: Module.constants.types.SCRIPT,
+  defaultType: Module.constants.type.SCRIPT,
   // Cache to use to load the Module. When left unspecified, the cache is
   // inherited from `referrer` so a module graph shares a single cache,
   // otherwise a fresh cache scoped to this load and its graph is used. Pass
@@ -443,11 +443,11 @@ The directory portion of `module.url`.
 
 #### `module.type`
 
-The type of the module. See [`Module.constants.types`](#module.constants.types) for possible values.
+The type of the module. See [`Module.constants.type`](#module.constants.type) for possible values.
 
 #### `module.defaultType`
 
-The assumed type of a module without a `type` using an ambiguous extension, such as `.js`. See [`Module.constants.types`](#module.constants.types) for possible values.
+The assumed type of a module without a `type` using an ambiguous extension, such as `.js`. See [`Module.constants.type`](#module.constants.type) for possible values.
 
 #### `module.cache`
 
@@ -611,12 +611,12 @@ options = {
   module: null,
   // The referring module.
   referrer: null,
-  // The type of the module. See Module.constants.types for possible values.
-  type: Module.constants.types.SCRIPT,
+  // The type of the module. See Module.constants.type for possible values.
+  type: Module.constants.type.SCRIPT,
   // The assumed type of a module without a type using an ambiguous extension
-  // such as `.js`. See Module.constants.types. Inherited from `referrer` if it
+  // such as `.js`. See Module.constants.type. Inherited from `referrer` if it
   // is defined, otherwise defaults to SCRIPT.
-  defaultType: Module.constants.types.SCRIPT,
+  defaultType: Module.constants.type.SCRIPT,
   // A cache of loaded modules. Inherited from `referrer` if it is defined,
   // otherwise a fresh cache is used. Pass an explicit cache object to use it,
   // `true` to opt in to the shared `Module.cache`, or `false` to force a fresh

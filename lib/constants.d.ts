@@ -1,10 +1,10 @@
 declare const constants: {
-  states: {
+  state: {
     EVALUATED: number
     SYNTHESIZED: number
     RUN: number
   }
-  types: {
+  type: {
     SCRIPT: number
     MODULE: number
     JSON: number
