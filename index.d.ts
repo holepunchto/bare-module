@@ -15,7 +15,7 @@ interface Cache {
 }
 
 interface Attributes {
-  type: Lowercase<keyof typeof constants.types>
+  type: Lowercase<keyof typeof constants.type>
 }
 
 interface Options {

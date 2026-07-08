@@ -145,7 +145,7 @@ test('load .js with default type', (t) => {
   t.is(
     Module.load(new URL(root + '/foo.js'), {
       protocol,
-      defaultType: Module.constants.types.MODULE,
+      defaultType: Module.constants.type.MODULE,
       cache: false
     }).exports.default,
     42
@@ -1095,7 +1095,7 @@ test.skip('load .bundle with type option and no .bundle extension', async (t) =>
   await t.exception(
     () =>
       Module.load(new URL(root + '/app'), bundle, {
-        type: Module.constants.types.BUNDLE,
+        type: Module.constants.type.BUNDLE,
         cache: false
       }),
     /invalid extension for bundle '\/app'/i
@@ -1213,7 +1213,7 @@ test('load unknown extension with default type', (t) => {
   t.is(
     Module.load(new URL(root + '/index.foo'), {
       protocol,
-      defaultType: Module.constants.types.JSON,
+      defaultType: Module.constants.type.JSON,
       cache: false
     }).exports,
     42
@@ -1707,7 +1707,7 @@ test('createRequire with default type', (t) => {
 
   const require = Module.createRequire(root + '/dir/foo.js', {
     protocol,
-    defaultType: Module.constants.types.MODULE,
+    defaultType: Module.constants.type.MODULE,
     cache: false
   })
 
