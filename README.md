@@ -14,7 +14,7 @@ A module is loaded by its WHATWG `URL`. The source may be read through the modul
 const Module = require('bare-module')
 
 // Load a module directly from source, without it existing on disk.
-const foo = Module.load(
+const foo = await Module.load(
   new URL('file:///foo.js'),
   'module.exports = function add (a, b) { return a + b }'
 )
@@ -284,16 +284,7 @@ The `"engines"` field defines the engine requirements of the package. During mod
 
 ## API
 
-#### `Module.constants.state`
-
-The flags for the current state of a module.
-
-| Constant      | Description                                  |
-| :------------ | :------------------------------------------- |
-| `EVALUATED`   | The module has been evaluated.               |
-| `SYNTHESIZED` | The module named exports have been detected. |
-
-#### `Module.constants.type`
+#### `Module.constants`
 
 | Constant | Description                                                                  |
 | :------- | :--------------------------------------------------------------------------- |
@@ -313,16 +304,14 @@ The default `ModuleProtocol` instance. It has no capabilities of its own; in par
 
 The shared cache of loaded modules. Use of this cache is opt-in: pass `cache: true` to load a module into it.
 
-#### `const url = Module.resolve(specifier, parentURL[, options])`
+#### `const url = await Module.resolve(specifier, parentURL[, condition][, options])`
 
-Resolve the module `specifier` relative to the `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`.
+Resolve the module `specifier` relative to the `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`. `condition` is an optional import condition, defaulting to `'require'` if not specified.
 
 Options include:
 
 ```js
 options = {
-  // Whether the module is called via `import` or `import()`.
-  isImport: false,
   // The referring module.
   referrer: null,
   // The type of the module. See Module.constants.type for possible values. The
@@ -353,7 +342,7 @@ options = {
 }
 ```
 
-#### `const url = Module.asset(specifier, parentURL[, options])`
+#### `const url = await Module.asset(specifier, parentURL[, options])`
 
 Get the asset URL by resolving `specifier` relative to `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`.
 
@@ -377,7 +366,7 @@ options = {
 }
 ```
 
-#### `const module = Module.load(url[, source][, options])`
+#### `const module = await Module.load(url[, source][, options])`
 
 Load a module with the provided `url`. `url` is a WHATWG `URL`. If provided, the `source` will be passed to the matching `extension` for the `url`.
 
@@ -650,32 +639,108 @@ Methods include:
 
 ```js
 methods = {
-  // function (specifier, parentURL): string
-  // A function to preprocess the `specifier` and `parentURL` before the resolve
-  // algorithm is called.
-  preresolve,
-  // function (url): string
-  // A function to process the resolved URL. Can be used to convert file paths,
-  // etc.
-  postresolve,
-  // function* (specifier, parentURL, imports): [URL]
-  // A generator to resolve the `specifier` to a URL.
+  // function (url): URL
+  // A function to post-process a resolved URL before it is used, for example to
+  // canonicalize symlinks with `realpath` so a module reached through different
+  // symlinks dedupes against its real location. Defaults to the identity.
   resolve,
-  // function (url): boolean
-  // A function that returns whether the URL exists as a boolean.
+  // function (url): boolean | Promise<boolean>
+  // A function that returns whether the URL exists as a boolean. Consulted before
+  // `read`, so a candidate that does not exist is never fetched. Defaults to
+  // whether `read` returns a non-null source, but a backing store can override it
+  // with a cheaper check, such as a `stat` or an HTTP `HEAD`. May return a promise
+  // to answer asynchronously.
   exists,
-  // function (url): string | Buffer
-  // A function that returns the source code of a URL represented as a string or
-  // buffer.
+  // function (url): string | Buffer | null | Promise<string | Buffer | null>
+  // A function that returns the source of a URL as a string or buffer, or `null`
+  // if it does not exist. May return a promise to serve the source asynchronously.
   read,
-  // function (url): URL
-  // A function used to post process URLs for addons before `postresolve()`.
-  addon,
-  // function (url): URL
-  // A function used to post process URLs for assets before `postresolve()`.
-  asset
+  // function* (url): Iterable<URL> | AsyncIterable<URL>
+  // A generator enumerating the URLs under a prefix, used for asset globbing.
+  // Defaults to a single candidate - the prefix itself, if it exists - so a
+  // backing store need only provide it to support listing a directory.
+  list
 }
 ```
+
+A protocol may return a promise from `resolve`, `exists`, or `read` to serve modules asynchronously. Such a protocol can be driven by the asynchronous `Module` statics (`Module.load`, `Module.resolve`, and `Module.asset`) and [`Loader`](#loader) methods; the synchronous entry points (`require()`, `loader.linkSync`, and `loader.importSync`) throw when a protocol read returns a promise.
+
+#### `const extended = protocol.extend(methods)`
+
+Return a new `ModuleProtocol` that overrides the given `methods`, falling back to this protocol for any method not provided.
+
+### Loader
+
+A `Loader` owns a registry of module records keyed by URL and drives resolution and linking against a [protocol](#protocols). Where the `Module` statics link and evaluate in a single call, a loader exposes linking and evaluation as separate steps, as well as synchronous variants, so modules can be served from an asynchronous protocol such as one backed by a [`Hyperdrive`](https://github.com/holepunchto/hyperdrive).
+
+Linking is split into two phases. First a graph is _linked_: every module reachable from the entry is read, lexed, and recorded, and its native module is created without running any code. Then it is _evaluated_: the recorded modules run. All IO happens during linking, so evaluation is synchronous regardless of how the graph was fetched.
+
+#### `const loader = new Module.Loader([options])`
+
+Options include:
+
+```js
+options = {
+  // The ModuleProtocol used to resolve and read modules. Defaults to
+  // Module.protocol, which has no backing store of its own.
+  protocol,
+  // A map of builtin module specifiers to their exports.
+  builtins,
+  // The assumed type of a module without a type using an ambiguous extension
+  // such as `.js`. See Module.constants.type for possible values.
+  defaultType,
+  // A default "imports" map to apply to all specifiers. Follows the same syntax
+  // and rules as the "imports" property defined in `package.json`.
+  imports,
+  // The module cache. Pass an object to use it, `true` to opt in to the shared
+  // Module.cache, or omit for a fresh cache scoped to this loader.
+  cache,
+  // A map of preresolved imports with keys being serialized parent URLs and
+  // values being "imports" maps. Defaults to following the cache: a shared cache
+  // shares its resolutions, a fresh cache gets fresh resolutions.
+  resolutions
+}
+```
+
+#### `const module = await loader.link(entry[, source][, options])`
+
+Link the module graph rooted at `entry`, a WHATWG `URL`, awaiting each read through the protocol so an asynchronous protocol can serve the source. If `source` is given, it is used instead of reading `entry` through the protocol. Returns the entry module, instantiated but not yet evaluated.
+
+#### `const module = loader.linkSync(entry[, source][, options])`
+
+The synchronous equivalent of `loader.link()`. A protocol whose `read`, `exists`, or `resolve` returns a promise cannot be driven synchronously and throws.
+
+#### `const exports = await loader.import(entry[, options])`
+
+Link and evaluate the graph rooted at `entry`, returning its exports. Awaits the entry's evaluation, so a top-level `await` in the entry settles before the exports are returned.
+
+#### `const exports = loader.importSync(entry[, options])`
+
+The synchronous equivalent of `loader.import()`. It cannot await, so a top-level `await` in the entry is unsupported.
+
+#### `const module = loader.get(url)`
+
+Return the module record cached under `url`, a WHATWG `URL`, or `null` if none is loaded.
+
+#### `loader.main`
+
+The graph's main module: the first entry linked. `null` until the first link.
+
+#### `loader.cache`
+
+The registry of loaded modules, keyed by URL href.
+
+#### `loader.resolutions`
+
+The graph's resolution cache, keyed by referrer URL, aggregated as modules are linked.
+
+#### `loader.addons`, `loader.assets`
+
+The addon and asset URLs discovered while linking, accumulated across link calls. These are the non-module files the graph depends on, such as what a bundler would need to include.
+
+#### `loader.protocol`, `loader.builtins`, `loader.imports`, `loader.defaultType`, `loader.conditions`
+
+The loader configuration, mirroring the like-named getters on a [`module`](#moduleurl).
 
 ## License
 

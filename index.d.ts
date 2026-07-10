@@ -7,15 +7,15 @@ import {
   type ImportsMap,
   type ResolutionsMap
 } from 'bare-module-resolve'
+import { constants } from 'bare-module-traverse'
 import Protocol from './lib/protocol'
-import constants from './lib/constants'
 
 interface Cache {
   [href: string]: Module
 }
 
 interface Attributes {
-  type: Lowercase<keyof typeof constants.type>
+  type: Lowercase<keyof typeof constants>
 }
 
 interface Options {
@@ -63,14 +63,49 @@ declare class Module {
   static readonly protocol: Protocol
   static readonly cache: Cache
 
-  static load(url: URL, opts: LoadOptions): Module
-  static load(url: URL, source?: Buffer | string | Bundle | null, opts?: LoadOptions): Module
+  static load(url: URL, opts: LoadOptions): Promise<Module>
+  static load(
+    url: URL,
+    source?: Buffer | string | Bundle | null,
+    opts?: LoadOptions
+  ): Promise<Module>
 
-  static resolve(specifier: string, parentURL: URL, opts?: ResolveOptions): URL
+  static resolve(specifier: string, parentURL: URL, opts?: ResolveOptions): Promise<URL>
+  static resolve(
+    specifier: string,
+    parentURL: URL,
+    condition: string,
+    opts?: ResolveOptions
+  ): Promise<URL>
 
-  static asset(specifier: string, parentURL: URL, opts?: Options): URL
+  static asset(specifier: string, parentURL: URL, opts?: Options): Promise<URL>
 
   constructor(url: URL)
+}
+
+interface Loader {
+  readonly addons: URL[]
+  readonly assets: URL[]
+  readonly builtins: Builtins
+  readonly cache: Cache
+  readonly conditions: Conditions
+  readonly defaultType: number
+  readonly imports: ImportsMap
+  readonly main: Module
+  readonly protocol: Protocol
+  readonly resolutions: ResolutionsMap
+
+  get(url: URL): Module | null
+
+  link(entry: URL, source?: Buffer | string | null, opts?: LoadOptions): Promise<Module>
+  linkSync(entry: URL, source?: Buffer | string | null, opts?: LoadOptions): Module
+
+  import(entry: URL, opts?: LoadOptions): Promise<unknown>
+  importSync(entry: URL, opts?: LoadOptions): unknown
+}
+
+declare class Loader {
+  constructor(opts?: Options)
 }
 
 declare namespace Module {
@@ -80,13 +115,10 @@ declare namespace Module {
     type Options,
     type LoadOptions,
     type ResolveOptions,
+    Loader,
     Protocol,
     constants
   }
-
-  export const builtinModules: Module[]
-
-  export function isBuiltin(): boolean
 
   export interface CreateRequireOptions extends Options {
     module?: Module
