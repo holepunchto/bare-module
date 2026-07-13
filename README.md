@@ -314,31 +314,19 @@ Options include:
 options = {
   // The referring module.
   referrer: null,
-  // The type of the module. See Module.constants.type for possible values. The
-  // default is the equivalent constant of the `attributes`'s `type` property.
-  type,
-  // A list of file extensions to look for. The default is based on the `type`
-  // option.
-  extensions: [],
   // The ModuleProtocol to resolve the specifier. Defaults to referrer's
   // protocol if defined, otherwise defaults to Module.protocol
   protocol,
-  // A default "imports" map to apply to all specifiers. Follows the same
-  // syntax and rules as the "imports" property defined in `package.json`.
-  imports,
-  // A map of preresolved imports with keys being serialized parent URLs and
-  // values being "imports" maps.
-  resolutions,
   // A map of builtin module specifiers to loaded modules. If matched by the
   // default resolver, the protocol of the resolved URL will be `builtin:`.
   builtins,
-  // The supported import conditions. "default" is always recognized.
-  conditions: [],
-  // The import attributes, e.g. the `{ type: "json" }` in:
-  // `import foo from 'foo' with { type: "json" }`
-  // or in:
-  // `require('foo', { with: { type: "json" } })`
-  attributes
+  // The module cache. An already loaded module is served from here instead of
+  // being resolved again. Pass an object to use it, `true` to opt in to the
+  // shared Module.cache, or omit for a fresh cache.
+  cache,
+  // A map of preresolved imports with keys being serialized parent URLs and
+  // values being "imports" maps.
+  resolutions
 }
 ```
 
@@ -352,17 +340,19 @@ Options include:
 options = {
   // The referring module.
   referrer: null,
-  // The ModuleProtocol to use resolve the specifier. Defaults to referrer's
+  // The ModuleProtocol to resolve the specifier. Defaults to referrer's
   // protocol if defined, otherwise defaults to Module.protocol
   protocol,
-  // A default "imports" map to apply to all specifiers. Follows the same
-  // syntax and rules as the "imports" property defined in `package.json`.
-  imports,
+  // A map of builtin module specifiers to loaded modules. If matched by the
+  // default resolver, the protocol of the resolved URL will be `builtin:`.
+  builtins,
+  // The module cache. An already loaded module is served from here instead of
+  // being resolved again. Pass an object to use it, `true` to opt in to the
+  // shared Module.cache, or omit for a fresh cache.
+  cache,
   // A map of preresolved imports with keys being serialized parent URLs and
   // values being "imports" maps.
-  resolutions,
-  // The supported import conditions. "default" is always recognized.
-  conditions
+  resolutions
 }
 ```
 
@@ -374,27 +364,21 @@ Options include:
 
 ```js
 options = {
-  // Whether the module is called via `import` or `import()`.
-  isImport: false,
-  // Whether the module is called via `import()`.
-  isDynamicImport: false,
   // The referring module.
   referrer: null,
-  // The type of the module. See Module.constants.type for possible values. The
-  // default is the equivalent constant of the `attributes`'s `type` property.
-  type,
   // The assumed type of a module without a type using an ambiguous extension
-  // such as `.js`. See Module.constants.type. Inherited from `referrer` if it
-  // is defined.
-  defaultType: Module.constants.type.SCRIPT,
+  // such as `.js`. See Module.constants for possible values. Inherited from
+  // `referrer` if it is defined.
+  defaultType: Module.constants.SCRIPT,
   // Cache to use to load the Module. When left unspecified, the cache is
   // inherited from `referrer` so a module graph shares a single cache,
   // otherwise a fresh cache scoped to this load and its graph is used. Pass
   // an explicit cache object to use it, `true` to opt in to the shared
   // `Module.cache`, or `false` to force a fresh cache.
   cache,
-  // The module representing the entry script where the program was launched.
-  main,
+  // The maximum number of module reads to perform concurrently while linking.
+  // Defaults to `0`, which applies no limit.
+  concurrency: 0,
   // The ModuleProtocol to use resolve the specifier. Defaults to referrer's
   // `protocol` if defined, otherwise defaults to `Module.protocol`.
   protocol,
@@ -432,11 +416,11 @@ The directory portion of `module.url`.
 
 #### `module.type`
 
-The type of the module. See [`Module.constants.type`](#module.constants.type) for possible values.
+The type of the module. See [`Module.constants`](#moduleconstants) for possible values.
 
 #### `module.defaultType`
 
-The assumed type of a module without a `type` using an ambiguous extension, such as `.js`. See [`Module.constants.type`](#module.constants.type) for possible values.
+The assumed type of a module without a `type` using an ambiguous extension, such as `.js`. See [`Module.constants`](#moduleconstants) for possible values.
 
 #### `module.cache`
 
@@ -594,25 +578,17 @@ Options include:
 
 ```js
 options = {
-  // The module to become the `referrer` for the returned `require()`. Defaults
-  // to creating a new module instance from the `parentURL` with the same
-  // options.
-  module: null,
   // The referring module.
   referrer: null,
-  // The type of the module. See Module.constants.type for possible values.
-  type: Module.constants.type.SCRIPT,
   // The assumed type of a module without a type using an ambiguous extension
-  // such as `.js`. See Module.constants.type. Inherited from `referrer` if it
-  // is defined, otherwise defaults to SCRIPT.
-  defaultType: Module.constants.type.SCRIPT,
+  // such as `.js`. See Module.constants. Inherited from `referrer` if it is
+  // defined, otherwise defaults to SCRIPT.
+  defaultType: Module.constants.SCRIPT,
   // A cache of loaded modules. Inherited from `referrer` if it is defined,
   // otherwise a fresh cache is used. Pass an explicit cache object to use it,
   // `true` to opt in to the shared `Module.cache`, or `false` to force a fresh
   // cache.
   cache,
-  // The module representing the entry script where the program was launched.
-  main,
   // The ModuleProtocol to use resolve the specifier and/or the module. Defaults to
   // referrer's protocol if defined, otherwise defaults to Module.protocol
   protocol,
@@ -623,9 +599,7 @@ options = {
   // values being "imports" maps.
   resolutions,
   // A map of builtin module specifiers to loaded modules.
-  builtins,
-  // The supported import conditions. "default" is always recognized.
-  conditions
+  builtins
 }
 ```
 
@@ -705,11 +679,14 @@ options = {
   // A map of builtin module specifiers to their exports.
   builtins,
   // The assumed type of a module without a type using an ambiguous extension
-  // such as `.js`. See Module.constants.type for possible values.
+  // such as `.js`. See Module.constants for possible values.
   defaultType,
   // A default "imports" map to apply to all specifiers. Follows the same syntax
   // and rules as the "imports" property defined in `package.json`.
   imports,
+  // The maximum number of module reads to perform concurrently while linking.
+  // Defaults to `0`, which applies no limit.
+  concurrency: 0,
   // The module cache. Pass an object to use it, `true` to opt in to the shared
   // Module.cache, or omit for a fresh cache scoped to this loader.
   cache,
