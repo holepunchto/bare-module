@@ -639,11 +639,17 @@ Methods include:
 
 ```js
 methods = {
-  // function (url): URL
+  // function (url): URL | Promise<URL>
   // A function to post-process a resolved URL before it is used, for example to
   // canonicalize symlinks with `realpath` so a module reached through different
-  // symlinks dedupes against its real location. Defaults to the identity.
+  // symlinks dedupes against its real location. Defaults to the identity. May
+  // return a promise to resolve asynchronously.
   resolve,
+  // function (url): URL
+  // The synchronous variant of `resolve`, used when a graph is linked
+  // synchronously. Defaults to calling `resolve` and throwing if it returns a
+  // promise.
+  resolveSync,
   // function (url): boolean | Promise<boolean>
   // A function that returns whether the URL exists as a boolean. Consulted before
   // `read`, so a candidate that does not exist is never fetched. Defaults to
@@ -651,19 +657,31 @@ methods = {
   // with a cheaper check, such as a `stat` or an HTTP `HEAD`. May return a promise
   // to answer asynchronously.
   exists,
+  // function (url): boolean
+  // The synchronous variant of `exists`. Defaults to calling `exists` and throwing
+  // if it returns a promise.
+  existsSync,
   // function (url): string | Buffer | null | Promise<string | Buffer | null>
   // A function that returns the source of a URL as a string or buffer, or `null`
   // if it does not exist. May return a promise to serve the source asynchronously.
   read,
+  // function (url): string | Buffer | null
+  // The synchronous variant of `read`. Defaults to calling `read` and throwing if
+  // it returns a promise.
+  readSync,
   // function* (url): Iterable<URL> | AsyncIterable<URL>
   // A generator enumerating the URLs under a prefix, used for asset globbing.
   // Defaults to a single candidate - the prefix itself, if it exists - so a
   // backing store need only provide it to support listing a directory.
-  list
+  list,
+  // function* (url): Iterable<URL>
+  // The synchronous variant of `list`. Defaults to delegating to `list` and
+  // throwing if it returns an asynchronous iterable.
+  listSync
 }
 ```
 
-A protocol may return a promise from `resolve`, `exists`, or `read` to serve modules asynchronously. Such a protocol can be driven by the asynchronous `Module` statics (`Module.load`, `Module.resolve`, and `Module.asset`) and [`Loader`](#loader) methods; the synchronous entry points (`require()`, `loader.linkSync`, and `loader.importSync`) throw when a protocol read returns a promise.
+Each method comes in an asynchronous and a synchronous variant. The asynchronous variants may return a promise (or, for `list`, an asynchronous iterable) to serve modules asynchronously and are driven by the asynchronous `Module` statics (`Module.load`, `Module.resolve`, and `Module.asset`) and [`Loader`](#loader) methods. The synchronous `*Sync` variants are driven by the synchronous entry points (`require()`, `loader.linkSync`, and `loader.importSync`) and default to calling their asynchronous counterpart, throwing an `UNEXPECTED_PROMISE` error if it answers asynchronously. A protocol that supports both may implement the `*Sync` variants directly; for such a protocol a statically imported module is read through the asynchronous `read` while a `require()` with a computed specifier is read through `readSync`.
 
 #### `const extended = protocol.extend(methods)`
 
@@ -708,7 +726,7 @@ Link the module graph rooted at `entry`, a WHATWG `URL`, awaiting each read thro
 
 #### `const module = loader.linkSync(entry[, source][, options])`
 
-The synchronous equivalent of `loader.link()`. A protocol whose `read`, `exists`, or `resolve` returns a promise cannot be driven synchronously and throws.
+The synchronous equivalent of `loader.link()`. It drives the protocol's synchronous methods (`resolveSync`, `existsSync`, `readSync`, and `listSync`), which throw an `UNEXPECTED_PROMISE` error when the protocol can only answer asynchronously.
 
 #### `const exports = await loader.import(entry[, options])`
 
