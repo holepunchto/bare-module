@@ -878,10 +878,7 @@ test('load .json', async (t) => {
 test('load .cjs with .bare import', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
-      return (
-        url.href === root + '/index.cjs' ||
-        url.href === prebuilds + '/bare-module.bare'
-      )
+      return url.href === root + '/index.cjs' || url.href === prebuilds + '/bare-module.bare'
     },
 
     read(url) {
@@ -905,10 +902,7 @@ test('load .cjs with .bare import', async (t) => {
 test('load .cjs with dynamic .bare import', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
-      return (
-        url.href === root + '/index.cjs' ||
-        url.href === prebuilds + '/bare-module.bare'
-      )
+      return url.href === root + '/index.cjs' || url.href === prebuilds + '/bare-module.bare'
     },
 
     read(url) {
@@ -932,10 +926,7 @@ test('load .cjs with dynamic .bare import', async (t) => {
 test('load .mjs with .bare import', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
-      return (
-        url.href === root + '/index.mjs' ||
-        url.href === prebuilds + '/bare-module.bare'
-      )
+      return url.href === root + '/index.mjs' || url.href === prebuilds + '/bare-module.bare'
     },
 
     read(url) {
@@ -959,10 +950,7 @@ test('load .mjs with .bare import', async (t) => {
 test('load .mjs with dynamic .bare import', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
-      return (
-        url.href === root + '/index.mjs' ||
-        url.href === prebuilds + '/bare-module.bare'
-      )
+      return url.href === root + '/index.mjs' || url.href === prebuilds + '/bare-module.bare'
     },
 
     read(url) {
