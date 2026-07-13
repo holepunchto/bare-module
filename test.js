@@ -6,6 +6,7 @@ const Module = require('.')
 const isWindows = Bare.platform === 'win32'
 
 const root = isWindows ? 'file:///c:' : 'file://'
+const prebuilds = pathToFileURL(__dirname + '/prebuilds/' + Bare.Addon.host)
 
 test('resolve bare specifier', async (t) => {
   const protocol = new Module.Protocol({
@@ -879,7 +880,7 @@ test('load .cjs with .bare import', async (t) => {
     exists(url) {
       return (
         url.href === root + '/index.cjs' ||
-        url.href === 'file:///' + __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
+        url.href === prebuilds + '/bare-module.bare'
       )
     },
 
@@ -894,7 +895,7 @@ test('load .cjs with .bare import', async (t) => {
 
   const resolutions = {
     [root + '/index.cjs']: {
-      '/native.bare': 'file:///' + __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
+      '/native.bare': prebuilds + '/bare-module.bare'
     }
   }
 
@@ -906,7 +907,7 @@ test('load .cjs with dynamic .bare import', async (t) => {
     exists(url) {
       return (
         url.href === root + '/index.cjs' ||
-        url.href === 'file:///' + __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
+        url.href === prebuilds + '/bare-module.bare'
       )
     },
 
@@ -921,7 +922,7 @@ test('load .cjs with dynamic .bare import', async (t) => {
 
   const resolutions = {
     [root + '/index.cjs']: {
-      '/native.bare': 'file:///' + __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
+      '/native.bare': prebuilds + '/bare-module.bare'
     }
   }
 
@@ -933,7 +934,7 @@ test('load .mjs with .bare import', async (t) => {
     exists(url) {
       return (
         url.href === root + '/index.mjs' ||
-        url.href === 'file:///' + __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
+        url.href === prebuilds + '/bare-module.bare'
       )
     },
 
@@ -948,7 +949,7 @@ test('load .mjs with .bare import', async (t) => {
 
   const resolutions = {
     [root + '/index.mjs']: {
-      '/native.bare': 'file:///' + __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
+      '/native.bare': prebuilds + '/bare-module.bare'
     }
   }
 
@@ -960,7 +961,7 @@ test('load .mjs with dynamic .bare import', async (t) => {
     exists(url) {
       return (
         url.href === root + '/index.mjs' ||
-        url.href === 'file:///' + __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
+        url.href === prebuilds + '/bare-module.bare'
       )
     },
 
@@ -975,7 +976,7 @@ test('load .mjs with dynamic .bare import', async (t) => {
 
   const resolutions = {
     [root + '/index.mjs']: {
-      '/native.bare': 'file:///' + __dirname + '/prebuilds/' + Bare.Addon.host + '/bare-module.bare'
+      '/native.bare': prebuilds + '/bare-module.bare'
     }
   }
 
