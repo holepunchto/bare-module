@@ -1770,7 +1770,7 @@ test('linkSync throws when protocol exists is asynchronous', (t) => {
 
   const loader = new Module.Loader({ protocol })
 
-  t.exception(() => loader.linkSync(new URL(root + '/index.js')), /ASYNCHRONOUS_READ/)
+  t.exception(() => loader.linkSync(new URL(root + '/index.js')), /UNEXPECTED_PROMISE/)
 })
 
 test('linkSync throws when protocol read is asynchronous', (t) => {
@@ -1786,7 +1786,7 @@ test('linkSync throws when protocol read is asynchronous', (t) => {
 
   const loader = new Module.Loader({ protocol })
 
-  t.exception(() => loader.linkSync(new URL(root + '/index.js')), /ASYNCHRONOUS_READ/)
+  t.exception(() => loader.linkSync(new URL(root + '/index.js')), /UNEXPECTED_PROMISE/)
 })
 
 test('linkSync throws when protocol resolve is asynchronous', (t) => {
@@ -1814,7 +1814,107 @@ test('linkSync throws when protocol resolve is asynchronous', (t) => {
 
   const loader = new Module.Loader({ protocol })
 
-  t.exception(() => loader.linkSync(new URL(root + '/index.js')), /ASYNCHRONOUS_READ/)
+  t.exception(() => loader.linkSync(new URL(root + '/index.js')), /UNEXPECTED_PROMISE/)
+})
+
+test('linkSync uses synchronous protocol variants when provided', (t) => {
+  const protocol = new Module.Protocol({
+    async exists(url) {
+      t.fail()
+    },
+
+    existsSync(url) {
+      return url.href === root + '/index.js' || url.href === root + '/dep.js'
+    },
+
+    async read(url) {
+      t.fail()
+    },
+
+    readSync(url) {
+      if (url.href === root + '/index.js') {
+        return "module.exports = require('./dep')"
+      }
+
+      if (url.href === root + '/dep.js') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    },
+
+    async resolve(url) {
+      t.fail()
+    },
+
+    resolveSync(url) {
+      return url
+    }
+  })
+
+  const loader = new Module.Loader({ protocol })
+
+  t.is(loader.importSync(new URL(root + '/index.js')), 42)
+})
+
+test('link uses asynchronous protocol variants when both are provided', async (t) => {
+  const protocol = new Module.Protocol({
+    async exists(url) {
+      return url.href === root + '/index.js'
+    },
+
+    existsSync(url) {
+      t.fail()
+    },
+
+    async read(url) {
+      return 'module.exports = 42'
+    },
+
+    readSync(url) {
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/index.js'), { protocol })
+
+  t.is(exports, 42)
+})
+
+test('protocol uses asynchronous variants for static imports and synchronous variants for computed specifiers', async (t) => {
+  const protocol = new Module.Protocol({
+    async exists(url) {
+      return url.href === root + '/index.js' || url.href === root + '/dep.js'
+    },
+
+    existsSync(url) {
+      return url.href === root + '/lazy.js'
+    },
+
+    async read(url) {
+      if (url.href === root + '/index.js') {
+        return "const dep = require('./dep'); const lazy = require('./' + 'lazy'); module.exports = dep + lazy"
+      }
+
+      if (url.href === root + '/dep.js') {
+        return 'module.exports = 2'
+      }
+
+      t.fail()
+    },
+
+    readSync(url) {
+      if (url.href === root + '/lazy.js') {
+        return 'module.exports = 40'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/index.js'), { protocol })
+
+  t.is(exports, 42)
 })
 
 test('require.main', async (t) => {
