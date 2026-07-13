@@ -22,6 +22,7 @@ interface Options {
   attributes?: Attributes
   builtins?: Builtins
   cache?: Cache | boolean
+  concurrency?: number
   conditions?: Conditions
   defaultType?: number
   imports?: ImportsMap
