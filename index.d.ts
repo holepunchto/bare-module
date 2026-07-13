@@ -38,15 +38,17 @@ declare class Module {
 declare namespace Module {
   export { type Attributes, type Cache, Loader, Protocol, constants }
 
-  export interface ReferrerOptions {
+  export interface LoadOptions extends Loader.Options, Loader.LinkOptions {
     referrer?: Module
   }
 
-  export interface LoadOptions extends Loader.Options, Loader.LinkOptions, ReferrerOptions {}
+  export interface ResolveOptions extends Loader.Options {
+    referrer?: Module
+  }
 
-  export interface ResolveOptions extends Loader.Options, ReferrerOptions {}
-
-  export interface CreateRequireOptions extends Loader.Options, ReferrerOptions {}
+  export interface CreateRequireOptions extends Loader.Options {
+    referrer?: Module
+  }
 
   export interface RequireOptions {
     with?: Attributes
