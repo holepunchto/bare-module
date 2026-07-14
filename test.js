@@ -5,8 +5,9 @@ const Module = require('.')
 
 const isWindows = Bare.platform === 'win32'
 
+const host = Bare.Addon.host
 const root = isWindows ? 'file:///c:' : 'file://'
-const prebuilds = pathToFileURL(__dirname + '/prebuilds/' + Bare.Addon.host)
+const prebuilds = root + '/prebuilds/' + host
 
 test('resolve bare specifier', async (t) => {
   const protocol = new Module.Protocol({
@@ -858,7 +859,7 @@ test('load .ts, non-erasable', async (t) => {
 test('load .json', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
-      return url.href === root + '/native.bare' || url.href === root + '/index.json'
+      return url.href === root + '/index.json'
     },
 
     read(url) {
@@ -878,97 +879,105 @@ test('load .json', async (t) => {
 test('load .cjs with .bare import', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
-      return url.href === root + '/index.cjs' || url.href === prebuilds + '/bare-module.bare'
+      return url.href === root + '/index.cjs' || url.href === root + '/native.bare'
     },
 
     read(url) {
       if (url.href === root + '/index.cjs') {
-        return "require('/native.bare')"
+        return "require('./native.bare')"
+      }
+
+      t.fail()
+    },
+
+    resolve(url) {
+      if (url.href === root + '/native.bare') {
+        return pathToFileURL(require.addon.resolve('.'))
       }
 
       t.fail()
     }
   })
 
-  const resolutions = {
-    [root + '/index.cjs']: {
-      '/native.bare': prebuilds + '/bare-module.bare'
-    }
-  }
-
-  await t.execution(Module.load(new URL(root + '/index.cjs'), { protocol, resolutions }))
+  await t.execution(Module.load(new URL(root + '/index.cjs'), { protocol }))
 })
 
 test('load .cjs with dynamic .bare import', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
-      return url.href === root + '/index.cjs' || url.href === prebuilds + '/bare-module.bare'
+      return url.href === root + '/index.cjs' || url.href === root + '/native.bare'
     },
 
     read(url) {
       if (url.href === root + '/index.cjs') {
-        return "import('/native.bare')"
+        return "import('./native.bare')"
+      }
+
+      t.fail()
+    },
+
+    resolve(url) {
+      if (url.href === root + '/native.bare') {
+        return pathToFileURL(require.addon.resolve('.'))
       }
 
       t.fail()
     }
   })
 
-  const resolutions = {
-    [root + '/index.cjs']: {
-      '/native.bare': prebuilds + '/bare-module.bare'
-    }
-  }
-
-  await t.execution(Module.load(new URL(root + '/index.cjs'), { protocol, resolutions }))
+  await t.execution(Module.load(new URL(root + '/index.cjs'), { protocol }))
 })
 
 test('load .mjs with .bare import', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
-      return url.href === root + '/index.mjs' || url.href === prebuilds + '/bare-module.bare'
+      return url.href === root + '/index.mjs' || url.href === root + '/native.bare'
     },
 
     read(url) {
       if (url.href === root + '/index.mjs') {
-        return "import '/native.bare'"
+        return "import './native.bare'"
+      }
+
+      t.fail()
+    },
+
+    resolve(url) {
+      if (url.href === root + '/native.bare') {
+        return pathToFileURL(require.addon.resolve('.'))
       }
 
       t.fail()
     }
   })
 
-  const resolutions = {
-    [root + '/index.mjs']: {
-      '/native.bare': prebuilds + '/bare-module.bare'
-    }
-  }
-
-  await t.execution(Module.load(new URL(root + '/index.mjs'), { protocol, resolutions }))
+  await t.execution(Module.load(new URL(root + '/index.mjs'), { protocol }))
 })
 
 test('load .mjs with dynamic .bare import', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
-      return url.href === root + '/index.mjs' || url.href === prebuilds + '/bare-module.bare'
+      return url.href === root + '/index.mjs' || url.href === root + '/native.bare'
     },
 
     read(url) {
       if (url.href === root + '/index.mjs') {
-        return "await import('/native.bare')"
+        return "await import('./native.bare')"
+      }
+
+      t.fail()
+    },
+
+    resolve(url) {
+      if (url.href === root + '/native.bare') {
+        return pathToFileURL(require.addon.resolve('.'))
       }
 
       t.fail()
     }
   })
 
-  const resolutions = {
-    [root + '/index.mjs']: {
-      '/native.bare': prebuilds + '/bare-module.bare'
-    }
-  }
-
-  await t.execution(Module.load(new URL(root + '/index.mjs'), { protocol, resolutions }))
+  await t.execution(Module.load(new URL(root + '/index.mjs'), { protocol }))
 })
 
 test('load .bundle', async (t) => {
@@ -1945,6 +1954,66 @@ test('require.main', async (t) => {
   t.is(bar.exports, foo)
 })
 
+test('require.resolve', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.js' || url.href === root + '/foo.js'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.js') {
+        return "module.exports = require.resolve('./bar')"
+      }
+
+      if (url.href === root + '/bar.js') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, '/bar.js')
+})
+
+test('require.addon', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/foo.js' ||
+        url.href === root + '/package.json' ||
+        url.href === prebuilds + '/foo.bare'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.js') {
+        return "module.exports = require.addon('.')"
+      }
+
+      if (url.href === root + '/package.json') {
+        return '{ "name": "foo", "version": "1.2.3" }'
+      }
+
+      t.fail()
+    },
+
+    resolve(url) {
+      if (url.href === prebuilds + '/foo.bare') {
+        return pathToFileURL(require.addon.resolve('.'))
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, require.addon('.'))
+})
+
 test('require.addon.host', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
@@ -1962,13 +2031,41 @@ test('require.addon.host', async (t) => {
 
   const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
 
-  t.comment(exports)
+  t.is(exports, host)
+})
+
+test('require.addon.resolve', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/foo.js' ||
+        url.href === root + '/package.json' ||
+        url.href === prebuilds + '/foo.bare'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.js') {
+        return "module.exports = require.addon.resolve('.')"
+      }
+
+      if (url.href === root + '/package.json') {
+        return '{ "name": "foo", "version": "1.2.3" }'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, '/prebuilds/' + host + '/foo.bare')
 })
 
 test('import.meta', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
-      return url.href === root + '/bar.mjs' || url.href === root + '/foo.mjs'
+      return url.href === root + '/foo.mjs'
     },
 
     read(url) {
@@ -1985,10 +2082,116 @@ test('import.meta', async (t) => {
 
   t.is(meta.url, root + '/foo.mjs')
   t.is(meta.main, true)
-  t.is(meta.resolve('/bar'), root + '/bar.mjs')
   t.is(meta.dirname, isWindows ? 'c:\\' : '/')
   t.is(meta.filename, isWindows ? 'c:\\foo.mjs' : '/foo.mjs')
-  t.comment(meta.addon.host)
+})
+
+test('import.meta.resolve', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.mjs' || url.href === root + '/foo.mjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return "export default import.meta.resolve('./bar')"
+      }
+
+      if (url.href === root + '/bar.mjs') {
+        return 'export default 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(exports.default, root + '/bar.mjs')
+})
+
+test('import.meta.addon', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/foo.mjs' ||
+        url.href === root + '/package.json' ||
+        url.href === prebuilds + '/foo.bare'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return "export default import.meta.addon('.')"
+      }
+
+      if (url.href === root + '/package.json') {
+        return '{ "name": "foo", "version": "1.2.3" }'
+      }
+
+      t.fail()
+    },
+
+    resolve(url) {
+      if (url.href === prebuilds + '/foo.bare') {
+        return pathToFileURL(require.addon.resolve('.'))
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(exports.default, require.addon('.'))
+})
+
+test('import.meta.addon.host', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.mjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'export default import.meta.addon.host'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(exports.default, host)
+})
+
+test('import.meta.addon.resolve', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/foo.mjs' ||
+        url.href === root + '/package.json' ||
+        url.href === prebuilds + '/foo.bare'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return "export default import.meta.addon.resolve('.')"
+      }
+
+      if (url.href === root + '/package.json') {
+        return '{ "name": "foo", "version": "1.2.3" }'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(exports.default, root + '/prebuilds/' + host + '/foo.bare')
 })
 
 test('import attributes', async (t) => {
@@ -2023,7 +2226,7 @@ test('dynamic import attributes', async (t) => {
 
     read(url) {
       if (url.href === root + '/foo.mjs') {
-        return "export default import('/bar', { with: { type: 'json' } })"
+        return "export default await import('/bar', { with: { type: 'json' } })"
       }
 
       if (url.href === root + '/bar') {
@@ -2036,7 +2239,7 @@ test('dynamic import attributes', async (t) => {
 
   const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
 
-  t.comment(await exports.default)
+  t.alike(exports.default.default, { hello: 'world' })
 })
 
 test('require attributes', async (t) => {
@@ -2110,29 +2313,6 @@ test('createRequire with a filesystem path', (t) => {
   const require = Module.createRequire(isWindows ? 'c:\\dir\\foo.js' : '/dir/foo.js')
 
   t.is(typeof require, 'function')
-})
-
-test('require.resolve', (t) => {
-  const protocol = new Module.Protocol({
-    exists(url) {
-      return url.href === root + '/dir/bar.js'
-    },
-
-    read(url) {
-      if (url.href === root + '/dir/bar.js') {
-        return 'module.exports = 42'
-      }
-
-      t.fail()
-    }
-  })
-
-  const require = Module.createRequire(root + '/dir/foo.js', { protocol })
-
-  t.is(require.resolve('./bar.js'), isWindows ? 'c:\\dir\\bar.js' : '/dir/bar.js')
-  t.is(require.resolve('./bar.js', root + '/dir/'), isWindows ? 'c:\\dir\\bar.js' : '/dir/bar.js')
-  t.is(require('./bar.js'), 42)
-  t.ok(require.cache)
 })
 
 test('main in package.json', async (t) => {
