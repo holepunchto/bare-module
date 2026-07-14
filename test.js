@@ -1523,6 +1523,46 @@ test('load .mjs with data: protocol import', async (t) => {
   t.is(exports.default, 42)
 })
 
+test('load .cjs with computed data: protocol require', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return `module.exports = require('data:,' + '${encodeURIComponent('module.exports = 42')}')`
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+
+  t.is(exports, 42)
+})
+
+test('load .mjs with computed data: protocol import', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.mjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return `export default await import('data:,' + '${encodeURIComponent('export default 42')}')`
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(exports.default.default, 42)
+})
+
 test('import map with protocol', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
