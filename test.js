@@ -2926,21 +2926,17 @@ test('resolve with string parentURL', async (t) => {
 })
 
 test('resolve without parentURL uses the working directory', async (t) => {
-  const parentURL = pathToFileURL('./')
+  const root = pathToFileURL('.').href
 
   const protocol = new Module.Protocol({
     exists(url) {
-      return url.href === parentURL.href + 'foo.js'
-    },
-
-    read() {
-      return null
+      return url.href === root + '/foo.js'
     }
   })
 
   const { href } = await Module.resolve('./foo.js', null, { protocol })
 
-  t.is(href, parentURL.href + 'foo.js')
+  t.is(href, root + '/foo.js')
 })
 
 test('pkg.engines with valid range', async (t) => {
