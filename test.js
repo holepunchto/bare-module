@@ -1975,7 +1975,7 @@ test('require.resolve', async (t) => {
 
   const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
 
-  t.is(exports, '/bar.js')
+  t.is(exports, isWindows ? 'c:\\bar.js' : '/bar.js')
 })
 
 test('require.addon', async (t) => {
@@ -2059,7 +2059,10 @@ test('require.addon.resolve', async (t) => {
 
   const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
 
-  t.is(exports, '/prebuilds/' + host + '/foo.bare')
+  t.is(
+    exports,
+    isWindows ? 'c:\\prebuilds\\' + host + '\\foo.bare' : '/prebuilds/' + host + '/foo.bare'
+  )
 })
 
 test('import.meta', async (t) => {
