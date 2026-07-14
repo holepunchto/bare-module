@@ -626,10 +626,8 @@ methods = {
   resolveSync,
   // function (url): boolean | Promise<boolean>
   // A function that returns whether the URL exists as a boolean. Consulted before
-  // `read`, so a candidate that does not exist is never fetched. Defaults to
-  // whether `read` returns a non-null source, but a backing store can override it
-  // with a cheaper check, such as a `stat` or an HTTP `HEAD`. May return a promise
-  // to answer asynchronously.
+  // `read`, so a candidate that does not exist is never fetched. May return a
+  // promise to answer asynchronously.
   exists,
   // function (url): boolean
   // The synchronous variant of `exists`. Defaults to calling `exists` and throwing
