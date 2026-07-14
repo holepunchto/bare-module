@@ -1483,7 +1483,7 @@ test('load .mjs with bare specifier import and import map', async (t) => {
   )
 })
 
-test.skip('load .cjs with data: protocol require', async (t) => {
+test('load .cjs with data: protocol require', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.cjs'
@@ -1503,7 +1503,7 @@ test.skip('load .cjs with data: protocol require', async (t) => {
   t.is(exports, 42)
 })
 
-test.skip('load .mjs with data: protocol import', async (t) => {
+test('load .mjs with data: protocol import', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/foo.mjs'
