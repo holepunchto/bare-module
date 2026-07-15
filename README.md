@@ -282,400 +282,481 @@ All import maps are private to the package and allow mapping to external package
 
 The `"engines"` field defines the engine requirements of the package. During module resolution, the versions declared by `Bare.versions` will be tested against the requirements declared by the package and resolution fail if they're not satisfied.
 
+<!-- bare-refgen:api start -->
 ## API
 
-#### `Module.constants.state`
+### Module
 
-The flags for the current state of a module.
+#### `new Module(url: URL)`
 
-| Constant      | Description                                  |
-| :------------ | :------------------------------------------- |
-| `EVALUATED`   | The module has been evaluated.               |
-| `SYNTHESIZED` | The module named exports have been detected. |
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L73)
 
-#### `Module.constants.type`
+**Parameters**
 
-| Constant | Description                                                                  |
-| :------- | :--------------------------------------------------------------------------- |
-| `SCRIPT` | The module is a CommonJS module.                                             |
-| `MODULE` | The module is a ECMAScript module.                                           |
-| `JSON`   | The module is a JSON file.                                                   |
-| `BUNDLE` | The module is a [`bare-bundle`](https://github.com/holepunchto/bare-bundle). |
-| `ADDON`  | The module is a native addon.                                                |
-| `BINARY` | The module is a binary file.                                                 |
-| `TEXT`   | The module is a text file.                                                   |
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | The WHATWG `URL` identifying the module. |
 
-#### `Module.protocol`
+#### `builtins: Builtins`
 
-The default `ModuleProtocol` instance. It has no capabilities of its own; in particular, it cannot read from the file system. To serve modules from a backing store, provide your own protocol. See [Protocols](#protocols) for usage.
-
-#### `Module.cache`
-
-The shared cache of loaded modules. Use of this cache is opt-in: pass `cache: true` to load a module into it.
-
-#### `const url = Module.resolve(specifier, parentURL[, options])`
-
-Resolve the module `specifier` relative to the `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`.
-
-Options include:
-
-```js
-options = {
-  // Whether the module is called via `import` or `import()`.
-  isImport: false,
-  // The referring module.
-  referrer: null,
-  // The type of the module. See Module.constants.type for possible values. The
-  // default is the equivalent constant of the `attributes`'s `type` property.
-  type,
-  // A list of file extensions to look for. The default is based on the `type`
-  // option.
-  extensions: [],
-  // The ModuleProtocol to resolve the specifier. Defaults to referrer's
-  // protocol if defined, otherwise defaults to Module.protocol
-  protocol,
-  // A default "imports" map to apply to all specifiers. Follows the same
-  // syntax and rules as the "imports" property defined in `package.json`.
-  imports,
-  // A map of preresolved imports with keys being serialized parent URLs and
-  // values being "imports" maps.
-  resolutions,
-  // A map of builtin module specifiers to loaded modules. If matched by the
-  // default resolver, the protocol of the resolved URL will be `builtin:`.
-  builtins,
-  // The supported import conditions. "default" is always recognized.
-  conditions: [],
-  // The import attributes, e.g. the `{ type: "json" }` in:
-  // `import foo from 'foo' with { type: "json" }`
-  // or in:
-  // `require('foo', { with: { type: "json" } })`
-  attributes
-}
-```
-
-#### `const url = Module.asset(specifier, parentURL[, options])`
-
-Get the asset URL by resolving `specifier` relative to `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`.
-
-Options include:
-
-```js
-options = {
-  // The referring module.
-  referrer: null,
-  // The ModuleProtocol to use resolve the specifier. Defaults to referrer's
-  // protocol if defined, otherwise defaults to Module.protocol
-  protocol,
-  // A default "imports" map to apply to all specifiers. Follows the same
-  // syntax and rules as the "imports" property defined in `package.json`.
-  imports,
-  // A map of preresolved imports with keys being serialized parent URLs and
-  // values being "imports" maps.
-  resolutions,
-  // The supported import conditions. "default" is always recognized.
-  conditions
-}
-```
-
-#### `const module = Module.load(url[, source][, options])`
-
-Load a module with the provided `url`. `url` is a WHATWG `URL`. If provided, the `source` will be passed to the matching `extension` for the `url`.
-
-Options include:
-
-```js
-options = {
-  // Whether the module is called via `import` or `import()`.
-  isImport: false,
-  // Whether the module is called via `import()`.
-  isDynamicImport: false,
-  // The referring module.
-  referrer: null,
-  // The type of the module. See Module.constants.type for possible values. The
-  // default is the equivalent constant of the `attributes`'s `type` property.
-  type,
-  // The assumed type of a module without a type using an ambiguous extension
-  // such as `.js`. See Module.constants.type. Inherited from `referrer` if it
-  // is defined.
-  defaultType: Module.constants.type.SCRIPT,
-  // Cache to use to load the Module. When left unspecified, the cache is
-  // inherited from `referrer` so a module graph shares a single cache,
-  // otherwise a fresh cache scoped to this load and its graph is used. Pass
-  // an explicit cache object to use it, `true` to opt in to the shared
-  // `Module.cache`, or `false` to force a fresh cache.
-  cache,
-  // The module representing the entry script where the program was launched.
-  main,
-  // The ModuleProtocol to use resolve the specifier. Defaults to referrer's
-  // `protocol` if defined, otherwise defaults to `Module.protocol`.
-  protocol,
-  // A default "imports" map to apply to all specifiers. Follows the same
-  // syntax and rules as the "imports" property defined in `package.json`.
-  imports,
-  // A map of preresolved imports with keys being serialized parent URLs and
-  // values being "imports" maps.
-  resolutions,
-  // A map of builtin module specifiers to loaded modules. If the `url`'s
-  // protocol is `builtin:`, the module's exports will be set to the matching
-  // value in the map for `url.pathname`.
-  builtins,
-  // The supported import conditions. "default" is always recognized.
-  conditions,
-  // The import attributes, e.g. the `{ type: "json" }` in:
-  // `import foo from 'foo' with { type: "json" }`
-  // or in:
-  // `require('foo', { with: { type: "json" } })`
-  attributes
-}
-```
-
-#### `module.url`
-
-The WHATWG `URL` identifier of the module.
-
-#### `module.filename`
-
-The file portion of `module.url`.
-
-#### `module.dirname`
-
-The directory portion of `module.url`.
-
-#### `module.type`
-
-The type of the module. See [`Module.constants.type`](#module.constants.type) for possible values.
-
-#### `module.defaultType`
-
-The assumed type of a module without a `type` using an ambiguous extension, such as `.js`. See [`Module.constants.type`](#module.constants.type) for possible values.
-
-#### `module.cache`
-
-A cache of loaded modules for this module. Defaults to `Module.cache`.
-
-#### `module.main`
-
-The module representing the entry script where the program was launched.
-
-#### `module.exports`
-
-The exports from the module.
-
-#### `module.imports`
-
-The import map when the module was loaded.
-
-#### `module.resolutions`
-
-A map of preresolved imports with keys being serialized parent URLs and values being `"imports"` maps. Resolutions performed while loading the module are cached in this map, keyed by the condition (`"import"`, `"require"`, or `"asset"`) that produced them, so that repeated resolutions of the same specifier can be served from the cache.
-
-#### `module.builtins`
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L45)
 
 A map of builtin module specifiers mapped to the loaded module.
 
-#### `module.conditions`
+#### `cache: Cache`
 
-An array of conditions used to resolve dependencies while loading the module. See [Conditional Exports](#conditional-exports) for possible values.
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L46)
 
-#### `module.protocol`
+A cache of loaded modules for this module. Defaults to `Module.cache`.
 
-The `ModuleProtocol` class used for resolving, reading, and loading modules. See [Protocols](#protocols).
+#### `conditions: Conditions`
 
-### CommonJS modules
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L47)
 
-#### `require(specifier[, options])`
+An array of conditions used to resolve dependencies while loading the module. See [Conditional exports](https://github.com/holepunchto/bare-module#conditional-exports) for possible values.
 
-Used to import JavaScript or JSON modules and local files. Relative paths such as `./`, `./foo`, `./bar/baz`, and `../foo` will be resolved against the directory named by `__dirname`. POSIX style paths are resolved in an OS independent fashion, meaning that the examples above will work on Windows in the same way they would on POSIX systems.
+#### `defaultType: number`
 
-Returns the exported module contents.
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L48)
 
-Options include:
+The assumed type of a module without a `type` using an ambiguous extension, such as `.js`. See `Module.constants.types` for possible values.
 
-```js
-options = {
-  // The import attributes which instruct how the file or module should be loaded.
-  // Possible values for `type` are `script`, `module`, `json`, `bundle`,
-  // `addon`, `binary` and `text`.
-  with: { type: 'json' }
+#### `dirname: string`
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L49)
+
+The directory portion of `module.url`.
+
+#### `exports: unknown`
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L50)
+
+The exports from the module.
+
+#### `filename: string`
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L51)
+
+The file portion of `module.url`.
+
+#### `id: string`
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L52)
+
+#### `imports: ImportsMap`
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L53)
+
+The import map when the module was loaded.
+
+#### `main: Module`
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L54)
+
+The module representing the entry script where the program was launched.
+
+#### `Module.asset(specifier: string, parentURL: URL, opts?: Options): URL`
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L71)
+
+Get the asset URL by resolving `specifier` relative to `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | The asset specifier to resolve. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `specifier` relative to. |
+| `opts?` | `Options` | — | Resolution options. |
+
+**Returns** `URL` — The WHATWG `URL` of the resolved asset.
+
+**Throws**
+
+- `ASSET_NOT_FOUND` — no asset matching `specifier` could be found relative to `parentURL`.
+- `TypeError` — `specifier` is not a string.
+
+#### `Module.builtinModules: Module[]`
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L87)
+
+Always an empty array; provided for Node.js compatibility.
+
+#### `Module.cache: Cache`
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L64)
+
+#### `Module.constants`
+
+```ts
+Module.constants: {
+  states: {
+    EVALUATED: number
+    SYNTHESIZED: number
+    RUN: number
+  }
+  types: {
+    SCRIPT: number
+    MODULE: number
+    JSON: number
+    BUNDLE: number
+    ADDON: number
+    BINARY: number
+    TEXT: number
+    ASSET: number
+  }
 }
 ```
 
-#### `require.main`
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/lib/constants.d.ts#L1)
 
-The module representing the entry script where the program was launched. The same value as [`module.main`](#modulemain) for the current module.
+Constants describing module states (`EVALUATED`, `SYNTHESIZED`, `RUN`) and module types (`SCRIPT`, `MODULE`, `JSON`, `BUNDLE`, `ADDON`, `BINARY`, `TEXT`, `ASSET`).
 
-#### `require.cache`
+#### `Module.createRequire(parentURL: string | URL, opts?: CreateRequireOptions): Require`
 
-A cache of loaded modules for this module. The same value as `module.cache` for the current module.
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L114)
 
-#### `const path = require.resolve(specifier[, parentURL])`
+Create a preconfigured `require()` bound to `parentURL`, so specifiers resolve and load relative to it.
 
-Use the internal machinery of `require()` to resolve the `specifier` string relative to the URL `parentURL` and return the path string.
+**Parameters**
 
-#### `require.addon([specifier][, parentURL])`
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `parentURL` | `string \| URL` | — | The parent URL that the returned `require()` resolves and loads specifiers relative to. |
+| `opts?` | `CreateRequireOptions` | — | Options for the created `require()`, such as its `protocol` and `cache`. |
 
-Also used to import modules but specifically loads only addon modules. `specifier` is resolved relative to `parentURL` using the [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm) algorithm.
+**Returns** `Require` — A `require()` bound to `parentURL`, with `main`, `cache`, `resolve`, `addon`, and `asset` attached.
 
-Returns the exported module contents.
+#### `Module.isBuiltin(): boolean`
 
-A common pattern for writing an addon module is to use `require.addon()` as the JavaScript module exports:
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L89)
 
-```js
-module.exports = require.addon()
+Always returns `false`; provided for Node.js compatibility.
+
+#### `Module.load(url: URL, opts: LoadOptions): Module`
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L66)
+
+Load a module with the provided `url`. `url` is a WHATWG `URL`. If provided, the `source` will be passed to the matching `extension` for the `url`.
+
+Overloads:
+
+```ts
+Module.load(url: URL, opts: LoadOptions): Module
+Module.load(url: URL, source?: Buffer | string | Bundle | null, opts?: LoadOptions): Module
 ```
 
-See [`bare-addon`](https://github.com/holepunchto/bare-addon) for a template of building native addon modules.
+**Parameters**
 
-#### `require.addon.host`
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | The WHATWG `URL` of the module to load. |
+| `opts` | `LoadOptions` | — | Load options; may carry a `source` to load directly instead of reading it through the protocol. |
 
-Returns the string representation of the platform and architecture used when resolving addons with the pattern `<platform>-<arch>[-<environment>]`. Returns the same value as `Bare.Addon.host`.
+**Returns** `Module` — The loaded `Module`, reusing the cached instance if `url` was already loaded.
 
-#### `const path = require.addon.resolve([specifier][, parentURL])`
+**Throws**
 
-Resolve the `specifier` string relative to the URL `parentURL` as an addon and returns the path string. The `specifier` is resolved using the [addon resolution algorithm](https://github.com/holepunchto/bare-addon-resolve#algorithm).
+- `TYPE_INCOMPATIBLE` — a module is already cached for `url` with a type incompatible with the requested `type`.
 
-#### `const path = require.asset(specifier[, parentURL])`
+#### `Module.protocol: Protocol`
 
-Resolve the `specifier` relative to the `parentURL` and return the path of the asset as a string.
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L63)
 
-Can be used to load assets, for example the following loads `./foo.txt` from the local files:
+The `ModuleProtocol` class for resolving, reading and loading modules. See [Protocols](https://github.com/holepunchto/bare-module#protocols) for usage.
 
-```js
-const fs = require('bare-fs')
-const contents = fs.readFileSync(require.asset('./foo.txt'))
-```
+#### `Module.resolve(specifier: string, parentURL: URL, opts?: ResolveOptions): URL`
 
-### ECMAScript modules
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L69)
 
-#### `import defaultExport, * as name, { export1, export2 as alias2, ... } from 'specifier' with { type: 'json' }`
+Resolve the module `specifier` relative to the `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`.
 
-The static `import` declaration is used to import read-only live bindings that are exported by another module. The imported bindings are called _live_ bindings because they are updated by the module that exported the binding, but cannot be re-assigned by the importing module. In brief, you can import what is exported from another module.
+**Parameters**
 
-For more information on `import` syntax, see [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import).
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | The module specifier to resolve. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `specifier` relative to. |
+| `opts?` | `ResolveOptions` | — | Resolution options. |
 
-#### `import.meta.url`
+**Returns** `URL` — The WHATWG `URL` that `specifier` resolves to.
 
-The string representation of the URL for the current module.
+**Throws**
 
-#### `import.meta.main`
+- `MODULE_NOT_FOUND` — no module matching `specifier` could be found relative to `parentURL`.
+- `TypeError` — `specifier` is not a string.
 
-A boolean representing whether the current module is the entry script where the program was launched.
+#### `path: string`
 
-#### `import.meta.cache`
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L55)
 
-A cache of loaded modules for this module. The same value as `module.cache` for the current module.
+#### `protocol: Protocol`
 
-#### `import.meta.dirname`
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L56)
 
-The directory name of the current module.
+The `ModuleProtocol` class for resolving, reading and loading modules. See [Protocols](https://github.com/holepunchto/bare-module#protocols) for usage.
 
-#### `import.meta.filename`
+#### `resolutions: ResolutionsMap`
 
-The file name of the current module.
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L57)
 
-#### `const href = import.meta.resolve(specifier[, parentURL])`
+A map of preresolved imports with keys being serialized parent URLs and values being `"imports"` maps.
 
-A module-relative resolution function which returns the URL string for the module. The `specifier` is a string which is resolved relative to the `parentURL` which is a WHATWG URL.
+#### `type: number`
 
-#### `import.meta.addon([specifier][, parentURL])`
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L58)
 
-Also used to import modules but specifically loads only addon modules. `specifier` is resolved relative to `parentURL` using the [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm) algorithm.
+The type of the module. See `Module.constants.types` for possible values.
 
-Returns the exported module contents.
+#### `url: URL`
 
-#### `import.meta.addon.host`
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L59)
 
-Returns the string representation of the platform and architecture used when resolving addons with the pattern `<platform>-<arch>[-<environment>]`. Returns the same value as `Bare.Addon.host`.
+The WHATWG `URL` identifier of the module.
 
-#### `const href = import.meta.addon.resolve([specifier][, parentURL])`
+### ModuleProtocol
 
-Resolve the `specifier` string relative to the URL `parentURL` as an addon and returns the URL string. The `specifier` is resolved using the [addon resolution algorithm](https://github.com/holepunchto/bare-addon-resolve#algorithm).
+#### `new ModuleProtocol(methods?: Partial<ModuleProtocol>, context?: ModuleProtocol)`
 
-#### `const href = import.meta.asset(specifier[, parentURL])`
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/lib/protocol.d.ts#L24)
 
-Resolve the `specifier` relative to the `parentURL` and return the URL of the asset as a string.
+Defines how modules are resolved, read and loaded; custom protocols can serve modules from outside the file system, such as a `Hyperdrive` or a `bare-bundle`.
 
-### Custom `require()`
+**Parameters**
 
-Creating a custom require allows one to create a preconfigured `require()`. This can be useful in scenarios such as a Read-Evaluate-Print-Loop (REPL) where the parent URL is set to a directory so requiring relative paths to work correctly.
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `methods?` | `Partial<ModuleProtocol>` | — | Protocol method overrides; any of `preresolve`, `postresolve`, `resolve`, `exists`, `read`, `addon`, or `asset`. |
+| `context?` | `ModuleProtocol` | — | An existing protocol to fall back to for any method not provided in `methods`. |
 
-#### `const require = Module.createRequire(parentURL[, options])`
+#### `addon(url: URL): URL`
 
-Options include:
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/lib/protocol.d.ts#L16)
 
-```js
-options = {
-  // The module to become the `referrer` for the returned `require()`. Defaults
-  // to creating a new module instance from the `parentURL` with the same
-  // options.
-  module: null,
-  // The referring module.
-  referrer: null,
-  // The type of the module. See Module.constants.type for possible values.
-  type: Module.constants.type.SCRIPT,
-  // The assumed type of a module without a type using an ambiguous extension
-  // such as `.js`. See Module.constants.type. Inherited from `referrer` if it
-  // is defined, otherwise defaults to SCRIPT.
-  defaultType: Module.constants.type.SCRIPT,
-  // A cache of loaded modules. Inherited from `referrer` if it is defined,
-  // otherwise a fresh cache is used. Pass an explicit cache object to use it,
-  // `true` to opt in to the shared `Module.cache`, or `false` to force a fresh
-  // cache.
-  cache,
-  // The module representing the entry script where the program was launched.
-  main,
-  // The ModuleProtocol to use resolve the specifier and/or the module. Defaults to
-  // referrer's protocol if defined, otherwise defaults to Module.protocol
-  protocol,
-  // A default "imports" map to apply to all specifiers. Follows the same
-  // syntax and rules as the "imports" property defined in `package.json`.
-  imports,
-  // A map of preresolved imports with keys being serialized parent URLs and
-  // values being "imports" maps.
-  resolutions,
-  // A map of builtin module specifiers to loaded modules.
-  builtins,
-  // The supported import conditions. "default" is always recognized.
-  conditions
+Post-process URLs for addons before `postresolve()`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | The resolved addon `URL` to post-process. |
+
+#### `asset(url: URL): URL`
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/lib/protocol.d.ts#L18)
+
+Post-process URLs for assets before `postresolve()`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | The resolved asset `URL` to post-process. |
+
+#### `exists(url: URL, type: number): boolean`
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/lib/protocol.d.ts#L12)
+
+Return whether the URL exists.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | The `URL` to check for existence. |
+| `type` | `number` | — | The module type being probed (see `Module.constants.types`). |
+
+#### `extend(methods: Partial<ModuleProtocol>): ModuleProtocol`
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/lib/protocol.d.ts#L20)
+
+Create a new protocol that uses this protocol as its context, overriding the given `methods`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `methods` | `Partial<ModuleProtocol>` | — | Protocol method overrides for the new protocol. |
+
+**Returns** `ModuleProtocol` — A new `ModuleProtocol` that uses this protocol as its context, with `methods` overriding.
+
+#### `postresolve(url: URL): URL`
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/lib/protocol.d.ts#L8)
+
+Process the resolved URL; can be used to convert file paths, etc.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | The resolved `URL` to post-process. |
+
+**Returns** `URL` — The (possibly transformed) resolved `URL`.
+
+#### `preresolve(specifier: string, parentURL: URL): string`
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/lib/protocol.d.ts#L6)
+
+Preprocess the `specifier` and `parentURL` before the resolve algorithm is called.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | The module specifier being resolved. |
+| `parentURL` | `URL` | — | The `URL` the specifier is resolved relative to. |
+
+**Returns** `string` — The (possibly rewritten) specifier to pass into the resolve algorithm.
+
+#### `read(url: URL): Buffer | string | null`
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/lib/protocol.d.ts#L14)
+
+Return the source code of a URL, represented as a string or buffer.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | The `URL` to read. |
+
+**Returns** `Buffer | string | null` — The source of `url` as a `Buffer` or `string`, or `null` if it does not exist.
+
+#### `resolve(specifier: string, parentURL: URL, imports: ImportsMap): URL`
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/lib/protocol.d.ts#L10)
+
+Resolve the `specifier` to a URL.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | The module specifier to resolve. |
+| `parentURL` | `URL` | — | The `URL` to resolve `specifier` relative to. |
+| `imports` | `ImportsMap` | — | The `"imports"` map to apply during resolution. |
+
+### Types
+
+#### `Attributes`
+
+```ts
+interface Attributes {
+  type: Lowercase<keyof typeof constants.types>
 }
 ```
 
-### Protocols
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L17)
 
-Protocols define how to resolve, access and load modules. Custom protocols can be defined to extend or replace how module are resolved and loaded to support things like loading modules via a [`Hyperdrive`](https://github.com/holepunchto/hyperdrive).
+Import attributes instructing how a module should be loaded.
 
-#### `const protocol = new Module.Protocol(methods, context = null)`
+#### `Cache`
 
-Methods include:
-
-```js
-methods = {
-  // function (specifier, parentURL): string
-  // A function to preprocess the `specifier` and `parentURL` before the resolve
-  // algorithm is called.
-  preresolve,
-  // function (url): string
-  // A function to process the resolved URL. Can be used to convert file paths,
-  // etc.
-  postresolve,
-  // function* (specifier, parentURL, imports): [URL]
-  // A generator to resolve the `specifier` to a URL.
-  resolve,
-  // function (url): boolean
-  // A function that returns whether the URL exists as a boolean.
-  exists,
-  // function (url): string | Buffer
-  // A function that returns the source code of a URL represented as a string or
-  // buffer.
-  read,
-  // function (url): URL
-  // A function used to post process URLs for addons before `postresolve()`.
-  addon,
-  // function (url): URL
-  // A function used to post process URLs for assets before `postresolve()`.
-  asset
+```ts
+interface Cache {
+  [href: string]: Module
 }
 ```
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L13)
+
+A map of module URL `href`s to loaded modules.
+
+#### `Options`
+
+```ts
+interface Options {
+  attributes?: Attributes
+  builtins?: Builtins
+  cache?: Cache
+  conditions?: Conditions
+  defaultType?: number
+  imports?: ImportsMap
+  main?: Module
+  protocol?: Protocol
+  referrer?: Module
+  resolutions?: ResolutionsMap
+  type?: number
+}
+```
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L21)
+
+#### `LoadOptions`
+
+```ts
+interface LoadOptions extends Options {
+  isDynamicImport?: boolean
+  isImport?: boolean
+}
+```
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L35)
+
+#### `ResolveOptions`
+
+```ts
+interface ResolveOptions extends Options {
+  isImport?: boolean
+}
+```
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L40)
+
+#### `CreateRequireOptions`
+
+```ts
+interface CreateRequireOptions extends Options {
+    module?: Module
+  }
+```
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L91)
+
+#### `RequireOptions`
+
+```ts
+interface RequireOptions {
+    with?: Attributes
+  }
+```
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L95)
+
+Options for `require()`; `with` holds the import attributes.
+
+#### `RequireAddon`
+
+```ts
+interface RequireAddon {
+    (specifier?: string, parentURL?: URL): string
+    host: string
+    resolve: (specifier: string, parentURL?: URL) => unknown
+  }
+```
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L99)
+
+The `require.addon` function: imports addon modules, with `host` and `resolve` attached.
+
+#### `Require`
+
+```ts
+interface Require {
+    (parentURL: string | URL, opts?: RequireOptions): unknown
+    main: Module
+    cache: Cache
+    resolve: (specifier: string, parentURL?: URL) => string
+    addon: RequireAddon
+    asset: (specifier: string, parentURL?: URL) => string
+  }
+```
+
+[source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L105)
+
+The function returned by `Module.createRequire()`: resolves and loads modules relative to its parent URL, with `main`, `cache`, `resolve`, `addon`, and `asset` attached.
+<!-- bare-refgen:api end -->
 
 ## License
 

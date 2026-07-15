@@ -1,3 +1,4 @@
+/** Constants describing module states (`EVALUATED`, `SYNTHESIZED`, `RUN`) and module types (`SCRIPT`, `MODULE`, `JSON`, `BUNDLE`, `ADDON`, `BINARY`, `TEXT`, `ASSET`). */
 declare const constants: {
   state: {
     EVALUATED: number
