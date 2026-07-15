@@ -1,21 +1,22 @@
 import URL from 'bare-url'
 import Buffer from 'bare-buffer'
-import { type ImportsMap } from 'bare-module-resolve'
 
 interface ModuleProtocol {
-  preresolve(specifier: string, parentURL: URL): string
+  resolve(url: URL): URL | Promise<URL>
 
-  postresolve(url: URL): URL
+  resolveSync(url: URL): URL
 
-  resolve(specifier: string, parentURL: URL, imports: ImportsMap): URL
+  exists(url: URL): boolean | Promise<boolean>
 
-  exists(url: URL, type: number): boolean
+  existsSync(url: URL): boolean
 
-  read(url: URL): Buffer | string | null
+  read(url: URL): Buffer | string | null | Promise<Buffer | string | null>
 
-  addon(url: URL): URL
+  readSync(url: URL): Buffer | string | null
 
-  asset(url: URL): URL
+  list(url: URL): Iterable<URL> | AsyncIterable<URL>
+
+  listSync(url: URL): Iterable<URL>
 
   extend(methods: Partial<ModuleProtocol>): ModuleProtocol
 }

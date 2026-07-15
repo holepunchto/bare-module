@@ -11,12 +11,13 @@ typedef struct {
   js_env_t *env;
   js_ref_t *ctx;
   js_ref_t *on_import;
+  js_ref_t *on_dynamic_import;
   js_ref_t *on_evaluate;
   js_ref_t *on_meta;
 } bare_module_context_t;
 
 static js_module_t *
-bare_module__on_static_import(js_env_t *env, js_value_t *specifier, js_value_t *assertions, js_module_t *referrer, void *data) {
+bare_module__on_import(js_env_t *env, js_value_t *specifier, js_value_t *assertions, js_module_t *referrer, void *data) {
   bare_module_context_t *context = (bare_module_context_t *) data;
 
   int err;
@@ -37,16 +38,10 @@ bare_module__on_static_import(js_env_t *env, js_value_t *specifier, js_value_t *
   err = js_get_module_id(env, referrer, &id);
   assert(err == 0);
 
-  js_value_t *args[5] = {specifier, assertions, NULL, id};
-
-  err = js_get_undefined(env, &args[2]);
-  assert(err == 0);
-
-  err = js_get_boolean(env, false, &args[4]);
-  assert(err == 0);
+  js_value_t *args[2] = {specifier, id};
 
   js_value_t *result;
-  err = js_call_function(env, ctx, on_import, 5, args, &result);
+  err = js_call_function(env, ctx, on_import, 2, args, &result);
   if (err < 0) goto err;
 
   js_module_t *module;
@@ -79,17 +74,14 @@ bare_module__on_dynamic_import(js_env_t *env, js_value_t *specifier, js_value_t 
   err = js_get_reference_value(env, context->ctx, &ctx);
   assert(err == 0);
 
-  js_value_t *on_import;
-  err = js_get_reference_value(env, context->on_import, &on_import);
+  js_value_t *on_dynamic_import;
+  err = js_get_reference_value(env, context->on_dynamic_import, &on_dynamic_import);
   assert(err == 0);
 
-  js_value_t *args[5] = {specifier, assertions, referrer, id};
-
-  err = js_get_boolean(env, true, &args[4]);
-  assert(err == 0);
+  js_value_t *args[3] = {specifier, referrer, id};
 
   js_value_t *result;
-  err = js_call_function(env, ctx, on_import, 5, args, &result);
+  err = js_call_function(env, ctx, on_dynamic_import, 3, args, &result);
   if (err < 0) goto err;
 
   err = js_escape_handle(env, scope, result, &result);
@@ -184,14 +176,15 @@ err:
 }
 
 static void
-bare_module__on_teardown(void *data) {
+bare_module__on_finalize_context(js_env_t *env, void *data, void *finalize_hint) {
   int err;
 
   bare_module_context_t *context = data;
 
-  js_env_t *env = context->env;
-
   err = js_delete_reference(env, context->on_import);
+  assert(err == 0);
+
+  err = js_delete_reference(env, context->on_dynamic_import);
   assert(err == 0);
 
   err = js_delete_reference(env, context->on_evaluate);
@@ -202,25 +195,23 @@ bare_module__on_teardown(void *data) {
 
   err = js_delete_reference(env, context->ctx);
   assert(err == 0);
+
+  free(context);
 }
 
 static js_value_t *
 bare_module_init(js_env_t *env, js_callback_info_t *info) {
   int err;
 
-  size_t argc = 4;
-  js_value_t *argv[4];
+  size_t argc = 5;
+  js_value_t *argv[5];
 
   err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
   assert(err == 0);
 
-  assert(argc == 4);
+  assert(argc == 5);
 
-  bare_module_context_t *context;
-
-  js_value_t *result;
-  err = js_create_unsafe_arraybuffer(env, sizeof(bare_module_context_t), (void **) &context, &result);
-  assert(err == 0);
+  bare_module_context_t *context = malloc(sizeof(bare_module_context_t));
 
   context->env = env;
 
@@ -230,19 +221,22 @@ bare_module_init(js_env_t *env, js_callback_info_t *info) {
   err = js_create_reference(env, argv[1], 1, &context->on_import);
   assert(err == 0);
 
-  err = js_create_reference(env, argv[2], 1, &context->on_evaluate);
+  err = js_create_reference(env, argv[2], 1, &context->on_dynamic_import);
   assert(err == 0);
 
-  err = js_create_reference(env, argv[3], 1, &context->on_meta);
+  err = js_create_reference(env, argv[3], 1, &context->on_evaluate);
   assert(err == 0);
 
-  err = js_add_teardown_callback(env, bare_module__on_teardown, context);
+  err = js_create_reference(env, argv[4], 1, &context->on_meta);
+  assert(err == 0);
+
+  err = js_wrap(env, argv[0], (void *) context, bare_module__on_finalize_context, NULL, NULL);
   assert(err == 0);
 
   err = js_on_dynamic_import(env, bare_module__on_dynamic_import, (void *) context);
   assert(err == 0);
 
-  return result;
+  return NULL;
 }
 
 static js_value_t *
@@ -330,26 +324,26 @@ bare_module_create_module(js_env_t *env, js_callback_info_t *info) {
 
   assert(argc == 5);
 
+  bare_module_context_t *context;
+  err = js_unwrap(env, argv[0], (void **) &context);
+  if (err < 0) return NULL;
+
   size_t file_len;
   utf8_t file[1024];
-  err = js_get_value_string_utf8(env, argv[1], file, 1024, &file_len);
+  err = js_get_value_string_utf8(env, argv[2], file, 1024, &file_len);
   if (err < 0) return NULL;
 
-  js_value_t *source = argv[2];
+  js_value_t *source = argv[3];
 
   int32_t offset;
-  err = js_get_value_int32(env, argv[3], &offset);
-  if (err < 0) return NULL;
-
-  bare_module_context_t *context;
-  err = js_get_arraybuffer_info(env, argv[4], (void **) &context, NULL);
+  err = js_get_value_int32(env, argv[4], &offset);
   if (err < 0) return NULL;
 
   js_module_t *module;
   err = js_create_module(env, (char *) file, file_len, offset, source, bare_module__on_meta, (void *) context, &module);
   if (err < 0) return NULL;
 
-  err = js_wrap(env, argv[0], (void *) module, bare_module__on_finalize, NULL, NULL);
+  err = js_wrap(env, argv[1], (void *) module, bare_module__on_finalize, NULL, NULL);
   if (err < 0) return NULL;
 
   js_value_t *result;
@@ -371,29 +365,29 @@ bare_module_create_synthetic_module(js_env_t *env, js_callback_info_t *info) {
 
   assert(argc == 4);
 
+  bare_module_context_t *context;
+  err = js_unwrap(env, argv[0], (void **) &context);
+  if (err < 0) return NULL;
+
   size_t file_len;
   utf8_t file[1024];
-  err = js_get_value_string_utf8(env, argv[1], file, 1024, &file_len);
+  err = js_get_value_string_utf8(env, argv[2], file, 1024, &file_len);
   if (err < 0) return NULL;
 
   uint32_t names_len;
-  err = js_get_array_length(env, argv[2], &names_len);
+  err = js_get_array_length(env, argv[3], &names_len);
   if (err < 0) return NULL;
 
   js_value_t **export_names = malloc(sizeof(js_value_t *) * names_len);
 
-  err = js_get_array_elements(env, argv[2], export_names, names_len, 0, NULL);
-  if (err < 0) goto err;
-
-  bare_module_context_t *context;
-  err = js_get_arraybuffer_info(env, argv[3], (void **) &context, NULL);
+  err = js_get_array_elements(env, argv[3], export_names, names_len, 0, NULL);
   if (err < 0) goto err;
 
   js_module_t *module;
   err = js_create_synthetic_module(env, (char *) file, file_len, export_names, names_len, bare_module__on_evaluate, (void *) context, &module);
   if (err < 0) goto err;
 
-  err = js_wrap(env, argv[0], (void *) module, bare_module__on_finalize, NULL, NULL);
+  err = js_wrap(env, argv[1], (void *) module, bare_module__on_finalize, NULL, NULL);
   if (err < 0) goto err;
 
   js_value_t *result;
@@ -443,15 +437,15 @@ bare_module_run_module(js_env_t *env, js_callback_info_t *info) {
 
   assert(argc == 3);
 
-  js_module_t *module;
-  err = js_unwrap(env, argv[0], (void **) &module);
-  if (err < 0) return NULL;
-
   bare_module_context_t *context;
-  err = js_get_arraybuffer_info(env, argv[1], (void **) &context, NULL);
+  err = js_unwrap(env, argv[0], (void **) &context);
   if (err < 0) return NULL;
 
-  err = js_instantiate_module(env, module, bare_module__on_static_import, (void *) context);
+  js_module_t *module;
+  err = js_unwrap(env, argv[1], (void **) &module);
+  if (err < 0) return NULL;
+
+  err = js_instantiate_module(env, module, bare_module__on_import, (void *) context);
   if (err < 0) return NULL;
 
   js_value_t *promise;

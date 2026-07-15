@@ -1,44 +1,16 @@
 import Buffer from 'bare-buffer'
 import URL from 'bare-url'
-import Bundle from 'bare-bundle'
-import {
-  type Builtins,
-  type Conditions,
-  type ImportsMap,
-  type ResolutionsMap
-} from 'bare-module-resolve'
+import { Builtins, Conditions, ImportsMap, ResolutionsMap } from 'bare-module-resolve'
+import { constants } from 'bare-module-traverse'
 import Protocol from './lib/protocol'
-import constants from './lib/constants'
+import Loader from './lib/loader'
 
 interface Cache {
   [href: string]: Module
 }
 
 interface Attributes {
-  type: Lowercase<keyof typeof constants.type>
-}
-
-interface Options {
-  attributes?: Attributes
-  builtins?: Builtins
-  cache?: Cache | boolean
-  conditions?: Conditions
-  defaultType?: number
-  imports?: ImportsMap
-  main?: Module
-  protocol?: Protocol
-  referrer?: Module
-  resolutions?: ResolutionsMap
-  type?: number
-}
-
-interface LoadOptions extends Options {
-  isDynamicImport?: boolean
-  isImport?: boolean
-}
-
-interface ResolveOptions extends Options {
-  isImport?: boolean
+  type: Lowercase<keyof typeof constants>
 }
 
 interface Module {
@@ -60,36 +32,22 @@ interface Module {
 }
 
 declare class Module {
-  static readonly protocol: Protocol
-  static readonly cache: Cache
-
-  static load(url: URL, opts: LoadOptions): Module
-  static load(url: URL, source?: Buffer | string | Bundle | null, opts?: LoadOptions): Module
-
-  static resolve(specifier: string, parentURL: URL, opts?: ResolveOptions): URL
-
-  static asset(specifier: string, parentURL: URL, opts?: Options): URL
-
   constructor(url: URL)
 }
 
 declare namespace Module {
-  export {
-    type Attributes,
-    type Cache,
-    type Options,
-    type LoadOptions,
-    type ResolveOptions,
-    Protocol,
-    constants
+  export { type Attributes, type Cache, Loader, Protocol, constants }
+
+  export interface LoadOptions extends Loader.Options, Loader.LinkOptions {
+    referrer?: Module
   }
 
-  export const builtinModules: Module[]
+  export interface ResolveOptions extends Loader.Options {
+    referrer?: Module
+  }
 
-  export function isBuiltin(): boolean
-
-  export interface CreateRequireOptions extends Options {
-    module?: Module
+  export interface CreateRequireOptions extends Loader.Options {
+    referrer?: Module
   }
 
   export interface RequireOptions {
@@ -110,6 +68,26 @@ declare namespace Module {
     addon: RequireAddon
     asset: (specifier: string, parentURL?: URL) => string
   }
+
+  export const protocol: Protocol
+  export const cache: Cache
+
+  export function load(url: URL, opts: LoadOptions): Promise<Module>
+  export function load(
+    url: URL,
+    source?: Buffer | string | null,
+    opts?: LoadOptions
+  ): Promise<Module>
+
+  export function resolve(specifier: string, parentURL: URL, opts?: ResolveOptions): Promise<URL>
+  export function resolve(
+    specifier: string,
+    parentURL: URL,
+    condition: string,
+    opts?: ResolveOptions
+  ): Promise<URL>
+
+  export function asset(specifier: string, parentURL: URL, opts?: ResolveOptions): Promise<URL>
 
   export function createRequire(parentURL: string | URL, opts?: CreateRequireOptions): Require
 }

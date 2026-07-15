@@ -14,7 +14,7 @@ A module is loaded by its WHATWG `URL`. The source may be read through the modul
 const Module = require('bare-module')
 
 // Load a module directly from source, without it existing on disk.
-const foo = Module.load(
+const foo = await Module.load(
   new URL('file:///foo.js'),
   'module.exports = function add (a, b) { return a + b }'
 )
@@ -284,16 +284,7 @@ The `"engines"` field defines the engine requirements of the package. During mod
 
 ## API
 
-#### `Module.constants.state`
-
-The flags for the current state of a module.
-
-| Constant      | Description                                  |
-| :------------ | :------------------------------------------- |
-| `EVALUATED`   | The module has been evaluated.               |
-| `SYNTHESIZED` | The module named exports have been detected. |
-
-#### `Module.constants.type`
+#### `Module.constants`
 
 | Constant | Description                                                                  |
 | :------- | :--------------------------------------------------------------------------- |
@@ -313,47 +304,33 @@ The default `ModuleProtocol` instance. It has no capabilities of its own; in par
 
 The shared cache of loaded modules. Use of this cache is opt-in: pass `cache: true` to load a module into it.
 
-#### `const url = Module.resolve(specifier, parentURL[, options])`
+#### `const url = await Module.resolve(specifier, parentURL[, condition][, options])`
 
-Resolve the module `specifier` relative to the `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`.
+Resolve the module `specifier` relative to the `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`. `condition` is an optional import condition, defaulting to `'require'` if not specified.
 
 Options include:
 
 ```js
 options = {
-  // Whether the module is called via `import` or `import()`.
-  isImport: false,
   // The referring module.
   referrer: null,
-  // The type of the module. See Module.constants.type for possible values. The
-  // default is the equivalent constant of the `attributes`'s `type` property.
-  type,
-  // A list of file extensions to look for. The default is based on the `type`
-  // option.
-  extensions: [],
   // The ModuleProtocol to resolve the specifier. Defaults to referrer's
   // protocol if defined, otherwise defaults to Module.protocol
   protocol,
-  // A default "imports" map to apply to all specifiers. Follows the same
-  // syntax and rules as the "imports" property defined in `package.json`.
-  imports,
-  // A map of preresolved imports with keys being serialized parent URLs and
-  // values being "imports" maps.
-  resolutions,
   // A map of builtin module specifiers to loaded modules. If matched by the
   // default resolver, the protocol of the resolved URL will be `builtin:`.
   builtins,
-  // The supported import conditions. "default" is always recognized.
-  conditions: [],
-  // The import attributes, e.g. the `{ type: "json" }` in:
-  // `import foo from 'foo' with { type: "json" }`
-  // or in:
-  // `require('foo', { with: { type: "json" } })`
-  attributes
+  // The module cache. An already loaded module is served from here instead of
+  // being resolved again. Pass an object to use it, `true` to opt in to the
+  // shared Module.cache, or omit for a fresh cache.
+  cache,
+  // A map of preresolved imports with keys being serialized parent URLs and
+  // values being "imports" maps.
+  resolutions
 }
 ```
 
-#### `const url = Module.asset(specifier, parentURL[, options])`
+#### `const url = await Module.asset(specifier, parentURL[, options])`
 
 Get the asset URL by resolving `specifier` relative to `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`.
 
@@ -363,21 +340,23 @@ Options include:
 options = {
   // The referring module.
   referrer: null,
-  // The ModuleProtocol to use resolve the specifier. Defaults to referrer's
+  // The ModuleProtocol to resolve the specifier. Defaults to referrer's
   // protocol if defined, otherwise defaults to Module.protocol
   protocol,
-  // A default "imports" map to apply to all specifiers. Follows the same
-  // syntax and rules as the "imports" property defined in `package.json`.
-  imports,
+  // A map of builtin module specifiers to loaded modules. If matched by the
+  // default resolver, the protocol of the resolved URL will be `builtin:`.
+  builtins,
+  // The module cache. An already loaded module is served from here instead of
+  // being resolved again. Pass an object to use it, `true` to opt in to the
+  // shared Module.cache, or omit for a fresh cache.
+  cache,
   // A map of preresolved imports with keys being serialized parent URLs and
   // values being "imports" maps.
-  resolutions,
-  // The supported import conditions. "default" is always recognized.
-  conditions
+  resolutions
 }
 ```
 
-#### `const module = Module.load(url[, source][, options])`
+#### `const module = await Module.load(url[, source][, options])`
 
 Load a module with the provided `url`. `url` is a WHATWG `URL`. If provided, the `source` will be passed to the matching `extension` for the `url`.
 
@@ -385,27 +364,21 @@ Options include:
 
 ```js
 options = {
-  // Whether the module is called via `import` or `import()`.
-  isImport: false,
-  // Whether the module is called via `import()`.
-  isDynamicImport: false,
   // The referring module.
   referrer: null,
-  // The type of the module. See Module.constants.type for possible values. The
-  // default is the equivalent constant of the `attributes`'s `type` property.
-  type,
   // The assumed type of a module without a type using an ambiguous extension
-  // such as `.js`. See Module.constants.type. Inherited from `referrer` if it
-  // is defined.
-  defaultType: Module.constants.type.SCRIPT,
+  // such as `.js`. See Module.constants for possible values. Inherited from
+  // `referrer` if it is defined.
+  defaultType: Module.constants.SCRIPT,
   // Cache to use to load the Module. When left unspecified, the cache is
   // inherited from `referrer` so a module graph shares a single cache,
   // otherwise a fresh cache scoped to this load and its graph is used. Pass
   // an explicit cache object to use it, `true` to opt in to the shared
   // `Module.cache`, or `false` to force a fresh cache.
   cache,
-  // The module representing the entry script where the program was launched.
-  main,
+  // The maximum number of module reads to perform concurrently while linking.
+  // Defaults to `0`, which applies no limit.
+  concurrency: 0,
   // The ModuleProtocol to use resolve the specifier. Defaults to referrer's
   // `protocol` if defined, otherwise defaults to `Module.protocol`.
   protocol,
@@ -443,11 +416,11 @@ The directory portion of `module.url`.
 
 #### `module.type`
 
-The type of the module. See [`Module.constants.type`](#module.constants.type) for possible values.
+The type of the module. See [`Module.constants`](#moduleconstants) for possible values.
 
 #### `module.defaultType`
 
-The assumed type of a module without a `type` using an ambiguous extension, such as `.js`. See [`Module.constants.type`](#module.constants.type) for possible values.
+The assumed type of a module without a `type` using an ambiguous extension, such as `.js`. See [`Module.constants`](#moduleconstants) for possible values.
 
 #### `module.cache`
 
@@ -605,25 +578,17 @@ Options include:
 
 ```js
 options = {
-  // The module to become the `referrer` for the returned `require()`. Defaults
-  // to creating a new module instance from the `parentURL` with the same
-  // options.
-  module: null,
   // The referring module.
   referrer: null,
-  // The type of the module. See Module.constants.type for possible values.
-  type: Module.constants.type.SCRIPT,
   // The assumed type of a module without a type using an ambiguous extension
-  // such as `.js`. See Module.constants.type. Inherited from `referrer` if it
-  // is defined, otherwise defaults to SCRIPT.
-  defaultType: Module.constants.type.SCRIPT,
+  // such as `.js`. See Module.constants. Inherited from `referrer` if it is
+  // defined, otherwise defaults to SCRIPT.
+  defaultType: Module.constants.SCRIPT,
   // A cache of loaded modules. Inherited from `referrer` if it is defined,
   // otherwise a fresh cache is used. Pass an explicit cache object to use it,
   // `true` to opt in to the shared `Module.cache`, or `false` to force a fresh
   // cache.
   cache,
-  // The module representing the entry script where the program was launched.
-  main,
   // The ModuleProtocol to use resolve the specifier and/or the module. Defaults to
   // referrer's protocol if defined, otherwise defaults to Module.protocol
   protocol,
@@ -634,9 +599,7 @@ options = {
   // values being "imports" maps.
   resolutions,
   // A map of builtin module specifiers to loaded modules.
-  builtins,
-  // The supported import conditions. "default" is always recognized.
-  conditions
+  builtins
 }
 ```
 
@@ -650,32 +613,127 @@ Methods include:
 
 ```js
 methods = {
-  // function (specifier, parentURL): string
-  // A function to preprocess the `specifier` and `parentURL` before the resolve
-  // algorithm is called.
-  preresolve,
-  // function (url): string
-  // A function to process the resolved URL. Can be used to convert file paths,
-  // etc.
-  postresolve,
-  // function* (specifier, parentURL, imports): [URL]
-  // A generator to resolve the `specifier` to a URL.
+  // function (url): URL | Promise<URL>
+  // A function to post-process a resolved URL before it is used, for example to
+  // canonicalize symlinks with `realpath` so a module reached through different
+  // symlinks dedupes against its real location. Defaults to the identity. May
+  // return a promise to resolve asynchronously.
   resolve,
-  // function (url): boolean
-  // A function that returns whether the URL exists as a boolean.
+  // function (url): URL
+  // The synchronous variant of `resolve`, used when a graph is linked
+  // synchronously. Defaults to calling `resolve` and throwing if it returns a
+  // promise.
+  resolveSync,
+  // function (url): boolean | Promise<boolean>
+  // A function that returns whether the URL exists as a boolean. Consulted before
+  // `read`, so a candidate that does not exist is never fetched. May return a
+  // promise to answer asynchronously.
   exists,
-  // function (url): string | Buffer
-  // A function that returns the source code of a URL represented as a string or
-  // buffer.
+  // function (url): boolean
+  // The synchronous variant of `exists`. Defaults to calling `exists` and throwing
+  // if it returns a promise.
+  existsSync,
+  // function (url): string | Buffer | null | Promise<string | Buffer | null>
+  // A function that returns the source of a URL as a string or buffer, or `null`
+  // if it does not exist. May return a promise to serve the source asynchronously.
   read,
-  // function (url): URL
-  // A function used to post process URLs for addons before `postresolve()`.
-  addon,
-  // function (url): URL
-  // A function used to post process URLs for assets before `postresolve()`.
-  asset
+  // function (url): string | Buffer | null
+  // The synchronous variant of `read`. Defaults to calling `read` and throwing if
+  // it returns a promise.
+  readSync,
+  // function* (url): Iterable<URL> | AsyncIterable<URL>
+  // A generator enumerating the URLs under a prefix, used for asset globbing.
+  // Defaults to a single candidate - the prefix itself, if it exists - so a
+  // backing store need only provide it to support listing a directory.
+  list,
+  // function* (url): Iterable<URL>
+  // The synchronous variant of `list`. Defaults to delegating to `list` and
+  // throwing if it returns an asynchronous iterable.
+  listSync
 }
 ```
+
+Each method comes in an asynchronous and a synchronous variant. The asynchronous variants may return a promise (or, for `list`, an asynchronous iterable) to serve modules asynchronously and are driven by the asynchronous `Module` statics (`Module.load`, `Module.resolve`, and `Module.asset`) and [`Loader`](#loader) methods. The synchronous `*Sync` variants are driven by the synchronous entry points (`require()`, `loader.linkSync`, and `loader.importSync`) and default to calling their asynchronous counterpart, throwing an `UNEXPECTED_PROMISE` error if it answers asynchronously. A protocol that supports both may implement the `*Sync` variants directly; for such a protocol a statically imported module is read through the asynchronous `read` while a `require()` with a computed specifier is read through `readSync`.
+
+#### `const extended = protocol.extend(methods)`
+
+Return a new `ModuleProtocol` that overrides the given `methods`, falling back to this protocol for any method not provided.
+
+### Loader
+
+A `Loader` owns a registry of module records keyed by URL and drives resolution and linking against a [protocol](#protocols). Where the `Module` statics link and evaluate in a single call, a loader exposes linking and evaluation as separate steps, as well as synchronous variants, so modules can be served from an asynchronous protocol such as one backed by a [`Hyperdrive`](https://github.com/holepunchto/hyperdrive).
+
+Linking is split into two phases. First a graph is _linked_: every module reachable from the entry is read, lexed, and recorded, and its native module is created without running any code. Then it is _evaluated_: the recorded modules run. All IO happens during linking, so evaluation is synchronous regardless of how the graph was fetched.
+
+#### `const loader = new Module.Loader([options])`
+
+Options include:
+
+```js
+options = {
+  // The ModuleProtocol used to resolve and read modules. Defaults to
+  // Module.protocol, which has no backing store of its own.
+  protocol,
+  // A map of builtin module specifiers to their exports.
+  builtins,
+  // The assumed type of a module without a type using an ambiguous extension
+  // such as `.js`. See Module.constants for possible values.
+  defaultType,
+  // A default "imports" map to apply to all specifiers. Follows the same syntax
+  // and rules as the "imports" property defined in `package.json`.
+  imports,
+  // The maximum number of module reads to perform concurrently while linking.
+  // Defaults to `0`, which applies no limit.
+  concurrency: 0,
+  // The module cache. Pass an object to use it, `true` to opt in to the shared
+  // Module.cache, or omit for a fresh cache scoped to this loader.
+  cache,
+  // A map of preresolved imports with keys being serialized parent URLs and
+  // values being "imports" maps. Defaults to following the cache: a shared cache
+  // shares its resolutions, a fresh cache gets fresh resolutions.
+  resolutions
+}
+```
+
+#### `const module = await loader.link(entry[, source][, options])`
+
+Link the module graph rooted at `entry`, a WHATWG `URL`, awaiting each read through the protocol so an asynchronous protocol can serve the source. If `source` is given, it is used instead of reading `entry` through the protocol. Returns the entry module, instantiated but not yet evaluated.
+
+#### `const module = loader.linkSync(entry[, source][, options])`
+
+The synchronous equivalent of `loader.link()`. It drives the protocol's synchronous methods (`resolveSync`, `existsSync`, `readSync`, and `listSync`), which throw an `UNEXPECTED_PROMISE` error when the protocol can only answer asynchronously.
+
+#### `const exports = await loader.import(entry[, options])`
+
+Link and evaluate the graph rooted at `entry`, returning its exports. Awaits the entry's evaluation, so a top-level `await` in the entry settles before the exports are returned.
+
+#### `const exports = loader.importSync(entry[, options])`
+
+The synchronous equivalent of `loader.import()`. It cannot await, so a top-level `await` in the entry is unsupported.
+
+#### `const module = loader.get(url)`
+
+Return the module record cached under `url`, a WHATWG `URL`, or `null` if none is loaded.
+
+#### `loader.main`
+
+The graph's main module: the first entry linked. `null` until the first link.
+
+#### `loader.cache`
+
+The registry of loaded modules, keyed by URL href.
+
+#### `loader.resolutions`
+
+The graph's resolution cache, keyed by referrer URL, aggregated as modules are linked.
+
+#### `loader.addons`, `loader.assets`
+
+The addon and asset URLs discovered while linking, accumulated across link calls. These are the non-module files the graph depends on, such as what a bundler would need to include.
+
+#### `loader.protocol`, `loader.builtins`, `loader.imports`, `loader.defaultType`, `loader.conditions`
+
+The loader configuration, mirroring the like-named getters on a [`module`](#moduleurl).
 
 ## License
 
