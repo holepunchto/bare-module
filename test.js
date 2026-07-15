@@ -1801,6 +1801,181 @@ test('load .mjs with builtin import from data: protocol module', async (t) => {
   t.is(exports.default, 42)
 })
 
+test('load data: protocol entry', async (t) => {
+  const { exports } = await Module.load(
+    new URL('data:,' + encodeURIComponent('module.exports = 42'))
+  )
+
+  t.is(exports, 42)
+})
+
+test('load data: protocol entry with default type module', async (t) => {
+  const { exports } = await Module.load(
+    new URL('data:text/javascript,' + encodeURIComponent('export default 42')),
+    { defaultType: Module.constants.MODULE }
+  )
+
+  t.is(exports.default, 42)
+})
+
+test('load data: protocol entry with JSON media type', async (t) => {
+  const { exports } = await Module.load(
+    new URL('data:application/json,' + encodeURIComponent('{ "foo": 42 }'))
+  )
+
+  t.alike(exports, { foo: 42 })
+})
+
+test('load .mjs with JSON data: protocol import', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.mjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return `export { default } from "data:application/json,${encodeURIComponent('{ "foo": 42 }')}"`
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.alike(exports.default, { foo: 42 })
+})
+
+test('load .mjs with text data: protocol import and type attribute', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.mjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return `import text from "data:text/plain,${encodeURIComponent('hello')}" with { type: 'text' }\nexport default text`
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(exports.default, 'hello')
+})
+
+test('require.resolve from data: protocol module', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs' || url.href === root + '/bar.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return `module.exports = require("data:,${encodeURIComponent(`module.exports = require.resolve('${root}/bar.cjs')`)}")`
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+
+  t.is(exports, isWindows ? 'c:\\bar.cjs' : '/bar.cjs')
+})
+
+test('require.resolve relative from data: protocol module', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs' || url.href === root + '/bar.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return `module.exports = require("data:,${encodeURIComponent("module.exports = require.resolve('./bar.cjs')")}")`
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  await t.exception(Module.load(new URL(root + '/foo.cjs'), { protocol }), /MODULE_NOT_FOUND/)
+})
+
+test('require.asset from data: protocol module', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs' || url.href === root + '/bar.txt'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return `module.exports = require("data:,${encodeURIComponent(`module.exports = require.asset('${root}/bar.txt')`)}")`
+      }
+
+      if (url.href === root + '/bar.txt') {
+        return 'hello'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+
+  t.is(exports, isWindows ? 'c:\\bar.txt' : '/bar.txt')
+})
+
+test('require.asset relative from data: protocol module', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs' || url.href === root + '/bar.txt'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return `module.exports = require("data:,${encodeURIComponent("module.exports = require.asset('./bar.txt')")}")`
+      }
+
+      if (url.href === root + '/bar.txt') {
+        return 'hello'
+      }
+
+      t.fail()
+    }
+  })
+
+  await t.exception(Module.load(new URL(root + '/foo.cjs'), { protocol }), /ASSET_NOT_FOUND/)
+})
+
+test('require.addon.resolve relative from data: protocol module', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return `module.exports = require("data:,${encodeURIComponent("module.exports = require.addon.resolve('.')")}")`
+      }
+
+      t.fail()
+    }
+  })
+
+  await t.exception(Module.load(new URL(root + '/foo.cjs'), { protocol }), /ADDON_NOT_FOUND/)
+})
+
 test('import map with protocol', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
