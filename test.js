@@ -2677,6 +2677,28 @@ test('require.resolve with parentURL', async (t) => {
   t.is(exports, isWindows ? 'c:\\dir\\bar.js' : '/dir/bar.js')
 })
 
+test('require.resolve with filesystem path parentURL', async (t) => {
+  const dir = isWindows ? 'c:\\dir\\' : '/dir/'
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.js' || url.href === root + '/dir/bar.js'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.js') {
+        return `module.exports = require.resolve('./bar.js', ${JSON.stringify(dir)})`
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, isWindows ? 'c:\\dir\\bar.js' : '/dir/bar.js')
+})
+
 test('require.asset with parentURL', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
