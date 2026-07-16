@@ -311,6 +311,26 @@ test('load .cjs with non-file: URL', async (t) => {
   t.is(exports, '/foo.cjs')
 })
 
+test('load .cjs with opaque non-file: URL exposes href as __dirname', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === 'protocol:foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === 'protocol:foo.cjs') {
+        return 'module.exports = __dirname'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL('protocol:foo.cjs'), { protocol })
+
+  t.is(exports, 'protocol:foo.cjs')
+})
+
 test('load .mjs', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
@@ -854,6 +874,46 @@ test('load .ts, non-erasable', async (t) => {
   })
 
   await t.exception.all(Module.load(new URL(root + '/index.ts'), { protocol }), /SyntaxError/)
+})
+
+test('load .cts', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/index.cts'
+    },
+
+    read(url) {
+      if (url.href === root + '/index.cts') {
+        return 'const a: number = 42; module.exports = a'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/index.cts'), { protocol })
+
+  t.is(exports, 42)
+})
+
+test('load .mts', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/index.mts'
+    },
+
+    read(url) {
+      if (url.href === root + '/index.mts') {
+        return 'const a: number = 42; export default a'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/index.mts'), { protocol })
+
+  t.is(exports.default, 42)
 })
 
 test('load .json', async (t) => {
@@ -2094,6 +2154,124 @@ test('loader link', async (t) => {
   t.is(loader.get(new URL(root + '/index.mjs')), record)
 })
 
+test('loader import with concurrency', async (t) => {
+  const protocol = new Module.Protocol({
+    async exists(url) {
+      return (
+        url.href === root + '/a.mjs' ||
+        url.href === root + '/b.mjs' ||
+        url.href === root + '/c.mjs'
+      )
+    },
+
+    async read(url) {
+      if (url.href === root + '/a.mjs') {
+        return "import '/b.mjs'; import '/c.mjs'; export default 42"
+      }
+
+      if (url.href === root + '/b.mjs') {
+        return 'export default 1'
+      }
+
+      if (url.href === root + '/c.mjs') {
+        return 'export default 2'
+      }
+
+      t.fail()
+    }
+  })
+
+  const loader = new Module.Loader({ protocol, concurrency: 1 })
+
+  const exports = await loader.import(new URL(root + '/a.mjs'))
+
+  t.is(exports.default, 42)
+})
+
+test('loader link with concurrency signals the semaphore on throw', async (t) => {
+  const protocol = new Module.Protocol({
+    async exists(url) {
+      return url.href === root + '/foo.mjs'
+    },
+
+    async read(url) {
+      throw new Error('foo')
+    }
+  })
+
+  const loader = new Module.Loader({ protocol, concurrency: 1 })
+
+  await t.exception(loader.link(new URL(root + '/foo.mjs')), /Error: foo/)
+})
+
+test('loader assets', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.txt' || url.href === root + '/index.js'
+    },
+
+    read(url) {
+      if (url.href === root + '/index.js') {
+        return "module.exports = require.asset('./foo.txt')"
+      }
+
+      if (url.href === root + '/foo.txt') {
+        return 'hello'
+      }
+
+      t.fail()
+    }
+  })
+
+  const loader = new Module.Loader({ protocol })
+
+  await loader.link(new URL(root + '/index.js'))
+
+  t.is(loader.assets.length, 1)
+  t.is(loader.assets[0].href, root + '/foo.txt')
+  t.alike(loader.addons, [])
+})
+
+test('loader addons', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/foo.js' ||
+        url.href === root + '/package.json' ||
+        url.href === prebuilds + '/foo.bare'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.js') {
+        return "module.exports = require.addon('.')"
+      }
+
+      if (url.href === root + '/package.json') {
+        return '{ "name": "foo", "version": "1.2.3" }'
+      }
+
+      t.fail()
+    },
+
+    resolve(url) {
+      if (url.href === prebuilds + '/foo.bare') {
+        return pathToFileURL(require.addon.resolve('.'))
+      }
+
+      t.fail()
+    }
+  })
+
+  const loader = new Module.Loader({ protocol })
+
+  await loader.link(new URL(root + '/foo.js'))
+
+  t.is(loader.addons.length, 1)
+  t.is(loader.addons[0].href, pathToFileURL(require.addon.resolve('.')).href)
+  t.alike(loader.assets, [])
+})
+
 test('load with asynchronous protocol', async (t) => {
   const protocol = new Module.Protocol({
     async exists(url) {
@@ -2279,6 +2457,34 @@ test('linkSync throws when protocol resolve is asynchronous', (t) => {
   t.exception(() => loader.linkSync(new URL(root + '/index.js')), /UNEXPECTED_PROMISE/)
 })
 
+test('linkSync throws when protocol list is asynchronous', (t) => {
+  const protocol = new Module.Protocol({
+    existsSync(url) {
+      return url.href === root + '/index.js' || url.href === root + '/foo.txt'
+    },
+
+    readSync(url) {
+      if (url.href === root + '/index.js') {
+        return "module.exports = require.asset('./foo.txt')"
+      }
+
+      if (url.href === root + '/foo.txt') {
+        return 'hello'
+      }
+
+      t.fail()
+    },
+
+    async *list(url) {
+      yield new URL(root + '/foo.txt')
+    }
+  })
+
+  const loader = new Module.Loader({ protocol })
+
+  t.exception(() => loader.importSync(new URL(root + '/index.js')), /UNEXPECTED_PROMISE/)
+})
+
 test('linkSync uses synchronous protocol variants when provided', (t) => {
   const protocol = new Module.Protocol({
     async exists(url) {
@@ -2407,6 +2613,28 @@ test('require.main', async (t) => {
   t.is(bar.exports, foo)
 })
 
+test('require.cache', async (t) => {
+  const cache = Object.create(null)
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.js'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.js') {
+        return 'module.exports = require.cache'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol, cache })
+
+  t.is(exports, cache)
+})
+
 test('require.resolve', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
@@ -2429,6 +2657,72 @@ test('require.resolve', async (t) => {
   const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
 
   t.is(exports, isWindows ? 'c:\\bar.js' : '/bar.js')
+})
+
+test('require.resolve with parentURL', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.js' || url.href === root + '/dir/bar.js'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.js') {
+        return `module.exports = require.resolve('./bar.js', '${root}/dir/')`
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, isWindows ? 'c:\\dir\\bar.js' : '/dir/bar.js')
+})
+
+test('require.resolve with filesystem path parentURL', async (t) => {
+  const dir = isWindows ? 'c:\\dir\\' : '/dir/'
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.js' || url.href === root + '/dir/bar.js'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.js') {
+        return `module.exports = require.resolve('./bar.js', ${JSON.stringify(dir)})`
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, isWindows ? 'c:\\dir\\bar.js' : '/dir/bar.js')
+})
+
+test('require.asset with parentURL', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.js' || url.href === root + '/dir/bar.txt'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.js') {
+        return `module.exports = require.asset('./bar.txt', new URL('${root}/dir/'))`
+      }
+
+      if (url.href === root + '/dir/bar.txt') {
+        return 'hello'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, isWindows ? 'c:\\dir\\bar.txt' : '/dir/bar.txt')
 })
 
 test('require.addon', async (t) => {
@@ -2650,6 +2944,29 @@ test('import.meta.addon.resolve', async (t) => {
   t.is(exports.default, root + '/prebuilds/' + host + '/foo.bare')
 })
 
+test('record filename, dirname, id, and path', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/dir/foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/dir/foo.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const foo = await Module.load(new URL(root + '/dir/foo.cjs'), { protocol })
+
+  t.is(foo.filename, isWindows ? 'c:\\dir\\foo.cjs' : '/dir/foo.cjs')
+  t.is(foo.dirname, isWindows ? 'c:\\dir' : '/dir')
+  t.is(foo.id, foo.filename)
+  t.is(foo.path, foo.dirname)
+})
+
 test('import attributes', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
@@ -2769,6 +3086,32 @@ test('createRequire with a filesystem path', (t) => {
   const require = Module.createRequire(isWindows ? 'c:\\dir\\foo.js' : '/dir/foo.js')
 
   t.is(typeof require, 'function')
+})
+
+test('createRequire with referrer', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/dir/foo.cjs' || url.href === root + '/dir/bar.js'
+    },
+
+    read(url) {
+      if (url.href === root + '/dir/foo.cjs') {
+        return 'module.exports = 1'
+      }
+
+      if (url.href === root + '/dir/bar.js') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const foo = await Module.load(new URL(root + '/dir/foo.cjs'), { protocol })
+
+  const require = Module.createRequire(null, { referrer: foo })
+
+  t.is(require('./bar'), 42)
 })
 
 test('main in package.json', async (t) => {
@@ -3210,6 +3553,43 @@ test('conditional imports in package.json, asset and require without default', a
   await t.exception(Module.load(new URL(root + '/foo.cjs'), { protocol }), /MODULE_NOT_FOUND/)
 })
 
+test('resolve a specifier without a matching condition or default', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/package.json' ||
+        url.href === root + '/bar.js' ||
+        url.href === root + '/bar.txt' ||
+        url.href === root + '/foo.cjs'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/package.json') {
+        return '{ "imports": { "bar": { "require": "./bar.js", "asset": "./bar.txt" } } }'
+      }
+
+      if (url.href === root + '/foo.cjs') {
+        return "require('bar'); require.asset('bar'); module.exports = import('ba' + 'r')"
+      }
+
+      if (url.href === root + '/bar.js') {
+        return 'module.exports = 42'
+      }
+
+      if (url.href === root + '/bar.txt') {
+        return 'hello'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+
+  await t.exception(exports, /MODULE_NOT_FOUND/)
+})
+
 test('imports in node_modules', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
@@ -3238,6 +3618,28 @@ test('imports in node_modules', async (t) => {
   })
 
   await t.execution(Module.load(new URL(root + '/node_modules/foo/foo.js'), { protocol }))
+})
+
+test('require a module already visited as a package scope', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.js' || url.href === root + '/package.json'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.js') {
+        return "module.exports = require('./package.json')"
+      }
+
+      if (url.href === root + '/package.json') {
+        return 'null'
+      }
+
+      t.fail()
+    }
+  })
+
+  await t.exception(Module.load(new URL(root + '/foo.js'), { protocol }), /MODULE_NOT_FOUND/)
 })
 
 test('resolve and load builtin', async (t) => {
@@ -3910,6 +4312,30 @@ test('load non-file: URL with encoded slash throws', async (t) => {
   await t.exception(Module.load(url, { protocol }), /INVALID_URL_PATH/)
 })
 
+test('load non-file: URL with encoded backslash', async (t) => {
+  const url = new URL('protocol:/foo%5cbar.cjs')
+
+  const protocol = new Module.Protocol({
+    exists(u) {
+      return u.href === url.href
+    },
+
+    read(u) {
+      if (u.href === url.href) {
+        return 'module.exports = __dirname'
+      }
+
+      t.fail()
+    }
+  })
+
+  if (isWindows) {
+    await t.exception(Module.load(url, { protocol }), /INVALID_URL_PATH/)
+  } else {
+    await t.execution(Module.load(url, { protocol }))
+  }
+})
+
 test('load .js with asset import', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
@@ -4029,6 +4455,61 @@ test('load .bundle with asset import, resolutions map pointing outside .bundle',
   })
 
   t.is(exports, isWindows ? 'c:\\bar.txt' : '/bar.txt')
+})
+
+test('load .js with asset import using a custom protocol list', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/index.js' ||
+        url.href === root + '/assets/foo.txt'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/index.js') {
+        return "module.exports = require.asset('./assets/foo.txt')"
+      }
+
+      if (url.href === root + '/assets/foo.txt') {
+        return 'hello'
+      }
+
+      t.fail()
+    },
+
+    *list(url) {
+      if (url.href === root + '/assets/foo.txt') yield new URL(root + '/assets/foo.txt')
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/index.js'), { protocol })
+
+  t.is(exports, isWindows ? 'c:\\assets\\foo.txt' : '/assets/foo.txt')
+})
+
+test('importSync with asset import uses the default protocol list', (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/index.js' || url.href === root + '/foo.txt'
+    },
+
+    read(url) {
+      if (url.href === root + '/index.js') {
+        return "module.exports = require.asset('./foo.txt')"
+      }
+
+      if (url.href === root + '/foo.txt') {
+        return 'hello'
+      }
+
+      t.fail()
+    }
+  })
+
+  const loader = new Module.Loader({ protocol })
+
+  t.is(loader.importSync(new URL(root + '/index.js')), isWindows ? 'c:\\foo.txt' : '/foo.txt')
 })
 
 test('load .js with .bin require', async (t) => {
