@@ -2158,9 +2158,7 @@ test('loader import with concurrency', async (t) => {
   const protocol = new Module.Protocol({
     async exists(url) {
       return (
-        url.href === root + '/a.mjs' ||
-        url.href === root + '/b.mjs' ||
-        url.href === root + '/c.mjs'
+        url.href === root + '/a.mjs' || url.href === root + '/b.mjs' || url.href === root + '/c.mjs'
       )
     },
 
@@ -4460,10 +4458,7 @@ test('load .bundle with asset import, resolutions map pointing outside .bundle',
 test('load .js with asset import using a custom protocol list', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
-      return (
-        url.href === root + '/index.js' ||
-        url.href === root + '/assets/foo.txt'
-      )
+      return url.href === root + '/index.js' || url.href === root + '/assets/foo.txt'
     },
 
     read(url) {
