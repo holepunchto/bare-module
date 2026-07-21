@@ -283,6 +283,7 @@ All import maps are private to the package and allow mapping to external package
 The `"engines"` field defines the engine requirements of the package. During module resolution, the versions declared by `Bare.versions` will be tested against the requirements declared by the package and resolution fail if they're not satisfied.
 
 <!-- bare-refgen:api start -->
+
 ## API
 
 ### Module
@@ -293,9 +294,9 @@ The `"engines"` field defines the engine requirements of the package. During mod
 
 **Parameters**
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `url` | `URL` | — | The WHATWG `URL` identifying the module. |
+| Parameter | Type  | Default | Description                              |
+| --------- | ----- | ------- | ---------------------------------------- |
+| `url`     | `URL` | —       | The WHATWG `URL` identifying the module. |
 
 #### `builtins: Builtins`
 
@@ -363,11 +364,11 @@ Get the asset URL by resolving `specifier` relative to `parentURL`. `specifier` 
 
 **Parameters**
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `specifier` | `string` | — | The asset specifier to resolve. |
-| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `specifier` relative to. |
-| `opts?` | `Options` | — | Resolution options. |
+| Parameter   | Type      | Default | Description                                          |
+| ----------- | --------- | ------- | ---------------------------------------------------- |
+| `specifier` | `string`  | —       | The asset specifier to resolve.                      |
+| `parentURL` | `URL`     | —       | The WHATWG `URL` to resolve `specifier` relative to. |
+| `opts?`     | `Options` | —       | Resolution options.                                  |
 
 **Returns** `URL` — The WHATWG `URL` of the resolved asset.
 
@@ -420,10 +421,10 @@ Create a preconfigured `require()` bound to `parentURL`, so specifiers resolve a
 
 **Parameters**
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `parentURL` | `string \| URL` | — | The parent URL that the returned `require()` resolves and loads specifiers relative to. |
-| `opts?` | `CreateRequireOptions` | — | Options for the created `require()`, such as its `protocol` and `cache`. |
+| Parameter   | Type                   | Default | Description                                                                             |
+| ----------- | ---------------------- | ------- | --------------------------------------------------------------------------------------- |
+| `parentURL` | `string \| URL`        | —       | The parent URL that the returned `require()` resolves and loads specifiers relative to. |
+| `opts?`     | `CreateRequireOptions` | —       | Options for the created `require()`, such as its `protocol` and `cache`.                |
 
 **Returns** `Require` — A `require()` bound to `parentURL`, with `main`, `cache`, `resolve`, `addon`, and `asset` attached.
 
@@ -448,10 +449,10 @@ Module.load(url: URL, source?: Buffer | string | Bundle | null, opts?: LoadOptio
 
 **Parameters**
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `url` | `URL` | — | The WHATWG `URL` of the module to load. |
-| `opts` | `LoadOptions` | — | Load options; may carry a `source` to load directly instead of reading it through the protocol. |
+| Parameter | Type          | Default | Description                                                                                     |
+| --------- | ------------- | ------- | ----------------------------------------------------------------------------------------------- |
+| `url`     | `URL`         | —       | The WHATWG `URL` of the module to load.                                                         |
+| `opts`    | `LoadOptions` | —       | Load options; may carry a `source` to load directly instead of reading it through the protocol. |
 
 **Returns** `Module` — The loaded `Module`, reusing the cached instance if `url` was already loaded.
 
@@ -473,11 +474,11 @@ Resolve the module `specifier` relative to the `parentURL`. `specifier` is a str
 
 **Parameters**
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `specifier` | `string` | — | The module specifier to resolve. |
-| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `specifier` relative to. |
-| `opts?` | `ResolveOptions` | — | Resolution options. |
+| Parameter   | Type             | Default | Description                                          |
+| ----------- | ---------------- | ------- | ---------------------------------------------------- |
+| `specifier` | `string`         | —       | The module specifier to resolve.                     |
+| `parentURL` | `URL`            | —       | The WHATWG `URL` to resolve `specifier` relative to. |
+| `opts?`     | `ResolveOptions` | —       | Resolution options.                                  |
 
 **Returns** `URL` — The WHATWG `URL` that `specifier` resolves to.
 
@@ -524,10 +525,10 @@ Defines how modules are resolved, read and loaded; custom protocols can serve mo
 
 **Parameters**
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `methods?` | `Partial<ModuleProtocol>` | — | Protocol method overrides; any of `preresolve`, `postresolve`, `resolve`, `exists`, `read`, `addon`, or `asset`. |
-| `context?` | `ModuleProtocol` | — | An existing protocol to fall back to for any method not provided in `methods`. |
+| Parameter  | Type                      | Default | Description                                                                                                      |
+| ---------- | ------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------- |
+| `methods?` | `Partial<ModuleProtocol>` | —       | Protocol method overrides; any of `preresolve`, `postresolve`, `resolve`, `exists`, `read`, `addon`, or `asset`. |
+| `context?` | `ModuleProtocol`          | —       | An existing protocol to fall back to for any method not provided in `methods`.                                   |
 
 #### `addon(url: URL): URL`
 
@@ -537,9 +538,9 @@ Post-process URLs for addons before `postresolve()`.
 
 **Parameters**
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `url` | `URL` | — | The resolved addon `URL` to post-process. |
+| Parameter | Type  | Default | Description                               |
+| --------- | ----- | ------- | ----------------------------------------- |
+| `url`     | `URL` | —       | The resolved addon `URL` to post-process. |
 
 #### `asset(url: URL): URL`
 
@@ -549,9 +550,9 @@ Post-process URLs for assets before `postresolve()`.
 
 **Parameters**
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `url` | `URL` | — | The resolved asset `URL` to post-process. |
+| Parameter | Type  | Default | Description                               |
+| --------- | ----- | ------- | ----------------------------------------- |
+| `url`     | `URL` | —       | The resolved asset `URL` to post-process. |
 
 #### `exists(url: URL, type: number): boolean`
 
@@ -561,10 +562,10 @@ Return whether the URL exists.
 
 **Parameters**
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `url` | `URL` | — | The `URL` to check for existence. |
-| `type` | `number` | — | The module type being probed (see `Module.constants.types`). |
+| Parameter | Type     | Default | Description                                                  |
+| --------- | -------- | ------- | ------------------------------------------------------------ |
+| `url`     | `URL`    | —       | The `URL` to check for existence.                            |
+| `type`    | `number` | —       | The module type being probed (see `Module.constants.types`). |
 
 #### `extend(methods: Partial<ModuleProtocol>): ModuleProtocol`
 
@@ -574,9 +575,9 @@ Create a new protocol that uses this protocol as its context, overriding the giv
 
 **Parameters**
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `methods` | `Partial<ModuleProtocol>` | — | Protocol method overrides for the new protocol. |
+| Parameter | Type                      | Default | Description                                     |
+| --------- | ------------------------- | ------- | ----------------------------------------------- |
+| `methods` | `Partial<ModuleProtocol>` | —       | Protocol method overrides for the new protocol. |
 
 **Returns** `ModuleProtocol` — A new `ModuleProtocol` that uses this protocol as its context, with `methods` overriding.
 
@@ -588,9 +589,9 @@ Process the resolved URL; can be used to convert file paths, etc.
 
 **Parameters**
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `url` | `URL` | — | The resolved `URL` to post-process. |
+| Parameter | Type  | Default | Description                         |
+| --------- | ----- | ------- | ----------------------------------- |
+| `url`     | `URL` | —       | The resolved `URL` to post-process. |
 
 **Returns** `URL` — The (possibly transformed) resolved `URL`.
 
@@ -602,10 +603,10 @@ Preprocess the `specifier` and `parentURL` before the resolve algorithm is calle
 
 **Parameters**
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `specifier` | `string` | — | The module specifier being resolved. |
-| `parentURL` | `URL` | — | The `URL` the specifier is resolved relative to. |
+| Parameter   | Type     | Default | Description                                      |
+| ----------- | -------- | ------- | ------------------------------------------------ |
+| `specifier` | `string` | —       | The module specifier being resolved.             |
+| `parentURL` | `URL`    | —       | The `URL` the specifier is resolved relative to. |
 
 **Returns** `string` — The (possibly rewritten) specifier to pass into the resolve algorithm.
 
@@ -617,9 +618,9 @@ Return the source code of a URL, represented as a string or buffer.
 
 **Parameters**
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `url` | `URL` | — | The `URL` to read. |
+| Parameter | Type  | Default | Description        |
+| --------- | ----- | ------- | ------------------ |
+| `url`     | `URL` | —       | The `URL` to read. |
 
 **Returns** `Buffer | string | null` — The source of `url` as a `Buffer` or `string`, or `null` if it does not exist.
 
@@ -631,11 +632,11 @@ Resolve the `specifier` to a URL.
 
 **Parameters**
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `specifier` | `string` | — | The module specifier to resolve. |
-| `parentURL` | `URL` | — | The `URL` to resolve `specifier` relative to. |
-| `imports` | `ImportsMap` | — | The `"imports"` map to apply during resolution. |
+| Parameter   | Type         | Default | Description                                     |
+| ----------- | ------------ | ------- | ----------------------------------------------- |
+| `specifier` | `string`     | —       | The module specifier to resolve.                |
+| `parentURL` | `URL`        | —       | The `URL` to resolve `specifier` relative to.   |
+| `imports`   | `ImportsMap` | —       | The `"imports"` map to apply during resolution. |
 
 ### Types
 
@@ -708,8 +709,8 @@ interface ResolveOptions extends Options {
 
 ```ts
 interface CreateRequireOptions extends Options {
-    module?: Module
-  }
+  module?: Module
+}
 ```
 
 [source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L91)
@@ -718,8 +719,8 @@ interface CreateRequireOptions extends Options {
 
 ```ts
 interface RequireOptions {
-    with?: Attributes
-  }
+  with?: Attributes
+}
 ```
 
 [source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L95)
@@ -730,10 +731,10 @@ Options for `require()`; `with` holds the import attributes.
 
 ```ts
 interface RequireAddon {
-    (specifier?: string, parentURL?: URL): string
-    host: string
-    resolve: (specifier: string, parentURL?: URL) => unknown
-  }
+  (specifier?: string, parentURL?: URL): string
+  host: string
+  resolve: (specifier: string, parentURL?: URL) => unknown
+}
 ```
 
 [source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L99)
@@ -744,18 +745,19 @@ The `require.addon` function: imports addon modules, with `host` and `resolve` a
 
 ```ts
 interface Require {
-    (parentURL: string | URL, opts?: RequireOptions): unknown
-    main: Module
-    cache: Cache
-    resolve: (specifier: string, parentURL?: URL) => string
-    addon: RequireAddon
-    asset: (specifier: string, parentURL?: URL) => string
-  }
+  (parentURL: string | URL, opts?: RequireOptions): unknown
+  main: Module
+  cache: Cache
+  resolve: (specifier: string, parentURL?: URL) => string
+  addon: RequireAddon
+  asset: (specifier: string, parentURL?: URL) => string
+}
 ```
 
 [source](https://github.com/holepunchto/bare-module/blob/v6.4.0/index.d.ts#L105)
 
 The function returned by `Module.createRequire()`: resolves and loads modules relative to its parent URL, with `main`, `cache`, `resolve`, `addon`, and `asset` attached.
+
 <!-- bare-refgen:api end -->
 
 ## License
