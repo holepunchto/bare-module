@@ -2270,6 +2270,49 @@ test('loader addons', async (t) => {
   t.alike(loader.assets, [])
 })
 
+test('loader addons resolved during evaluation', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/foo.js' ||
+        url.href === root + '/dir/package.json' ||
+        url.href === root + '/dir/prebuilds/' + host + '/bar.bare'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.js') {
+        return `module.exports = require.addon('.', new URL('${root}/dir/'))`
+      }
+
+      if (url.href === root + '/dir/package.json') {
+        return '{ "name": "bar", "version": "1.2.3" }'
+      }
+
+      t.fail()
+    },
+
+    resolve(url) {
+      if (url.href === root + '/dir/prebuilds/' + host + '/bar.bare') {
+        return pathToFileURL(require.addon.resolve('.'))
+      }
+
+      t.fail()
+    }
+  })
+
+  const loader = new Module.Loader({ protocol })
+
+  await loader.link(new URL(root + '/foo.js'))
+
+  t.alike(loader.addons, [])
+
+  await loader.import(new URL(root + '/foo.js'))
+
+  t.is(loader.addons.length, 1)
+  t.is(loader.addons[0].href, pathToFileURL(require.addon.resolve('.')).href)
+})
+
 test('load with asynchronous protocol', async (t) => {
   const protocol = new Module.Protocol({
     async exists(url) {
@@ -2756,7 +2799,79 @@ test('require.addon', async (t) => {
 
   const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
 
-  t.is(exports, require.addon('.'))
+  t.alike(Object.keys(exports), Object.keys(require.addon('.')))
+})
+
+test('require.addon with parentURL', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/foo.js' ||
+        url.href === root + '/dir/package.json' ||
+        url.href === root + '/dir/prebuilds/' + host + '/bar.bare'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.js') {
+        return `module.exports = require.addon('.', new URL('${root}/dir/'))`
+      }
+
+      if (url.href === root + '/dir/package.json') {
+        return '{ "name": "bar", "version": "1.2.3" }'
+      }
+
+      t.fail()
+    },
+
+    resolve(url) {
+      if (url.href === root + '/dir/prebuilds/' + host + '/bar.bare') {
+        return pathToFileURL(require.addon.resolve('.'))
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.alike(Object.keys(exports), Object.keys(require.addon('.')))
+})
+
+test('require.addon is cached', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/foo.js' ||
+        url.href === root + '/package.json' ||
+        url.href === prebuilds + '/foo.bare'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.js') {
+        return "module.exports = require.addon('.') === require.addon('.')"
+      }
+
+      if (url.href === root + '/package.json') {
+        return '{ "name": "foo", "version": "1.2.3" }'
+      }
+
+      t.fail()
+    },
+
+    resolve(url) {
+      if (url.href === prebuilds + '/foo.bare') {
+        return pathToFileURL(require.addon.resolve('.'))
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, true)
 })
 
 test('require.addon.host', async (t) => {
@@ -2807,6 +2922,39 @@ test('require.addon.resolve', async (t) => {
   t.is(
     exports,
     isWindows ? 'c:\\prebuilds\\' + host + '\\foo.bare' : '/prebuilds/' + host + '/foo.bare'
+  )
+})
+
+test('require.addon.resolve with parentURL', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/foo.js' ||
+        url.href === root + '/dir/package.json' ||
+        url.href === root + '/dir/prebuilds/' + host + '/bar.bare'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.js') {
+        return `module.exports = require.addon.resolve('.', new URL('${root}/dir/'))`
+      }
+
+      if (url.href === root + '/dir/package.json') {
+        return '{ "name": "bar", "version": "1.2.3" }'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(
+    exports,
+    isWindows
+      ? 'c:\\dir\\prebuilds\\' + host + '\\bar.bare'
+      : '/dir/prebuilds/' + host + '/bar.bare'
   )
 })
 
@@ -2891,7 +3039,43 @@ test('import.meta.addon', async (t) => {
 
   const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
 
-  t.is(exports.default, require.addon('.'))
+  t.alike(Object.keys(exports.default), Object.keys(require.addon('.')))
+})
+
+test('import.meta.addon is cached', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/foo.mjs' ||
+        url.href === root + '/package.json' ||
+        url.href === prebuilds + '/foo.bare'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return "export default import.meta.addon('.') === import.meta.addon('.')"
+      }
+
+      if (url.href === root + '/package.json') {
+        return '{ "name": "foo", "version": "1.2.3" }'
+      }
+
+      t.fail()
+    },
+
+    resolve(url) {
+      if (url.href === prebuilds + '/foo.bare') {
+        return pathToFileURL(require.addon.resolve('.'))
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(exports.default, true)
 })
 
 test('import.meta.addon.host', async (t) => {
@@ -4984,6 +5168,83 @@ test('load without cache', async (t) => {
   t.is(a.exports, 42)
   t.is(b.exports, 42)
   t.not(a, b)
+})
+
+test('load addon with cache', async (t) => {
+  const cache = Object.create(null)
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/index.cjs' ||
+        url.href === root + '/package.json' ||
+        url.href === prebuilds + '/foo.bare'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/index.cjs') {
+        return "module.exports = require.addon('.')"
+      }
+
+      if (url.href === root + '/package.json') {
+        return '{ "name": "foo", "version": "1.2.3" }'
+      }
+
+      t.fail()
+    },
+
+    resolve(url) {
+      if (url.href === prebuilds + '/foo.bare') {
+        return pathToFileURL(require.addon.resolve('.'))
+      }
+
+      t.fail()
+    }
+  })
+
+  const a = await Module.load(new URL(root + '/index.cjs'), { protocol, cache })
+  const b = await Module.load(new URL(root + '/index.cjs'), { protocol, cache })
+
+  t.is(a.exports, b.exports)
+})
+
+test('load addon without cache', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/index.cjs' ||
+        url.href === root + '/package.json' ||
+        url.href === prebuilds + '/foo.bare'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/index.cjs') {
+        return "module.exports = require.addon('.')"
+      }
+
+      if (url.href === root + '/package.json') {
+        return '{ "name": "foo", "version": "1.2.3" }'
+      }
+
+      t.fail()
+    },
+
+    resolve(url) {
+      if (url.href === prebuilds + '/foo.bare') {
+        return pathToFileURL(require.addon.resolve('.'))
+      }
+
+      t.fail()
+    }
+  })
+
+  const a = await Module.load(new URL(root + '/index.cjs'), { protocol, cache: false })
+  const b = await Module.load(new URL(root + '/index.cjs'), { protocol, cache: false })
+
+  t.not(a.exports, b.exports)
+  t.alike(Object.keys(a.exports), Object.keys(b.exports))
 })
 
 test('load with the shared cache', async (t) => {
