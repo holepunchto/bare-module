@@ -37,14 +37,16 @@ interface ModuleProtocol {
   /**
    * Create a new protocol that uses this protocol as its context, overriding the given `methods`.
    * @param methods - Protocol method overrides for the new protocol.
-   * @returns A new `ModuleProtocol` that uses this protocol as its context, with `methods` overriding.
+   * @returns A new `ModuleProtocol` that uses this protocol as its context, with `methods`
+   * overriding.
    */
   extend(methods: Partial<ModuleProtocol>): ModuleProtocol
 }
 
 declare class ModuleProtocol {
   /**
-   * @param methods - Protocol method overrides; any of `preresolve`, `postresolve`, `resolve`, `exists`, `read`, `addon`, or `asset`.
+   * @param methods - Protocol method overrides; any of `preresolve`, `postresolve`, `resolve`,
+   * `exists`, `read`, `addon`, or `asset`.
    * @param context - An existing protocol to fall back to for any method not provided in `methods`.
    */
   constructor(methods?: Partial<ModuleProtocol>, context?: ModuleProtocol)

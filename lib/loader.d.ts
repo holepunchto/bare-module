@@ -11,16 +11,25 @@ interface ModuleLoader {
   readonly builtins: Builtins
   /** A cache of loaded modules for this module. Defaults to `Module.cache`. */
   readonly cache: Cache
-  /** An array of conditions used to resolve dependencies while loading the module. See [Conditional exports](https://github.com/holepunchto/bare-module#conditional-exports) for possible values. */
+  /**
+   * An array of conditions used to resolve dependencies while loading the module. See [Conditional
+   * exports](https://github.com/holepunchto/bare-module#conditional-exports) for possible values.
+   */
   readonly conditions: Conditions
-  /** The assumed type of a module without a `type` using an ambiguous extension, such as `.js`. See `Module.constants.types` for possible values. */
+  /**
+   * The assumed type of a module without a `type` using an ambiguous extension, such as `.js`. See
+   * `Module.constants.types` for possible values.
+   */
   readonly defaultType: number
   /** The import map when the module was loaded. */
   readonly imports: ImportsMap
   /** The module representing the entry script where the program was launched. */
   readonly main: Module
   readonly protocol: Protocol
-  /** A map of preresolved imports with keys being serialized parent URLs and values being `"imports"` maps. */
+  /**
+   * A map of preresolved imports with keys being serialized parent URLs and values being
+   * `"imports"` maps.
+   */
   readonly resolutions: ResolutionsMap
 
   get(url: URL): Module | null
@@ -48,7 +57,10 @@ declare namespace ModuleLoader {
   }
 
   export interface LinkOptions {
-    /** The import attributes, for example the `{ type: 'json' }` in `import foo from 'foo' with { type: 'json' }`. */
+    /**
+     * The import attributes, for example the `{ type: 'json' }` in `import foo from 'foo' with {
+     * type: 'json' }`.
+     */
     attributes?: Attributes
     conditions?: Conditions
   }
