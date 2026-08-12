@@ -284,7 +284,7 @@ The `"engines"` field defines the engine requirements of the package. During mod
 
 ## API
 
-See the [full API reference](https://docs.pears.com/reference/bare/modules/bare-module).
+See the [`bare-module` reference](https://docs.pears.com/reference/bare/modules/bare-module).
 
 ## License
 
