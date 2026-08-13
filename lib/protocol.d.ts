@@ -3,10 +3,10 @@ import Buffer from 'bare-buffer'
 
 interface ModuleProtocol {
   /**
-   * Resolve the `specifier` to a URL.
-   * @param specifier - The module specifier to resolve.
-   * @param parentURL - The `URL` to resolve `specifier` relative to.
-   * @param imports - The `"imports"` map to apply during resolution.
+   * Resolve a module `URL` to the `URL` that should be linked. The default implementation returns
+   * `url` unchanged.
+   * @param url - The `URL` to resolve.
+   * @returns The resolved `URL`. A promise must not be returned during synchronous linking.
    */
   resolve(url: URL): URL | Promise<URL>
 
@@ -15,7 +15,7 @@ interface ModuleProtocol {
   /**
    * Return whether the URL exists.
    * @param url - The `URL` to check for existence.
-   * @param type - The module type being probed (see `Module.constants.types`).
+   * @returns Whether `url` exists. The default implementation returns `false`.
    */
   exists(url: URL): boolean | Promise<boolean>
 
@@ -45,8 +45,8 @@ interface ModuleProtocol {
 
 declare class ModuleProtocol {
   /**
-   * @param methods - Protocol method overrides; any of `preresolve`, `postresolve`, `resolve`,
-   * `exists`, `read`, `addon`, or `asset`.
+   * @param methods - Protocol method overrides; any of `resolve`, `resolveSync`, `exists`,
+   * `existsSync`, `read`, `readSync`, `list`, or `listSync`.
    * @param context - An existing protocol to fall back to for any method not provided in `methods`.
    */
   constructor(methods?: Partial<ModuleProtocol>, context?: ModuleProtocol)

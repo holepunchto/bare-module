@@ -63,9 +63,6 @@ interface Module {
 }
 
 declare class Module {
-  /**
-   * @param url - The WHATWG `URL` identifying the module.
-   */
   constructor(url: URL)
 }
 
@@ -117,7 +114,13 @@ declare namespace Module {
     cache: Cache
     resolve: (specifier: string, parentURL?: URL) => string
     /**
-     * @param url - The resolved addon `URL` to post-process.
+     * Resolve `specifier` relative to `parentURL` and evaluate the matching addon.
+     * @param specifier - The addon specifier to resolve. Defaults to `'.'`.
+     * @param parentURL - The WHATWG `URL` to resolve `specifier` relative to. Defaults to the URL
+     * of the module that `require()` was created for.
+     * @returns The exports of the addon.
+     * @throws {MODULE_NOT_FOUND} no addon matching `specifier` could be found relative to
+     * `parentURL`.
      */
     addon: RequireAddon
     /**
