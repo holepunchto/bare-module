@@ -296,14 +296,6 @@ The `"engines"` field defines the engine requirements of the package. During mod
 | `BINARY` | The module is a binary file.                                                 |
 | `TEXT`   | The module is a text file.                                                   |
 
-#### `Module.protocol`
-
-The default `ModuleProtocol` instance. It has no capabilities of its own; in particular, it cannot read from the file system. To serve modules from a backing store, provide your own protocol. See [Protocols](#protocols) for usage.
-
-#### `Module.cache`
-
-The shared cache of loaded modules. Use of this cache is opt-in: pass `cache: true` to load a module into it.
-
 #### `const url = await Module.resolve(specifier, parentURL[, condition][, options])`
 
 Resolve the module `specifier` relative to the `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`. `condition` is an optional import condition, defaulting to `'require'` if not specified.
@@ -312,17 +304,18 @@ Options include:
 
 ```js
 options = {
-  // The referring module.
+  // The referring module. Supplies the loader, and with it the default for
+  // every option below that the loader carries.
   referrer: null,
   // The ModuleProtocol to resolve the specifier. Defaults to referrer's
-  // protocol if defined, otherwise defaults to Module.protocol
+  // protocol if defined, otherwise to a protocol with no backing store
   protocol,
   // A map of builtin module specifiers to loaded modules. If matched by the
   // default resolver, the protocol of the resolved URL will be `builtin:`.
   builtins,
   // The module cache. An already loaded module is served from here instead of
   // being resolved again. Pass an object to use it, `true` to opt in to the
-  // shared Module.cache, or omit for a fresh cache.
+  // shared cache, or omit for a fresh cache.
   cache,
   // A map of preresolved imports with keys being serialized parent URLs and
   // values being "imports" maps.
@@ -338,17 +331,18 @@ Options include:
 
 ```js
 options = {
-  // The referring module.
+  // The referring module. Supplies the loader, and with it the default for
+  // every option below that the loader carries.
   referrer: null,
   // The ModuleProtocol to resolve the specifier. Defaults to referrer's
-  // protocol if defined, otherwise defaults to Module.protocol
+  // protocol if defined, otherwise to a protocol with no backing store
   protocol,
   // A map of builtin module specifiers to loaded modules. If matched by the
   // default resolver, the protocol of the resolved URL will be `builtin:`.
   builtins,
   // The module cache. An already loaded module is served from here instead of
   // being resolved again. Pass an object to use it, `true` to opt in to the
-  // shared Module.cache, or omit for a fresh cache.
+  // shared cache, or omit for a fresh cache.
   cache,
   // A map of preresolved imports with keys being serialized parent URLs and
   // values being "imports" maps.
@@ -360,11 +354,16 @@ options = {
 
 Load a module with the provided `url`. `url` is a WHATWG `URL`. If provided, the `source` will be passed to the matching `extension` for the `url`.
 
+Passing a `referrer` loads the module into the graph of that referrer, sharing its loader and everything the loader carries. Any of those values may still be overridden by passing it explicitly, in which case the module is loaded by a loader of its own that inherits whatever was not overridden.
+
+Overriding `protocol` or `builtins` narrows what the module may reach, and so starts a graph of its own: the `cache`, `resolutions` and `main` of the referrer are left behind rather than inherited. A cache belongs to the `protocol` and `builtins` its modules were read with, since every record in it is a handle to the loader that read it. Loading over a cache that holds modules read with either of those different throws `CACHE_INCOMPATIBLE`.
+
 Options include:
 
 ```js
 options = {
-  // The referring module.
+  // The referring module. Supplies the loader, and with it the default for
+  // every option below that the loader carries.
   referrer: null,
   // The assumed type of a module without a type using an ambiguous extension
   // such as `.js`. See Module.constants for possible values. Inherited from
@@ -374,13 +373,14 @@ options = {
   // inherited from `referrer` so a module graph shares a single cache,
   // otherwise a fresh cache scoped to this load and its graph is used. Pass
   // an explicit cache object to use it, `true` to opt in to the shared
-  // `Module.cache`, or `false` to force a fresh cache.
+  // cache, or `false` to force a fresh cache.
   cache,
   // The maximum number of module reads to perform concurrently while linking.
   // Defaults to `0`, which applies no limit.
   concurrency: 0,
-  // The ModuleProtocol to use resolve the specifier. Defaults to referrer's
-  // `protocol` if defined, otherwise defaults to `Module.protocol`.
+  // The ModuleProtocol used to resolve and read the module. Defaults to
+  // referrer's `protocol` if defined, otherwise to a protocol with no
+  // backing store.
   protocol,
   // A default "imports" map to apply to all specifiers. Follows the same
   // syntax and rules as the "imports" property defined in `package.json`.
@@ -424,7 +424,7 @@ The assumed type of a module without a `type` using an ambiguous extension, such
 
 #### `module.cache`
 
-A cache of loaded modules for this module. Defaults to `Module.cache`.
+The cache of loaded modules that the module was loaded through, shared with every other module of its graph.
 
 #### `module.main`
 
@@ -452,7 +452,7 @@ An array of conditions used to resolve dependencies while loading the module. Se
 
 #### `module.protocol`
 
-The `ModuleProtocol` class used for resolving, reading, and loading modules. See [Protocols](#protocols).
+The `ModuleProtocol` the module was resolved and read through, shared with every other module of its graph. See [Protocols](#protocols).
 
 ### CommonJS modules
 
@@ -578,7 +578,8 @@ Options include:
 
 ```js
 options = {
-  // The referring module.
+  // The referring module. Supplies the loader, and with it the default for
+  // every option below that the loader carries.
   referrer: null,
   // The assumed type of a module without a type using an ambiguous extension
   // such as `.js`. See Module.constants. Inherited from `referrer` if it is
@@ -586,11 +587,12 @@ options = {
   defaultType: Module.constants.SCRIPT,
   // A cache of loaded modules. Inherited from `referrer` if it is defined,
   // otherwise a fresh cache is used. Pass an explicit cache object to use it,
-  // `true` to opt in to the shared `Module.cache`, or `false` to force a fresh
+  // `true` to opt in to the shared cache, or `false` to force a fresh
   // cache.
   cache,
-  // The ModuleProtocol to use resolve the specifier and/or the module. Defaults to
-  // referrer's protocol if defined, otherwise defaults to Module.protocol
+  // The ModuleProtocol used to resolve and read modules. Defaults to
+  // referrer's protocol if defined, otherwise to a protocol with no backing
+  // store.
   protocol,
   // A default "imports" map to apply to all specifiers. Follows the same
   // syntax and rules as the "imports" property defined in `package.json`.
@@ -606,6 +608,8 @@ options = {
 ### Protocols
 
 Protocols define how to resolve, access and load modules. Custom protocols can be defined to extend or replace how module are resolved and loaded to support things like loading modules via a [`Hyperdrive`](https://github.com/holepunchto/hyperdrive).
+
+When no protocol is passed, modules are read through a bare `Module.Protocol`. It has no backing store of its own and in particular cannot read from the file system, so it finds nothing; pass a protocol to serve the source.
 
 #### `const protocol = new Module.Protocol(methods, context = null)`
 
@@ -671,8 +675,8 @@ Options include:
 
 ```js
 options = {
-  // The ModuleProtocol used to resolve and read modules. Defaults to
-  // Module.protocol, which has no backing store of its own.
+  // The ModuleProtocol used to resolve and read modules. Defaults to a
+  // protocol with no backing store of its own.
   protocol,
   // A map of builtin module specifiers to their exports.
   builtins,
@@ -686,7 +690,7 @@ options = {
   // Defaults to `0`, which applies no limit.
   concurrency: 0,
   // The module cache. Pass an object to use it, `true` to opt in to the shared
-  // Module.cache, or omit for a fresh cache scoped to this loader.
+  // cache, or omit for a fresh cache scoped to this loader.
   cache,
   // A map of preresolved imports with keys being serialized parent URLs and
   // values being "imports" maps. Defaults to following the cache: a shared cache
