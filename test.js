@@ -5206,6 +5206,46 @@ test('load with referrer and protocol does not leak the referrer protocol', asyn
   }
 })
 
+test('load over a cache read with different builtins throws', async (t) => {
+  const cache = Object.create(null)
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs' || url.href === root + '/bar.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = 1'
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = 2'
+      }
+
+      t.fail()
+    }
+  })
+
+  await Module.load(new URL(root + '/foo.cjs'), {
+    protocol,
+    builtins: { baz: 42 },
+    cache
+  })
+
+  try {
+    await Module.load(new URL(root + '/bar.cjs'), {
+      protocol,
+      builtins: { baz: 43 },
+      cache
+    })
+
+    t.fail('load should throw')
+  } catch (err) {
+    t.is(err.code, 'CACHE_INCOMPATIBLE')
+  }
+})
+
 test('load over a cache read through a different protocol throws', async (t) => {
   const cache = Object.create(null)
 
@@ -5244,7 +5284,7 @@ test('load over a cache read through a different protocol throws', async (t) => 
 
     t.fail('load should throw')
   } catch (err) {
-    t.is(err.code, 'PROTOCOL_MISMATCH')
+    t.is(err.code, 'CACHE_INCOMPATIBLE')
   }
 })
 

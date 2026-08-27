@@ -356,7 +356,7 @@ Load a module with the provided `url`. `url` is a WHATWG `URL`. If provided, the
 
 Passing a `referrer` loads the module into the graph of that referrer, sharing its loader and everything the loader carries. Any of those values may still be overridden by passing it explicitly, in which case the module is loaded by a loader of its own that inherits whatever was not overridden.
 
-Overriding `protocol` or `builtins` narrows what the module may reach, and so starts a graph of its own: the `cache`, `resolutions` and `main` of the referrer are left behind rather than inherited. A cache belongs to the protocol its modules were read through, since every record in it is a handle to the loader that read it. Loading over a cache that holds modules read through a different protocol throws `PROTOCOL_MISMATCH`.
+Overriding `protocol` or `builtins` narrows what the module may reach, and so starts a graph of its own: the `cache`, `resolutions` and `main` of the referrer are left behind rather than inherited. A cache belongs to the `protocol` and `builtins` its modules were read with, since every record in it is a handle to the loader that read it. Loading over a cache that holds modules read with either of those different throws `CACHE_INCOMPATIBLE`.
 
 Options include:
 
