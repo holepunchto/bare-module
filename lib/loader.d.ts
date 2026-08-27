@@ -9,6 +9,7 @@ interface ModuleLoader {
   readonly assets: URL[]
   readonly builtins: Builtins
   readonly cache: Cache
+  readonly concurrency: number
   readonly conditions: Conditions
   readonly defaultType: number
   readonly imports: ImportsMap

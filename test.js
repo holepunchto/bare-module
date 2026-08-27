@@ -5122,6 +5122,264 @@ test('load with referrer shares the loader', async (t) => {
   t.is(bar.cache, foo.cache)
 })
 
+test('load with referrer and protocol uses the given protocol', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = 1'
+      }
+
+      t.fail()
+    }
+  })
+
+  const other = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = 2'
+      }
+
+      t.fail()
+    }
+  })
+
+  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+  const bar = await Module.load(new URL(root + '/bar.cjs'), {
+    referrer: foo,
+    protocol: other
+  })
+
+  t.is(foo.exports, 1)
+  t.is(bar.exports, 2)
+  t.is(bar.protocol, other, 'the given protocol wins over the referrer')
+  t.not(bar.cache, foo.cache, 'the cache is not shared across protocols')
+  t.is(bar.main, bar, 'the fork has a main of its own')
+})
+
+test('load with referrer and protocol does not leak the referrer protocol', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = 1'
+      }
+
+      t.fail()
+    }
+  })
+
+  const other = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = 2'
+      }
+
+      t.fail()
+    }
+  })
+
+  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+  const bar = await Module.load(new URL(root + '/bar.cjs'), {
+    referrer: foo,
+    protocol: other
+  })
+
+  t.absent(bar.cache[root + '/foo.cjs'], 'the referrer is not in the fork cache')
+
+  for (const href of Object.keys(bar.cache)) {
+    t.not(bar.cache[href].protocol, protocol, `'${href}' cannot reach the referrer protocol`)
+  }
+})
+
+test('load over a cache read through a different protocol throws', async (t) => {
+  const cache = Object.create(null)
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = 1'
+      }
+
+      t.fail()
+    }
+  })
+
+  const other = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = 2'
+      }
+
+      t.fail()
+    }
+  })
+
+  await Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
+
+  try {
+    await Module.load(new URL(root + '/bar.cjs'), { protocol: other, cache })
+
+    t.fail('load should throw')
+  } catch (err) {
+    t.is(err.code, 'PROTOCOL_MISMATCH')
+  }
+})
+
+test('load with referrer and protocol cannot read through the referrer', async (t) => {
+  t.plan(2)
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs' || url.href === root + '/secret.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = 1'
+      }
+
+      t.fail('the referrer protocol was used')
+    }
+  })
+
+  const denied = new Module.Protocol()
+
+  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+
+  t.is(foo.exports, 1)
+
+  try {
+    await Module.load(new URL(root + '/secret.cjs'), {
+      referrer: foo,
+      protocol: denied
+    })
+
+    t.fail('load should not resolve')
+  } catch (err) {
+    t.is(err.code, 'MODULE_NOT_FOUND')
+  }
+})
+
+test('load with referrer and builtins uses the given builtins', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs' || url.href === root + '/bar.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = 1'
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return "module.exports = require('baz')"
+      }
+
+      t.fail()
+    }
+  })
+
+  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+  const bar = await Module.load(new URL(root + '/bar.cjs'), {
+    referrer: foo,
+    builtins: { baz: 42 }
+  })
+
+  t.is(bar.exports, 42)
+  t.is(bar.protocol, foo.protocol, 'the protocol is inherited from the referrer')
+  t.not(bar.cache, foo.cache, 'the cache is not shared across builtins')
+})
+
+test('resolve with referrer and protocol uses the given protocol', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = 1'
+      }
+
+      t.fail()
+    }
+  })
+
+  const other = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.js'
+    }
+  })
+
+  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+
+  const url = await Module.resolve('./bar', new URL(root + '/'), {
+    referrer: foo,
+    protocol: other
+  })
+
+  t.is(url.href, root + '/bar.js')
+})
+
+test('createRequire with referrer and protocol uses the given protocol', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = 1'
+      }
+
+      t.fail()
+    }
+  })
+
+  const other = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.js'
+    },
+
+    read(url) {
+      if (url.href === root + '/bar.js') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+
+  const require = Module.createRequire(null, { referrer: foo, protocol: other })
+
+  t.is(require('./bar'), 42)
+})
+
 test('load with cache', async (t) => {
   const cache = Object.create(null)
 
