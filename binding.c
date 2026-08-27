@@ -263,26 +263,20 @@ bare_module_create_function(js_env_t *env, js_callback_info_t *info) {
   js_value_t **args = malloc(sizeof(js_value_t *) * args_len);
 
   err = js_get_array_elements(env, argv[1], args, args_len, 0, NULL);
-  if (err < 0) goto err;
 
   js_value_t *source = argv[2];
 
   int32_t offset;
-  err = js_get_value_int32(env, argv[3], &offset);
-  if (err < 0) goto err;
+  if (err >= 0) err = js_get_value_int32(env, argv[3], &offset);
 
   js_value_t *result;
-  err = js_create_function_with_source(env, NULL, 0, (char *) file, file_len, args, args_len, 0, source, &result);
-  if (err < 0) goto err;
+  if (err >= 0) err = js_create_function_with_source(env, NULL, 0, (char *) file, file_len, args, args_len, 0, source, &result);
 
   free(args);
+
+  if (err < 0) return NULL;
 
   return result;
-
-err:
-  free(args);
-
-  return NULL;
 }
 
 static js_value_t *
