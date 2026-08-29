@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <utf.h>
+#include <uv.h>
 
 typedef struct {
   js_env_t *env;
@@ -213,6 +214,13 @@ bare_module_init(js_env_t *env, js_callback_info_t *info) {
 
   bare_module_context_t *context = malloc(sizeof(bare_module_context_t));
 
+  if (context == NULL) {
+    err = js_throw_error(env, uv_err_name(UV_ENOMEM), uv_strerror(UV_ENOMEM));
+    assert(err == 0);
+
+    return NULL;
+  }
+
   context->env = env;
 
   err = js_create_reference(env, argv[0], 1, &context->ctx);
@@ -261,6 +269,13 @@ bare_module_create_function(js_env_t *env, js_callback_info_t *info) {
   if (err < 0) return NULL;
 
   js_value_t **args = malloc(sizeof(js_value_t *) * args_len);
+
+  if (args == NULL && args_len > 0) {
+    err = js_throw_error(env, uv_err_name(UV_ENOMEM), uv_strerror(UV_ENOMEM));
+    assert(err == 0);
+
+    return NULL;
+  }
 
   err = js_get_array_elements(env, argv[1], args, args_len, 0, NULL);
   if (err < 0) goto err;
@@ -379,6 +394,13 @@ bare_module_create_synthetic_module(js_env_t *env, js_callback_info_t *info) {
   if (err < 0) return NULL;
 
   js_value_t **export_names = malloc(sizeof(js_value_t *) * names_len);
+
+  if (export_names == NULL && names_len > 0) {
+    err = js_throw_error(env, uv_err_name(UV_ENOMEM), uv_strerror(UV_ENOMEM));
+    assert(err == 0);
+
+    return NULL;
+  }
 
   err = js_get_array_elements(env, argv[3], export_names, names_len, 0, NULL);
   if (err < 0) goto err;
