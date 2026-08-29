@@ -212,6 +212,7 @@ bare_module_init(js_env_t *env, js_callback_info_t *info) {
   assert(argc == 5);
 
   bare_module_context_t *context = malloc(sizeof(bare_module_context_t));
+  assert(context != NULL);
 
   context->env = env;
 
@@ -260,7 +261,8 @@ bare_module_create_function(js_env_t *env, js_callback_info_t *info) {
   err = js_get_array_length(env, argv[1], &args_len);
   if (err < 0) return NULL;
 
-  js_value_t **args = malloc(sizeof(js_value_t *) * args_len);
+  js_value_t **args = calloc(args_len, sizeof(js_value_t *));
+  assert(args != NULL);
 
   err = js_get_array_elements(env, argv[1], args, args_len, 0, NULL);
   if (err < 0) goto err;
@@ -273,16 +275,13 @@ bare_module_create_function(js_env_t *env, js_callback_info_t *info) {
 
   js_value_t *result;
   err = js_create_function_with_source(env, NULL, 0, (char *) file, file_len, args, args_len, 0, source, &result);
-  if (err < 0) goto err;
-
-  free(args);
-
-  return result;
 
 err:
   free(args);
 
-  return NULL;
+  if (err < 0) return NULL;
+
+  return result;
 }
 
 static js_value_t *
@@ -378,7 +377,8 @@ bare_module_create_synthetic_module(js_env_t *env, js_callback_info_t *info) {
   err = js_get_array_length(env, argv[3], &names_len);
   if (err < 0) return NULL;
 
-  js_value_t **export_names = malloc(sizeof(js_value_t *) * names_len);
+  js_value_t **export_names = calloc(names_len, sizeof(js_value_t *));
+  assert(export_names != NULL);
 
   err = js_get_array_elements(env, argv[3], export_names, names_len, 0, NULL);
   if (err < 0) goto err;
@@ -392,16 +392,13 @@ bare_module_create_synthetic_module(js_env_t *env, js_callback_info_t *info) {
 
   js_value_t *result;
   err = js_get_module_id(env, module, &result);
-  if (err < 0) goto err;
-
-  free(export_names);
-
-  return result;
 
 err:
   free(export_names);
 
-  return NULL;
+  if (err < 0) return NULL;
+
+  return result;
 }
 
 static js_value_t *
