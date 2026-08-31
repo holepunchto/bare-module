@@ -128,7 +128,7 @@ bare_module__check_number(js_env_t *env, js_value_t *value, const char *message)
   err = js_is_number(env, value, &is_number);
   assert(err == 0);
 
-  if (is_number) {
+  if (!is_number) {
     err = js_throw_type_error(env, NULL, message);
     assert(err == 0);
 
