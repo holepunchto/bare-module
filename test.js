@@ -5590,3 +5590,23 @@ test('load without a cache does not use the shared cache', async (t) => {
   t.is(b.exports, 42)
   t.not(a, b)
 })
+
+test('over-long module url is refused', async (t) => {
+  const url = root + '/' + 'a'.repeat(5000) + '.mjs'
+
+  const protocol = new Module.Protocol({
+    exists(candidate) {
+      return candidate.href === url
+    },
+
+    read(candidate) {
+      if (candidate.href === url) {
+        return 'export default 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  await t.exception(Module.load(new URL(url), { protocol }), { code: 'ENAMETOOLONG' })
+})
