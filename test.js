@@ -2,6 +2,7 @@ const test = require('brittle')
 const Bundle = require('bare-bundle')
 const { pathToFileURL } = require('bare-url')
 const Module = require('.')
+const binding = require('./binding')
 
 const isWindows = Bare.platform === 'win32'
 
@@ -5610,3 +5611,168 @@ test('over-long module url is refused', async (t) => {
 
   await t.exception(Module.load(new URL(url), { protocol }), { code: 'ENAMETOOLONG' })
 })
+
+test('module context cannot be initialized twice', async (t) => {
+  await t.exception.all(() => binding.init({}, noop, noop, noop, noop))
+})
+
+test('module context is required to create and run modules', async (t) => {
+  await t.exception.all(
+    () => binding.createModule({}, {}, root + '/index.mjs', 'export default 42', 0),
+    TypeError
+  )
+
+  await t.exception.all(
+    () => binding.createSyntheticModule({}, {}, root + '/index.mjs', ['default']),
+    TypeError
+  )
+
+  await t.exception.all(() => binding.runModule({}, {}, noop), TypeError)
+})
+
+test('module export cannot be set on a source text module', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/index.mjs' || url.href === root + '/data.json'
+    },
+
+    read(url) {
+      if (url.href === root + '/index.mjs') {
+        return "import data from './data.json'\nexport default data"
+      }
+
+      if (url.href === root + '/data.json') {
+        return '{"a":1}'
+      }
+
+      return null
+    }
+  })
+
+  const loader = new Module.Loader({ protocol })
+
+  const record = loader.linkSync(new URL(root + '/index.mjs'))
+
+  await t.exception.all(() => binding.setModuleExport(record, 'default', 1), TypeError)
+
+  await t.exception.all(() => binding.setModuleExport({}, 'default', 1), TypeError)
+})
+
+test('module export name must be a string', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/index.mjs' || url.href === root + '/data.json'
+    },
+
+    read(url) {
+      if (url.href === root + '/index.mjs') {
+        return "import data from './data.json'\nexport default data"
+      }
+
+      if (url.href === root + '/data.json') {
+        return '{"a":1}'
+      }
+
+      return null
+    }
+  })
+
+  const loader = new Module.Loader({ protocol })
+
+  await loader.import(new URL(root + '/index.mjs'))
+
+  const record = loader.get(new URL(root + '/data.json'))
+
+  await t.exception.all(() => binding.setModuleExport(record, 42, 1), TypeError)
+})
+
+test('module namespace requires an evaluated module', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/index.mjs' || url.href === root + '/data.json'
+    },
+
+    read(url) {
+      if (url.href === root + '/index.mjs') {
+        return "import data from './data.json'\nexport default data"
+      }
+
+      if (url.href === root + '/data.json') {
+        return '{"a":1}'
+      }
+
+      return null
+    }
+  })
+
+  const loader = new Module.Loader({ protocol })
+
+  await loader.import(new URL(root + '/index.mjs'))
+
+  const record = loader.get(new URL(root + '/index.mjs'))
+
+  t.alike(Object.keys(binding.getModuleNamespace(record)), ['default'])
+
+  await t.exception.all(() => binding.getModuleNamespace({}), TypeError)
+})
+
+test('function offset must be a 32-bit integer', async (t) => {
+  for (const offset of [1.5, 1e21, NaN, Infinity]) {
+    await t.exception.all(
+      () => binding.createFunction(root + '/index.js', [], 'return 1', offset),
+      TypeError
+    )
+  }
+
+  t.is(binding.createFunction(root + '/index.js', ['x'], 'return x * 2', 0)(21), 42)
+})
+
+test('function source must be a string', async (t) => {
+  await t.exception.all(() => binding.createFunction(root + '/index.js', [], 42, 0), TypeError)
+})
+
+test('function file name must be a string', async (t) => {
+  await t.exception.all(() => binding.createFunction(42, [], 'return 1', 0), TypeError)
+})
+
+test('over-long function file name is refused', async (t) => {
+  const file = root + '/' + 'a'.repeat(5000) + '.js'
+
+  await t.exception.all(() => binding.createFunction(file, [], 'return 1', 0), {
+    code: 'ENAMETOOLONG'
+  })
+})
+
+test('function argument names must be strings', async (t) => {
+  await t.exception.all(
+    () => binding.createFunction(root + '/index.js', 'x', 'return 1', 0),
+    TypeError
+  )
+
+  await t.exception.all(
+    () => binding.createFunction(root + '/index.js', ['x', 42], 'return 1', 0),
+    TypeError
+  )
+
+  const names = ['x']
+
+  Object.defineProperty(names, 0, {
+    configurable: true,
+    get() {
+      return 42
+    }
+  })
+
+  await t.exception.all(
+    () => binding.createFunction(root + '/index.js', names, 'return 1', 0),
+    TypeError
+  )
+})
+
+test('function id requires a function', async (t) => {
+  await t.exception.all(() => binding.getFunctionID({}), TypeError)
+
+  t.ok(typeof binding.getFunctionID(noop) === 'symbol')
+})
+
+function noop() {}
