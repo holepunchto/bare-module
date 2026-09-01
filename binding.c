@@ -397,7 +397,7 @@ bare_module__get_module(js_env_t *env, js_value_t *value, bare_module_context_t 
   err = js_unwrap(env, value, (void **) &handle);
   if (err < 0) return false;
 
-  if (context != NULL && handle->context != context) {
+  if (handle->context != context) {
     err = js_throw_error(env, NULL, "Module belongs to another module context");
     assert(err == 0);
 
@@ -681,6 +681,14 @@ bare_module_init(js_env_t *env, js_callback_info_t *info) {
   err = js_add_teardown_callback(env, bare_module__on_teardown, (void *) env);
 
   if (err < 0) {
+    // Releasing the claim lets another call try again, so the context this call
+    // installed has to go with it. Nothing can strip the type tag, but an
+    // unwrapped receiver no longer unwraps to a context and so can't stand in
+    // for one.
+    if (bare_module__release_wrap(env, argv[0])) {
+      bare_module__destroy_context(env, context);
+    }
+
     bare_module__release_env(env);
 
     return NULL;
@@ -926,19 +934,24 @@ static js_value_t *
 bare_module_set_module_export(js_env_t *env, js_callback_info_t *info) {
   int err;
 
-  size_t argc = 3;
-  js_value_t *argv[3];
+  size_t argc = 4;
+  js_value_t *argv[4];
 
   err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
   assert(err == 0);
 
-  if (!bare_module__check_synthetic_module(env, argv[0])) return NULL;
-  if (!bare_module__check_string(env, argv[1], "Export name must be a string")) return NULL;
+  if (!bare_module__check_context(env, argv[0])) return NULL;
+  if (!bare_module__check_synthetic_module(env, argv[1])) return NULL;
+  if (!bare_module__check_string(env, argv[2], "Export name must be a string")) return NULL;
+
+  bare_module_context_t *context;
+  err = js_unwrap(env, argv[0], (void **) &context);
+  if (err < 0) return NULL;
 
   js_module_t *module;
-  if (!bare_module__get_module(env, argv[0], NULL, &module)) return NULL;
+  if (!bare_module__get_module(env, argv[1], context, &module)) return NULL;
 
-  err = js_set_module_export(env, module, argv[1], argv[2]);
+  err = js_set_module_export(env, module, argv[2], argv[3]);
   if (err < 0) return NULL;
 
   return NULL;
@@ -1012,16 +1025,21 @@ static js_value_t *
 bare_module_get_module_namespace(js_env_t *env, js_callback_info_t *info) {
   int err;
 
-  size_t argc = 1;
-  js_value_t *argv[1];
+  size_t argc = 2;
+  js_value_t *argv[2];
 
   err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
   assert(err == 0);
 
-  if (!bare_module__check_module(env, argv[0])) return NULL;
+  if (!bare_module__check_context(env, argv[0])) return NULL;
+  if (!bare_module__check_module(env, argv[1])) return NULL;
+
+  bare_module_context_t *context;
+  err = js_unwrap(env, argv[0], (void **) &context);
+  if (err < 0) return NULL;
 
   js_module_t *module;
-  if (!bare_module__get_module(env, argv[0], NULL, &module)) return NULL;
+  if (!bare_module__get_module(env, argv[1], context, &module)) return NULL;
 
   js_value_t *result;
   err = js_get_module_namespace(env, module, &result);
