@@ -3198,6 +3198,31 @@ test('dynamic import attributes', async (t) => {
   t.alike(exports.default.default, { hello: 'world' })
 })
 
+test('dynamic import from an unregistered referrer is refused', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/secret.mjs'
+    },
+
+    read(url) {
+      return 'export default 42'
+    }
+  })
+
+  // A loader that could serve the specifier, but was never handed to whoever
+  // is importing it.
+  new Module.Loader({ protocol })
+
+  const fn = binding.createFunction(
+    root + '/index.js',
+    [],
+    `return import('${root}/secret.mjs')`,
+    0
+  )
+
+  await t.exception(fn(), /MODULE_NOT_FOUND/)
+})
+
 test('require attributes', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
@@ -5740,6 +5765,24 @@ test('over-long function file name is refused', async (t) => {
 
   await t.exception.all(() => binding.createFunction(file, [], 'return 1', 0), {
     code: 'ENAMETOOLONG'
+  })
+})
+
+test('over-long function argument name list is refused', async (t) => {
+  const names = ['require', 'module', 'exports', '__filename', '__dirname']
+
+  t.ok(binding.createFunction(root + '/index.js', names, 'return 1', 0))
+
+  await t.exception.all(
+    () => binding.createFunction(root + '/index.js', [...names, 'extra'], 'return 1', 0),
+    { code: 'E2BIG' }
+  )
+
+  const many = []
+  many.length = 0xffffffff
+
+  await t.exception.all(() => binding.createFunction(root + '/index.js', many, 'return 1', 0), {
+    code: 'E2BIG'
   })
 })
 
