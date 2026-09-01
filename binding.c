@@ -190,7 +190,7 @@ bare_module__get_string(js_env_t *env, js_value_t *value, utf8_t *result, size_t
 }
 
 static bool
-bare_module__get_strings(js_env_t *env, js_value_t *array, js_value_t ***result, uint32_t *result_len, const char *message) {
+bare_module__get_array_length(js_env_t *env, js_value_t *array, uint32_t *result, const char *message) {
   int err;
 
   bool is_array;
@@ -204,9 +204,51 @@ bare_module__get_strings(js_env_t *env, js_value_t *array, js_value_t ***result,
     return false;
   }
 
-  uint32_t len;
-  err = js_get_array_length(env, array, &len);
+  err = js_get_array_length(env, array, result);
+
+  return err >= 0;
+}
+
+static bool
+bare_module__check_strings(js_env_t *env, js_value_t **elements, uint32_t len, const char *message) {
+  for (uint32_t i = 0; i < len; i++) {
+    if (!bare_module__check_string(env, elements[i], message)) return false;
+  }
+
+  return true;
+}
+
+static bool
+bare_module__get_strings(js_env_t *env, js_value_t *array, js_value_t **result, uint32_t len, uint32_t *result_len, const char *message) {
+  int err;
+
+  uint32_t array_len;
+  if (!bare_module__get_array_length(env, array, &array_len, message)) return false;
+
+  if (array_len > len) {
+    err = js_throw_error(env, uv_err_name(UV_E2BIG), uv_strerror(UV_E2BIG));
+    assert(err == 0);
+
+    return false;
+  }
+
+  uint32_t written;
+  err = js_get_array_elements(env, array, result, array_len, 0, &written);
   if (err < 0) return false;
+
+  if (!bare_module__check_strings(env, result, written, message)) return false;
+
+  *result_len = written;
+
+  return true;
+}
+
+static bool
+bare_module__alloc_strings(js_env_t *env, js_value_t *array, js_value_t ***result, uint32_t *result_len, const char *message) {
+  int err;
+
+  uint32_t len;
+  if (!bare_module__get_array_length(env, array, &len, message)) return false;
 
   js_value_t **elements = calloc(len, sizeof(js_value_t *));
 
@@ -226,12 +268,10 @@ bare_module__get_strings(js_env_t *env, js_value_t *array, js_value_t ***result,
     return false;
   }
 
-  for (uint32_t i = 0; i < written; i++) {
-    if (!bare_module__check_string(env, elements[i], message)) {
-      free(elements);
+  if (!bare_module__check_strings(env, elements, written, message)) {
+    free(elements);
 
-      return false;
-    }
+    return false;
   }
 
   *result = elements;
@@ -517,17 +557,14 @@ bare_module_create_function(js_env_t *env, js_callback_info_t *info) {
   utf8_t file[4096];
   if (!bare_module__get_string(env, argv[0], file, sizeof(file), &file_len)) return NULL;
 
-  js_value_t **args;
   uint32_t args_len;
-  if (!bare_module__get_strings(env, argv[1], &args, &args_len, "Argument names must be strings")) return NULL;
+  js_value_t *args[5];
+  if (!bare_module__get_strings(env, argv[1], args, sizeof(args) / sizeof(args[0]), &args_len, "Argument names must be strings")) return NULL;
 
   js_value_t *source = argv[2];
 
   js_value_t *result;
   err = js_create_function_with_source(env, NULL, 0, (char *) file, file_len, args, args_len, offset, source, &result);
-
-  free(args);
-
   if (err < 0) return NULL;
 
   return result;
@@ -634,7 +671,7 @@ bare_module_create_synthetic_module(js_env_t *env, js_callback_info_t *info) {
 
   js_value_t **export_names;
   uint32_t names_len;
-  if (!bare_module__get_strings(env, argv[3], &export_names, &names_len, "Export names must be strings")) return NULL;
+  if (!bare_module__alloc_strings(env, argv[3], &export_names, &names_len, "Export names must be strings")) return NULL;
 
   // Reading the export names runs whatever the array puts in the way, so the
   // receiver is only known to be unclaimed once that has run its course.
