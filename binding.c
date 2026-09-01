@@ -18,8 +18,20 @@ typedef struct {
 } bare_module_context_t;
 
 typedef struct {
-  bool initialized;
-} bare_module_state_t;
+  js_module_t *module;
+  bare_module_context_t *context;
+} bare_module_record_t;
+
+typedef struct bare_module_env_s bare_module_env_t;
+
+struct bare_module_env_s {
+  js_env_t *env;
+  bare_module_env_t *next;
+};
+
+static uv_once_t bare_module__guard = UV_ONCE_INIT;
+static uv_mutex_t bare_module__lock;
+static bare_module_env_t *bare_module__envs = NULL;
 
 static const js_type_tag_t bare_module__context_tag = {
   .lower = 0x4d2a8f13c6b74e05,
@@ -35,6 +47,71 @@ static const js_type_tag_t bare_module__synthetic_module_tag = {
   .lower = 0x7c53e0a91d6b48f2,
   .upper = 0x0d94fc27e8a15b36,
 };
+
+static void
+bare_module__on_guard(void) {
+  int err;
+
+  err = uv_mutex_init(&bare_module__lock);
+  assert(err == 0);
+}
+
+static int
+bare_module__claim_env(js_env_t *env) {
+  uv_once(&bare_module__guard, bare_module__on_guard);
+
+  bare_module_env_t *node = malloc(sizeof(bare_module_env_t));
+
+  if (node == NULL) return UV_ENOMEM;
+
+  int err = 0;
+
+  uv_mutex_lock(&bare_module__lock);
+
+  for (bare_module_env_t *next = bare_module__envs; next != NULL; next = next->next) {
+    if (next->env == env) {
+      err = UV_EEXIST;
+      break;
+    }
+  }
+
+  if (err == 0) {
+    node->env = env;
+    node->next = bare_module__envs;
+
+    bare_module__envs = node;
+  }
+
+  uv_mutex_unlock(&bare_module__lock);
+
+  if (err != 0) free(node);
+
+  return err;
+}
+
+static void
+bare_module__release_env(js_env_t *env) {
+  uv_mutex_lock(&bare_module__lock);
+
+  for (bare_module_env_t **next = &bare_module__envs; *next != NULL; next = &(*next)->next) {
+    bare_module_env_t *node = *next;
+
+    if (node->env == env) {
+      *next = node->next;
+
+      free(node);
+
+      break;
+    }
+  }
+
+  uv_mutex_unlock(&bare_module__lock);
+}
+
+static void
+bare_module__on_teardown(void *data) {
+  bare_module__release_env((js_env_t *) data);
+}
 
 static bool
 bare_module__has_tag(js_env_t *env, js_value_t *value, const js_type_tag_t *tag) {
@@ -114,6 +191,22 @@ bare_module__check_unclaimed(js_env_t *env, js_value_t *value) {
 }
 
 static bool
+bare_module__release_wrap(js_env_t *env, js_value_t *value) {
+  int err;
+
+  js_value_t *exception;
+  err = js_get_and_clear_last_exception(env, &exception);
+  assert(err == 0);
+
+  int removed = js_remove_wrap(env, value, NULL);
+
+  err = js_throw(env, exception);
+  assert(err == 0);
+
+  return removed == 0;
+}
+
+static bool
 bare_module__check_function(js_env_t *env, js_value_t *value, const char *message) {
   int err;
 
@@ -162,6 +255,22 @@ bare_module__get_int32(js_env_t *env, js_value_t *value, int32_t *result, const 
 
   err = js_get_value_int32(env, value, result);
   assert(err == 0);
+
+  return true;
+}
+
+static bool
+bare_module__get_offset(js_env_t *env, js_value_t *value, int32_t *result) {
+  int err;
+
+  if (!bare_module__get_int32(env, value, result, "Offset must be a 32-bit integer")) return false;
+
+  if (*result < 0) {
+    err = js_throw_range_error(env, NULL, "Offset must not be negative");
+    assert(err == 0);
+
+    return false;
+  }
 
   return true;
 }
@@ -280,6 +389,26 @@ bare_module__alloc_strings(js_env_t *env, js_value_t *array, js_value_t ***resul
   return true;
 }
 
+static bool
+bare_module__get_module(js_env_t *env, js_value_t *value, bare_module_context_t *context, js_module_t **result) {
+  int err;
+
+  bare_module_record_t *handle;
+  err = js_unwrap(env, value, (void **) &handle);
+  if (err < 0) return false;
+
+  if (context != NULL && handle->context != context) {
+    err = js_throw_error(env, NULL, "Module belongs to another module context");
+    assert(err == 0);
+
+    return false;
+  }
+
+  *result = handle->module;
+
+  return true;
+}
+
 static js_module_t *
 bare_module__on_import(js_env_t *env, js_value_t *specifier, js_value_t *assertions, js_module_t *referrer, void *data) {
   bare_module_context_t *context = (bare_module_context_t *) data;
@@ -312,8 +441,7 @@ bare_module__on_import(js_env_t *env, js_value_t *specifier, js_value_t *asserti
 
   if (!bare_module__check_module(env, result)) goto err;
 
-  err = js_unwrap(env, result, (void **) &module);
-  if (err < 0) goto err;
+  if (!bare_module__get_module(env, result, context, &module)) goto err;
 
   err = js_close_handle_scope(env, scope);
   assert(err == 0);
@@ -476,16 +604,8 @@ bare_module_init(js_env_t *env, js_callback_info_t *info) {
   size_t argc = 5;
   js_value_t *argv[5];
 
-  bare_module_state_t *state;
-  err = js_get_callback_info(env, info, &argc, argv, NULL, (void **) &state);
+  err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
   assert(err == 0);
-
-  if (state->initialized) {
-    err = js_throw_error(env, NULL, "Module context has already been initialized");
-    assert(err == 0);
-
-    return NULL;
-  }
 
   if (!bare_module__check_unclaimed(env, argv[0])) return NULL;
   if (!bare_module__check_function(env, argv[1], "Import handler must be a function")) return NULL;
@@ -493,9 +613,27 @@ bare_module_init(js_env_t *env, js_callback_info_t *info) {
   if (!bare_module__check_function(env, argv[3], "Evaluate handler must be a function")) return NULL;
   if (!bare_module__check_function(env, argv[4], "Meta handler must be a function")) return NULL;
 
+  err = bare_module__claim_env(env);
+
+  if (err == UV_EEXIST) {
+    err = js_throw_error(env, NULL, "Module context has already been initialized");
+    assert(err == 0);
+
+    return NULL;
+  }
+
+  if (err < 0) {
+    err = js_throw_error(env, uv_err_name(err), uv_strerror(err));
+    assert(err == 0);
+
+    return NULL;
+  }
+
   bare_module_context_t *context = malloc(sizeof(bare_module_context_t));
 
   if (context == NULL) {
+    bare_module__release_env(env);
+
     err = js_throw_error(env, uv_err_name(UV_ENOMEM), uv_strerror(UV_ENOMEM));
     assert(err == 0);
 
@@ -523,17 +661,33 @@ bare_module_init(js_env_t *env, js_callback_info_t *info) {
 
   if (err < 0) {
     bare_module__destroy_context(env, context);
+    bare_module__release_env(env);
 
     return NULL;
   }
 
   err = js_add_type_tag(env, argv[0], &bare_module__context_tag);
-  if (err < 0) return NULL;
+
+  if (err < 0) {
+    if (bare_module__release_wrap(env, argv[0])) {
+      bare_module__destroy_context(env, context);
+    }
+
+    bare_module__release_env(env);
+
+    return NULL;
+  }
+
+  err = js_add_teardown_callback(env, bare_module__on_teardown, (void *) env);
+
+  if (err < 0) {
+    bare_module__release_env(env);
+
+    return NULL;
+  }
 
   err = js_on_dynamic_import(env, bare_module__on_dynamic_import, (void *) context);
   assert(err == 0);
-
-  state->initialized = true;
 
   return NULL;
 }
@@ -551,7 +705,7 @@ bare_module_create_function(js_env_t *env, js_callback_info_t *info) {
   if (!bare_module__check_string(env, argv[2], "Source must be a string")) return NULL;
 
   int32_t offset;
-  if (!bare_module__get_int32(env, argv[3], &offset, "Offset must be a 32-bit integer")) return NULL;
+  if (!bare_module__get_offset(env, argv[3], &offset)) return NULL;
 
   size_t file_len;
   utf8_t file[4096];
@@ -593,10 +747,12 @@ static void
 bare_module__on_finalize(js_env_t *env, void *data, void *finalize_hint) {
   int err;
 
-  js_module_t *module = data;
+  bare_module_record_t *handle = (bare_module_record_t *) data;
 
-  err = js_delete_module(env, module);
+  err = js_delete_module(env, handle->module);
   assert(err == 0);
+
+  free(handle);
 }
 
 static js_value_t *
@@ -614,7 +770,7 @@ bare_module_create_module(js_env_t *env, js_callback_info_t *info) {
   if (!bare_module__check_string(env, argv[3], "Source must be a string")) return NULL;
 
   int32_t offset;
-  if (!bare_module__get_int32(env, argv[4], &offset, "Offset must be a 32-bit integer")) return NULL;
+  if (!bare_module__get_offset(env, argv[4], &offset)) return NULL;
 
   bare_module_context_t *context;
   err = js_unwrap(env, argv[0], (void **) &context);
@@ -626,21 +782,50 @@ bare_module_create_module(js_env_t *env, js_callback_info_t *info) {
 
   js_value_t *source = argv[3];
 
-  js_module_t *module;
-  err = js_create_module(env, (char *) file, file_len, offset, source, bare_module__on_meta, (void *) context, &module);
-  if (err < 0) return NULL;
+  bare_module_record_t *handle = malloc(sizeof(bare_module_record_t));
 
-  err = js_wrap(env, argv[1], (void *) module, bare_module__on_finalize, NULL, NULL);
-
-  if (err < 0) {
-    err = js_delete_module(env, module);
+  if (handle == NULL) {
+    err = js_throw_error(env, uv_err_name(UV_ENOMEM), uv_strerror(UV_ENOMEM));
     assert(err == 0);
 
     return NULL;
   }
 
+  js_module_t *module;
+  err = js_create_module(env, (char *) file, file_len, offset, source, bare_module__on_meta, (void *) context, &module);
+
+  if (err < 0) {
+    free(handle);
+
+    return NULL;
+  }
+
+  handle->module = module;
+  handle->context = context;
+
+  err = js_wrap(env, argv[1], (void *) handle, bare_module__on_finalize, NULL, NULL);
+
+  if (err < 0) {
+    err = js_delete_module(env, module);
+    assert(err == 0);
+
+    free(handle);
+
+    return NULL;
+  }
+
   err = js_add_type_tag(env, argv[1], &bare_module__module_tag);
-  if (err < 0) return NULL;
+
+  if (err < 0) {
+    if (bare_module__release_wrap(env, argv[1])) {
+      err = js_delete_module(env, module);
+      assert(err == 0);
+
+      free(handle);
+    }
+
+    return NULL;
+  }
 
   js_value_t *result;
   err = js_get_module_id(env, module, &result);
@@ -681,24 +866,54 @@ bare_module_create_synthetic_module(js_env_t *env, js_callback_info_t *info) {
     return NULL;
   }
 
-  js_module_t *module;
-  err = js_create_synthetic_module(env, (char *) file, file_len, export_names, names_len, bare_module__on_evaluate, (void *) context, &module);
+  bare_module_record_t *handle = malloc(sizeof(bare_module_record_t));
 
-  free(export_names);
+  if (handle == NULL) {
+    free(export_names);
 
-  if (err < 0) return NULL;
-
-  err = js_wrap(env, argv[1], (void *) module, bare_module__on_finalize, NULL, NULL);
-
-  if (err < 0) {
-    err = js_delete_module(env, module);
+    err = js_throw_error(env, uv_err_name(UV_ENOMEM), uv_strerror(UV_ENOMEM));
     assert(err == 0);
 
     return NULL;
   }
 
+  js_module_t *module;
+  err = js_create_synthetic_module(env, (char *) file, file_len, export_names, names_len, bare_module__on_evaluate, (void *) context, &module);
+
+  free(export_names);
+
+  if (err < 0) {
+    free(handle);
+
+    return NULL;
+  }
+
+  handle->module = module;
+  handle->context = context;
+
+  err = js_wrap(env, argv[1], (void *) handle, bare_module__on_finalize, NULL, NULL);
+
+  if (err < 0) {
+    err = js_delete_module(env, module);
+    assert(err == 0);
+
+    free(handle);
+
+    return NULL;
+  }
+
   err = js_add_type_tag(env, argv[1], &bare_module__synthetic_module_tag);
-  if (err < 0) return NULL;
+
+  if (err < 0) {
+    if (bare_module__release_wrap(env, argv[1])) {
+      err = js_delete_module(env, module);
+      assert(err == 0);
+
+      free(handle);
+    }
+
+    return NULL;
+  }
 
   js_value_t *result;
   err = js_get_module_id(env, module, &result);
@@ -721,8 +936,7 @@ bare_module_set_module_export(js_env_t *env, js_callback_info_t *info) {
   if (!bare_module__check_string(env, argv[1], "Export name must be a string")) return NULL;
 
   js_module_t *module;
-  err = js_unwrap(env, argv[0], (void **) &module);
-  if (err < 0) return NULL;
+  if (!bare_module__get_module(env, argv[0], NULL, &module)) return NULL;
 
   err = js_set_module_export(env, module, argv[1], argv[2]);
   if (err < 0) return NULL;
@@ -749,8 +963,7 @@ bare_module_run_module(js_env_t *env, js_callback_info_t *info) {
   if (err < 0) return NULL;
 
   js_module_t *module;
-  err = js_unwrap(env, argv[1], (void **) &module);
-  if (err < 0) return NULL;
+  if (!bare_module__get_module(env, argv[1], context, &module)) return NULL;
 
   err = js_instantiate_module(env, module, bare_module__on_import, (void *) context);
   if (err < 0) return NULL;
@@ -782,13 +995,13 @@ bare_module_run_module(js_env_t *env, js_callback_info_t *info) {
     err = js_get_and_clear_last_exception(env, &exception);
     assert(err == 0);
 
-    js_value_t *ctx;
-    err = js_get_reference_value(env, context->ctx, &ctx);
+    js_value_t *undefined;
+    err = js_get_undefined(env, &undefined);
     assert(err == 0);
 
     js_value_t *args[3] = {reason, promise, exception};
 
-    err = js_call_function(env, ctx, argv[2], 3, args, NULL);
+    err = js_call_function(env, undefined, argv[2], 3, args, NULL);
     if (err < 0) return NULL;
   }
 
@@ -808,8 +1021,7 @@ bare_module_get_module_namespace(js_env_t *env, js_callback_info_t *info) {
   if (!bare_module__check_module(env, argv[0])) return NULL;
 
   js_module_t *module;
-  err = js_unwrap(env, argv[0], (void **) &module);
-  if (err < 0) return NULL;
+  if (!bare_module__get_module(env, argv[0], NULL, &module)) return NULL;
 
   js_value_t *result;
   err = js_get_module_namespace(env, module, &result);
@@ -818,48 +1030,29 @@ bare_module_get_module_namespace(js_env_t *env, js_callback_info_t *info) {
   return result;
 }
 
-static void
-bare_module__on_teardown(void *data) {
-  free(data);
-}
-
 static js_value_t *
 bare_module_exports(js_env_t *env, js_value_t *exports) {
   int err;
 
-  bare_module_state_t *state = malloc(sizeof(bare_module_state_t));
-
-  if (state == NULL) {
-    err = js_throw_error(env, uv_err_name(UV_ENOMEM), uv_strerror(UV_ENOMEM));
-    assert(err == 0);
-
-    return NULL;
-  }
-
-  state->initialized = false;
-
-  err = js_add_teardown_callback(env, bare_module__on_teardown, (void *) state);
-  assert(err == 0);
-
-#define V(name, fn, data) \
+#define V(name, fn) \
   { \
     js_value_t *val; \
-    err = js_create_function(env, name, -1, fn, data, &val); \
+    err = js_create_function(env, name, -1, fn, NULL, &val); \
     assert(err == 0); \
     err = js_set_named_property(env, exports, name, val); \
     assert(err == 0); \
   }
 
-  V("init", bare_module_init, (void *) state)
+  V("init", bare_module_init)
 
-  V("createFunction", bare_module_create_function, NULL)
-  V("getFunctionID", bare_module_get_function_id, NULL)
+  V("createFunction", bare_module_create_function)
+  V("getFunctionID", bare_module_get_function_id)
 
-  V("createModule", bare_module_create_module, NULL)
-  V("createSyntheticModule", bare_module_create_synthetic_module, NULL)
-  V("setModuleExport", bare_module_set_module_export, NULL)
-  V("runModule", bare_module_run_module, NULL)
-  V("getModuleNamespace", bare_module_get_module_namespace, NULL)
+  V("createModule", bare_module_create_module)
+  V("createSyntheticModule", bare_module_create_synthetic_module)
+  V("setModuleExport", bare_module_set_module_export)
+  V("runModule", bare_module_run_module)
+  V("getModuleNamespace", bare_module_get_module_namespace)
 #undef V
 
   return exports;

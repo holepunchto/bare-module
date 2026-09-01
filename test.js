@@ -3,6 +3,7 @@ const Bundle = require('bare-bundle')
 const { pathToFileURL } = require('bare-url')
 const Module = require('.')
 const binding = require('./binding')
+const ModuleContext = require('./lib/context')
 
 const isWindows = Bare.platform === 'win32'
 
@@ -5641,6 +5642,14 @@ test('module context cannot be initialized twice', async (t) => {
   await t.exception.all(() => binding.init({}, noop, noop, noop, noop))
 })
 
+test('module context cannot be initialized from another addon instance', async (t) => {
+  const addon = new Bare.Addon(pathToFileURL(require.addon.resolve('.')))
+
+  t.not(addon.exports, binding)
+
+  await t.exception.all(() => addon.exports.init({}, noop, noop, noop, noop))
+})
+
 test('module context is required to create and run modules', async (t) => {
   await t.exception.all(
     () => binding.createModule({}, {}, root + '/index.mjs', 'export default 42', 0),
@@ -5816,6 +5825,32 @@ test('function id requires a function', async (t) => {
   await t.exception.all(() => binding.getFunctionID({}), TypeError)
 
   t.ok(typeof binding.getFunctionID(noop) === 'symbol')
+})
+
+test('module offset must not be negative', async (t) => {
+  await t.exception.all(
+    () => binding.createFunction(root + '/index.js', [], 'return 1', -1),
+    RangeError
+  )
+
+  await t.exception.all(
+    () => binding.createModule(ModuleContext, {}, root + '/index.mjs', 'export default 42', -1),
+    RangeError
+  )
+})
+
+test('run handler is not called with the module context', (t) => {
+  t.plan(1)
+
+  const module = {}
+
+  binding.createModule(ModuleContext, module, root + '/index.mjs', 'export default 42', 0)
+
+  binding.runModule(ModuleContext, module, function () {
+    'use strict'
+
+    t.is(this, undefined)
+  })
 })
 
 function noop() {}
