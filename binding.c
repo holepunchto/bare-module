@@ -8,6 +8,8 @@
 #include <utf.h>
 #include <uv.h>
 
+#define BARE_MODULE_MAX_EXPORT_NAMES 0x100000
+
 typedef struct {
   js_env_t *env;
   js_ref_t *ctx;
@@ -376,15 +378,22 @@ bare_module__get_strings(js_env_t *env, js_value_t *array, js_value_t **result, 
 }
 
 static bool
-bare_module__alloc_strings(js_env_t *env, js_value_t *array, js_value_t ***result, uint32_t *result_len, const char *message) {
+bare_module__alloc_strings(js_env_t *env, js_value_t *array, js_value_t ***result, uint32_t len, uint32_t *result_len, const char *message) {
   int err;
 
-  uint32_t len;
-  if (!bare_module__get_array_length(env, array, &len, message)) return false;
+  uint32_t array_len;
+  if (!bare_module__get_array_length(env, array, &array_len, message)) return false;
 
-  js_value_t **elements = calloc(len, sizeof(js_value_t *));
+  if (array_len > len) {
+    err = js_throw_error(env, uv_err_name(UV_E2BIG), uv_strerror(UV_E2BIG));
+    assert(err == 0);
 
-  if (elements == NULL && len > 0) {
+    return false;
+  }
+
+  js_value_t **elements = calloc(array_len, sizeof(js_value_t *));
+
+  if (elements == NULL && array_len > 0) {
     err = js_throw_error(env, uv_err_name(UV_ENOMEM), uv_strerror(UV_ENOMEM));
     assert(err == 0);
 
@@ -392,7 +401,7 @@ bare_module__alloc_strings(js_env_t *env, js_value_t *array, js_value_t ***resul
   }
 
   uint32_t written;
-  err = js_get_array_elements(env, array, elements, len, 0, &written);
+  err = js_get_array_elements(env, array, elements, array_len, 0, &written);
 
   if (err < 0) {
     free(elements);
@@ -887,7 +896,7 @@ bare_module_create_synthetic_module(js_env_t *env, js_callback_info_t *info) {
 
   js_value_t **export_names;
   uint32_t names_len;
-  if (!bare_module__alloc_strings(env, argv[3], &export_names, &names_len, "Export names must be strings")) return NULL;
+  if (!bare_module__alloc_strings(env, argv[3], &export_names, BARE_MODULE_MAX_EXPORT_NAMES, &names_len, "Export names must be strings")) return NULL;
 
   // Reading the export names runs whatever the array puts in the way, so the
   // receiver is only known to be unclaimed once that has run its course.
