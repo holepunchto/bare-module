@@ -354,9 +354,11 @@ options = {
 
 Load a module with the provided `url`. `url` is a WHATWG `URL`. If provided, the `source` will be passed to the matching `extension` for the `url`.
 
-Passing a `referrer` loads the module into the graph of that referrer, sharing its loader and everything the loader carries. Any of those values may still be overridden by passing it explicitly, in which case the module is loaded by a loader of its own that inherits whatever was not overridden.
+Passing a `referrer` loads the module into the graph of that referrer, sharing its loader and everything the loader carries. Any of those values may still be overridden by passing it explicitly, in which case the module is loaded by a loader of its own that inherits whatever was not overridden. Passing `undefined` is the same as not passing the option at all and so inherits.
 
-Overriding `protocol` or `builtins` narrows what the module may reach, and so starts a graph of its own: the `cache`, `resolutions` and `main` of the referrer are left behind rather than inherited. A cache belongs to the `protocol` and `builtins` its modules were read with, since every record in it is a handle to the loader that read it. Loading over a cache that holds modules read with either of those different throws `CACHE_INCOMPATIBLE`.
+Overriding `protocol` or `builtins` narrows what the module may reach, and so starts a graph of its own: the `cache`, `resolutions` and `main` of the referrer are left behind rather than inherited. Passing a `cache` of its own leaves the `resolutions` and `main` of the referrer behind for the same reason, as both belong to the graph the referrer's cache holds.
+
+A cache belongs to the `protocol` and `builtins` it is first loaded with, since every record in it is a handle to the loader that read it. Loading over a cache that belongs to a different `protocol` or `builtins`, or that holds a module read with either of those different, throws `CACHE_INCOMPATIBLE`.
 
 Options include:
 

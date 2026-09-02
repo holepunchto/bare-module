@@ -5314,6 +5314,87 @@ test('load over a cache read through a different protocol throws', async (t) => 
   }
 })
 
+test('load over a cache claimed by a loader that reaches elsewhere throws', async (t) => {
+  const cache = Object.create(null)
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    async read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = 1'
+      }
+
+      t.fail()
+    }
+  })
+
+  const other = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.cjs'
+    },
+
+    async read(url) {
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = 2'
+      }
+
+      t.fail()
+    }
+  })
+
+  // The cache is still empty when both loaders are constructed, so it is the
+  // claim rather than what the cache holds that must catch this.
+  const a = Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
+  const b = Module.load(new URL(root + '/bar.cjs'), { protocol: other, cache })
+
+  await t.execution(a)
+
+  try {
+    await b
+
+    t.fail('load should throw')
+  } catch (err) {
+    t.is(err.code, 'CACHE_INCOMPATIBLE')
+  }
+})
+
+test('cache written with a record read through a different protocol throws', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = 1'
+      }
+
+      t.fail()
+    }
+  })
+
+  const other = new Module.Protocol()
+
+  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+
+  const cache = Object.create(null)
+
+  const loader = new Module.Loader({ protocol: other, cache })
+
+  cache[root + '/foo.cjs'] = foo
+
+  try {
+    loader.get(new URL(root + '/foo.cjs'))
+
+    t.fail('get should throw')
+  } catch (err) {
+    t.is(err.code, 'CACHE_INCOMPATIBLE')
+  }
+})
+
 test('load with referrer and protocol cannot read through the referrer', async (t) => {
   t.plan(2)
 
@@ -5444,6 +5525,58 @@ test('createRequire with referrer and protocol uses the given protocol', async (
   const require = Module.createRequire(null, { referrer: foo, protocol: other })
 
   t.is(require('./bar'), 42)
+})
+
+test('createRequire with referrer and no protocol keeps the referrer protocol', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs' || url.href === root + '/bar.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = 1'
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+
+  const require = Module.createRequire(null, {
+    referrer: foo,
+    protocol: undefined,
+    cache: Object.create(null)
+  })
+
+  t.is(require('./bar'), 42)
+})
+
+test('createRequire with referrer and its own cache does not share main', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = 1'
+      }
+
+      t.fail()
+    }
+  })
+
+  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+
+  t.is(Module.createRequire(null, { referrer: foo, imports: {} }).main, foo)
+
+  t.is(Module.createRequire(null, { referrer: foo, cache: Object.create(null) }).main, null)
 })
 
 test('load with cache', async (t) => {
