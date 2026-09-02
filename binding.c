@@ -113,7 +113,12 @@ bare_module__on_teardown(void *data) {
   bare_module__release_env((js_env_t *) data);
 }
 
-static bool
+// Answers 1 for a value carrying the tag and 0 for one that does not, and -1
+// when the tag could not be read at all, which leaves an exception pending.
+// Reading it is the one part of the tag machinery that can fail, and collapsing
+// that failure into "untagged" would let a claimed receiver pass for an
+// unclaimed one, so every caller has to tell the three apart.
+static int
 bare_module__has_tag(js_env_t *env, js_value_t *value, const js_type_tag_t *tag) {
   int err;
 
@@ -121,26 +126,32 @@ bare_module__has_tag(js_env_t *env, js_value_t *value, const js_type_tag_t *tag)
   err = js_is_object(env, value, &is_object);
   assert(err == 0);
 
-  if (!is_object) return false;
+  if (!is_object) return 0;
 
   bool tagged;
   err = js_check_type_tag(env, value, tag, &tagged);
-  if (err < 0) return false;
+  if (err < 0) return -1;
 
-  return tagged;
+  return tagged ? 1 : 0;
 }
 
-static bool
+static int
 bare_module__is_module(js_env_t *env, js_value_t *value) {
-  return bare_module__has_tag(env, value, &bare_module__module_tag) ||
-         bare_module__has_tag(env, value, &bare_module__synthetic_module_tag);
+  int tagged = bare_module__has_tag(env, value, &bare_module__module_tag);
+
+  if (tagged != 0) return tagged;
+
+  return bare_module__has_tag(env, value, &bare_module__synthetic_module_tag);
 }
 
 static bool
 bare_module__check_context(js_env_t *env, js_value_t *value) {
   int err;
 
-  if (bare_module__has_tag(env, value, &bare_module__context_tag)) return true;
+  int tagged = bare_module__has_tag(env, value, &bare_module__context_tag);
+
+  if (tagged < 0) return false;
+  if (tagged) return true;
 
   err = js_throw_type_error(env, NULL, "Context must be a module context");
   assert(err == 0);
@@ -152,7 +163,10 @@ static bool
 bare_module__check_module(js_env_t *env, js_value_t *value) {
   int err;
 
-  if (bare_module__is_module(env, value)) return true;
+  int tagged = bare_module__is_module(env, value);
+
+  if (tagged < 0) return false;
+  if (tagged) return true;
 
   err = js_throw_type_error(env, NULL, "Receiver must be a module");
   assert(err == 0);
@@ -164,7 +178,10 @@ static bool
 bare_module__check_synthetic_module(js_env_t *env, js_value_t *value) {
   int err;
 
-  if (bare_module__has_tag(env, value, &bare_module__synthetic_module_tag)) return true;
+  int tagged = bare_module__has_tag(env, value, &bare_module__synthetic_module_tag);
+
+  if (tagged < 0) return false;
+  if (tagged) return true;
 
   err = js_throw_type_error(env, NULL, "Receiver must be a synthetic module");
   assert(err == 0);
@@ -180,8 +197,14 @@ bare_module__check_unclaimed(js_env_t *env, js_value_t *value) {
   err = js_is_object(env, value, &is_object);
   assert(err == 0);
 
-  if (is_object && !bare_module__is_module(env, value) && !bare_module__has_tag(env, value, &bare_module__context_tag)) {
-    return true;
+  if (is_object) {
+    int claimed = bare_module__is_module(env, value);
+
+    if (claimed == 0) claimed = bare_module__has_tag(env, value, &bare_module__context_tag);
+
+    if (claimed < 0) return false;
+
+    if (claimed == 0) return true;
   }
 
   err = js_throw_type_error(env, NULL, "Receiver must be an unclaimed object");
