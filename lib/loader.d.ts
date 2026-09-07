@@ -5,14 +5,41 @@ import { Attributes, Cache, Module } from '..'
 import Protocol from './protocol'
 
 interface ModuleLoader {
+  /** A map of builtin module specifiers mapped to the loaded module. */
   readonly builtins: Builtins
+  /**
+   * The cache of loaded modules that the loader was created with, shared with every module of its
+   * graph.
+   */
   readonly cache: Cache
+  /**
+   * The maximum number of module reads to perform concurrently while linking. `0` applies no
+   * limit.
+   */
   readonly concurrency: number
+  /**
+   * An array of conditions used to resolve dependencies while loading the module. See [Conditional
+   * exports](https://github.com/holepunchto/bare-module#conditional-exports) for possible values.
+   */
   readonly conditions: Conditions
+  /**
+   * The assumed type of a module without a `type` using an ambiguous extension, such as `.js`. See
+   * `Module.constants.types` for possible values.
+   */
   readonly defaultType: number
+  /** The import map when the module was loaded. */
   readonly imports: ImportsMap
+  /** The module representing the entry script where the program was launched. */
   readonly main: Module
+  /**
+   * The `ModuleProtocol` modules are resolved and read through, shared with every module of the
+   * loader's graph.
+   */
   readonly protocol: Protocol
+  /**
+   * A map of preresolved imports with keys being serialized parent URLs and values being
+   * `"imports"` maps.
+   */
   readonly resolutions: ResolutionsMap
 
   get(url: URL): Module | null
@@ -40,6 +67,10 @@ declare namespace ModuleLoader {
   }
 
   export interface LinkOptions {
+    /**
+     * The import attributes, for example the `{ type: 'json' }` in `import foo from 'foo' with {
+     * type: 'json' }`.
+     */
     attributes?: Attributes
     conditions?: Conditions
   }
