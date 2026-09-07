@@ -10,15 +10,6 @@
 
 #define BARE_MODULE_MAX_EXPORT_NAMES 0x100000
 
-int
-js_on_script_dynamic_import(js_env_t *env, js_script_t *script, js_dynamic_import_cb cb, void *data);
-
-int
-js_on_module_dynamic_import(js_env_t *env, js_module_t *module, js_dynamic_import_cb cb, void *data);
-
-int
-js_on_function_dynamic_import(js_env_t *env, js_value_t *function, js_dynamic_import_cb cb, void *data);
-
 typedef struct {
   js_env_t *env;
   js_ref_t *ctx;
