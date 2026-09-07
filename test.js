@@ -3828,6 +3828,55 @@ test('imports in node_modules', async (t) => {
   await t.execution(Module.load(new URL(root + '/node_modules/foo/foo.js'), { protocol }))
 })
 
+test('imports in node_modules, not applied to a required package', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/node_modules/foo/package.json' ||
+        url.href === root + '/node_modules/foo/foo.js' ||
+        url.href === root + '/node_modules/bar/package.json' ||
+        url.href === root + '/node_modules/bar/bar.js' ||
+        url.href === root + '/node_modules/baz/package.json' ||
+        url.href === root + '/node_modules/baz/index.js'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/node_modules/foo/package.json') {
+        return '{ "imports": { "qux": "baz" } }'
+      }
+
+      if (url.href === root + '/node_modules/foo/foo.js') {
+        return "module.exports = require('bar')"
+      }
+
+      if (url.href === root + '/node_modules/bar/package.json') {
+        return '{ "main": "./bar.js" }'
+      }
+
+      if (url.href === root + '/node_modules/bar/bar.js') {
+        return "module.exports = require('qux')"
+      }
+
+      if (url.href === root + '/node_modules/baz/package.json') {
+        return '{}'
+      }
+
+      if (url.href === root + '/node_modules/baz/index.js') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  // The map is declared by 'foo' and so must not follow the specifier into
+  // 'bar', which has no 'qux' of its own to resolve.
+  await t.exception(Module.load(new URL(root + '/node_modules/foo/foo.js'), { protocol }), {
+    code: 'MODULE_NOT_FOUND'
+  })
+})
+
 test('require a module already visited as a package scope', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
@@ -4927,6 +4976,60 @@ test('load .js with imports attribute, imports expansion', async (t) => {
   })
 
   const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, 42)
+})
+
+test('load .js with imports attribute, required package', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return (
+        url.href === root + '/node_modules/foo/package.json' ||
+        url.href === root + '/node_modules/foo/foo.js' ||
+        url.href === root + '/node_modules/bar/package.json' ||
+        url.href === root + '/node_modules/bar/bar.js' ||
+        url.href === root + '/node_modules/bar/lib.js' ||
+        url.href === root + '/node_modules/baz/package.json' ||
+        url.href === root + '/node_modules/baz/index.js'
+      )
+    },
+
+    read(url) {
+      if (url.href === root + '/node_modules/foo/package.json') {
+        return '{ "imports": { "qux": "baz" } }'
+      }
+
+      if (url.href === root + '/node_modules/foo/foo.js') {
+        return "module.exports = require('bar', { with: { imports: './package.json' } })"
+      }
+
+      if (url.href === root + '/node_modules/bar/package.json') {
+        return '{ "main": "./bar.js" }'
+      }
+
+      if (url.href === root + '/node_modules/bar/bar.js') {
+        return "module.exports = require('./lib.js')"
+      }
+
+      if (url.href === root + '/node_modules/bar/lib.js') {
+        return "module.exports = require('qux')"
+      }
+
+      if (url.href === root + '/node_modules/baz/package.json') {
+        return '{}'
+      }
+
+      if (url.href === root + '/node_modules/baz/index.js') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  // Unlike a map a package declares for itself, an attached map covers the
+  // whole subtree of what it's attached to, 'bar' its own files included.
+  const { exports } = await Module.load(new URL(root + '/node_modules/foo/foo.js'), { protocol })
 
   t.is(exports, 42)
 })

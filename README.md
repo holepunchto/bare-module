@@ -298,7 +298,11 @@ The `"engines"` field defines the engine requirements of the package. During mod
 
 #### `const url = await Module.resolve(specifier, parentURL[, condition][, options])`
 
-Resolve the module `specifier` relative to the `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`. `condition` is an optional import condition, defaulting to `'require'` if not specified.
+Resolve the module `specifier` relative to the `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`. `condition` is an optional import condition, defaulting to `'require'` if not specified. Pass `'asset'` to resolve an asset rather than a module.
+
+#### `const url = Module.resolveSync(specifier, parentURL[, condition][, options])`
+
+As `Module.resolve()`, but synchronous, for a caller that cannot await one. The protocol is driven through its `*Sync` methods and so must answer synchronously, throwing `UNEXPECTED_PROMISE` if it does not.
 
 Options include:
 
@@ -323,32 +327,9 @@ options = {
 }
 ```
 
-#### `const url = await Module.asset(specifier, parentURL[, options])`
+#### `const module = Module.loadSync(url[, source][, options])`
 
-Get the asset URL by resolving `specifier` relative to `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`.
-
-Options include:
-
-```js
-options = {
-  // The referring module. Supplies the loader, and with it the default for
-  // every option below that the loader carries.
-  referrer: null,
-  // The ModuleProtocol to resolve the specifier. Defaults to referrer's
-  // protocol if defined, otherwise to a protocol with no backing store
-  protocol,
-  // A map of builtin module specifiers to loaded modules. If matched by the
-  // default resolver, the protocol of the resolved URL will be `builtin:`.
-  builtins,
-  // The module cache. An already loaded module is served from here instead of
-  // being resolved again. Pass an object to use it, `true` to opt in to the
-  // shared cache, or omit for a fresh cache.
-  cache,
-  // A map of preresolved imports with keys being serialized parent URLs and
-  // values being "imports" maps.
-  resolutions
-}
-```
+As `Module.load()`, but synchronous, for a caller that cannot await one. The protocol is driven through its `*Sync` methods and so must answer synchronously, throwing `UNEXPECTED_PROMISE` if it does not. A module with a top-level `await` is returned as soon as its evaluation is started rather than once it has finished, as there is nothing to wait on it here.
 
 #### `const module = await Module.load(url[, source][, options])`
 
@@ -649,8 +630,11 @@ methods = {
   readSync,
   // function* (url): Iterable<URL> | AsyncIterable<URL>
   // A generator enumerating the URLs under a prefix, used for asset globbing.
-  // Defaults to a single candidate - the prefix itself, if it exists - so a
-  // backing store need only provide it to support listing a directory.
+  // Defaults to listing nothing, in which case an asset is the prefix itself as
+  // `exists` has it, so a backing store need only provide `list` to support an
+  // asset naming a directory. Setting `resolved` on what it returns declares the
+  // URLs already resolved, sparing whoever drives the listing a `resolve` for
+  // every URL in it.
   list,
   // function* (url): Iterable<URL>
   // The synchronous variant of `list`. Defaults to delegating to `list` and
@@ -659,7 +643,7 @@ methods = {
 }
 ```
 
-Each method comes in an asynchronous and a synchronous variant. The asynchronous variants may return a promise (or, for `list`, an asynchronous iterable) to serve modules asynchronously and are driven by the asynchronous `Module` statics (`Module.load`, `Module.resolve`, and `Module.asset`) and [`Loader`](#loader) methods. The synchronous `*Sync` variants are driven by the synchronous entry points (`require()`, `loader.linkSync`, and `loader.importSync`) and default to calling their asynchronous counterpart, throwing an `UNEXPECTED_PROMISE` error if it answers asynchronously. A protocol that supports both may implement the `*Sync` variants directly; for such a protocol a statically imported module is read through the asynchronous `read` while a `require()` with a computed specifier is read through `readSync`.
+Each method comes in an asynchronous and a synchronous variant. The asynchronous variants may return a promise (or, for `list`, an asynchronous iterable) to serve modules asynchronously and are driven by the asynchronous `Module` statics (`Module.load` and `Module.resolve`) and [`Loader`](#loader) methods. The synchronous `*Sync` variants are driven by the synchronous entry points (`require()`, `Module.loadSync`, `Module.resolveSync`, `loader.linkSync`, and `loader.importSync`) and default to calling their asynchronous counterpart, throwing an `UNEXPECTED_PROMISE` error if it answers asynchronously. A protocol that supports both may implement the `*Sync` variants directly; for such a protocol a statically imported module is read through the asynchronous `read` while a `require()` with a computed specifier is read through `readSync`.
 
 #### `const extended = protocol.extend(methods)`
 
@@ -732,10 +716,6 @@ The registry of loaded modules, keyed by URL href.
 #### `loader.resolutions`
 
 The graph's resolution cache, keyed by referrer URL, aggregated as modules are linked.
-
-#### `loader.addons`, `loader.assets`
-
-The addon and asset URLs discovered while linking, accumulated across link calls. These are the non-module files the graph depends on, such as what a bundler would need to include.
 
 #### `loader.protocol`, `loader.builtins`, `loader.imports`, `loader.defaultType`, `loader.conditions`
 
