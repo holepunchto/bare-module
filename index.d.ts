@@ -79,6 +79,9 @@ declare namespace Module {
     opts?: LoadOptions
   ): Promise<Module>
 
+  export function loadSync(url: URL, opts: LoadOptions): Module
+  export function loadSync(url: URL, source?: Buffer | string | null, opts?: LoadOptions): Module
+
   export function resolve(specifier: string, parentURL: URL, opts?: ResolveOptions): Promise<URL>
   export function resolve(
     specifier: string,
@@ -87,7 +90,13 @@ declare namespace Module {
     opts?: ResolveOptions
   ): Promise<URL>
 
-  export function asset(specifier: string, parentURL: URL, opts?: ResolveOptions): Promise<URL>
+  export function resolveSync(specifier: string, parentURL: URL, opts?: ResolveOptions): URL
+  export function resolveSync(
+    specifier: string,
+    parentURL: URL,
+    condition: string,
+    opts?: ResolveOptions
+  ): URL
 
   export function createRequire(parentURL: string | URL, opts?: CreateRequireOptions): Require
 }

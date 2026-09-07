@@ -5,8 +5,6 @@ import { Attributes, Cache, Module } from '..'
 import Protocol from './protocol'
 
 interface ModuleLoader {
-  readonly addons: URL[]
-  readonly assets: URL[]
   readonly builtins: Builtins
   readonly cache: Cache
   readonly concurrency: number

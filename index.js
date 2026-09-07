@@ -27,20 +27,46 @@ exports.load = async function load(url, source = null, opts = {}) {
   return loader._evaluate(record)
 }
 
-exports.resolve = function resolve(specifier, parentURL, condition = 'require', opts = {}) {
+exports.loadSync = function loadSync(url, source = null, opts = {}) {
+  if (typeof url === 'string') url = new URL(url)
+
+  if (source !== null && typeof source !== 'string' && !ArrayBuffer.isView(source)) {
+    opts = source
+    source = null
+  }
+
+  const loader = loaderFor(opts)
+
+  const record = loader.linkSync(url, source, opts)
+
+  record._evaluate()
+
+  return record
+}
+
+exports.resolve = async function resolve(specifier, parentURL, condition = 'require', opts = {}) {
   if (typeof condition === 'object' && condition !== null) {
     opts = condition
     condition = 'require'
   }
 
-  return resolveWith(specifier, parentURL, condition, opts)
+  const { loader, parent } = resolveWith(specifier, parentURL, opts)
+
+  return await loader._resolve(specifier, parent, condition)
 }
 
-exports.asset = function asset(specifier, parentURL, opts = {}) {
-  return resolveWith(specifier, parentURL, 'asset', opts)
+exports.resolveSync = function resolveSync(specifier, parentURL, condition = 'require', opts = {}) {
+  if (typeof condition === 'object' && condition !== null) {
+    opts = condition
+    condition = 'require'
+  }
+
+  const { loader, parent } = resolveWith(specifier, parentURL, opts)
+
+  return loader._resolveSync(specifier, parent, condition)
 }
 
-async function resolveWith(specifier, parentURL, condition, opts) {
+function resolveWith(specifier, parentURL, opts) {
   if (typeof specifier !== 'string') {
     throw new TypeError(
       `Specifier must be a string. Received type ${typeof specifier} (${specifier})`
@@ -55,7 +81,7 @@ async function resolveWith(specifier, parentURL, condition, opts) {
     parentURL = new URL(parentURL)
   }
 
-  return await loaderFor(opts)._resolveAsync(specifier, parentURL, condition)
+  return { loader: loaderFor(opts), parent: parentURL }
 }
 
 exports.createRequire = function createRequire(parentURL, opts = {}) {

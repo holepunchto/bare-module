@@ -24,17 +24,6 @@ typedef struct {
   bare_module_context_t *context;
 } bare_module_record_t;
 
-typedef struct bare_module_env_s bare_module_env_t;
-
-struct bare_module_env_s {
-  js_env_t *env;
-  bare_module_env_t *next;
-};
-
-static uv_once_t bare_module__guard = UV_ONCE_INIT;
-static uv_mutex_t bare_module__lock;
-static bare_module_env_t *bare_module__envs = NULL;
-
 static const js_type_tag_t bare_module__context_tag = {
   .lower = 0x4d2a8f13c6b74e05,
   .upper = 0x8e17b309a5df42c1,
@@ -50,76 +39,6 @@ static const js_type_tag_t bare_module__synthetic_module_tag = {
   .upper = 0x0d94fc27e8a15b36,
 };
 
-static void
-bare_module__on_guard(void) {
-  int err;
-
-  err = uv_mutex_init(&bare_module__lock);
-  assert(err == 0);
-}
-
-static int
-bare_module__claim_env(js_env_t *env) {
-  uv_once(&bare_module__guard, bare_module__on_guard);
-
-  bare_module_env_t *node = malloc(sizeof(bare_module_env_t));
-
-  if (node == NULL) return UV_ENOMEM;
-
-  int err = 0;
-
-  uv_mutex_lock(&bare_module__lock);
-
-  for (bare_module_env_t *next = bare_module__envs; next != NULL; next = next->next) {
-    if (next->env == env) {
-      err = UV_EEXIST;
-      break;
-    }
-  }
-
-  if (err == 0) {
-    node->env = env;
-    node->next = bare_module__envs;
-
-    bare_module__envs = node;
-  }
-
-  uv_mutex_unlock(&bare_module__lock);
-
-  if (err != 0) free(node);
-
-  return err;
-}
-
-static void
-bare_module__release_env(js_env_t *env) {
-  uv_mutex_lock(&bare_module__lock);
-
-  for (bare_module_env_t **next = &bare_module__envs; *next != NULL; next = &(*next)->next) {
-    bare_module_env_t *node = *next;
-
-    if (node->env == env) {
-      *next = node->next;
-
-      free(node);
-
-      break;
-    }
-  }
-
-  uv_mutex_unlock(&bare_module__lock);
-}
-
-static void
-bare_module__on_teardown(void *data) {
-  bare_module__release_env((js_env_t *) data);
-}
-
-// Answers 1 for a value carrying the tag and 0 for one that does not, and -1
-// when the tag could not be read at all, which leaves an exception pending.
-// Reading it is the one part of the tag machinery that can fail, and collapsing
-// that failure into "untagged" would let a claimed receiver pass for an
-// unclaimed one, so every caller has to tell the three apart.
 static int
 bare_module__has_tag(js_env_t *env, js_value_t *value, const js_type_tag_t *tag) {
   int err;
@@ -630,7 +549,7 @@ bare_module__on_finalize_context(js_env_t *env, void *data, void *finalize_hint)
 }
 
 static js_value_t *
-bare_module_init(js_env_t *env, js_callback_info_t *info) {
+bare_module_create_context(js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 5;
@@ -645,27 +564,9 @@ bare_module_init(js_env_t *env, js_callback_info_t *info) {
   if (!bare_module__check_function(env, argv[3], "Evaluate handler must be a function")) return NULL;
   if (!bare_module__check_function(env, argv[4], "Meta handler must be a function")) return NULL;
 
-  err = bare_module__claim_env(env);
-
-  if (err == UV_EEXIST) {
-    err = js_throw_error(env, NULL, "Module context has already been initialized");
-    assert(err == 0);
-
-    return NULL;
-  }
-
-  if (err < 0) {
-    err = js_throw_error(env, uv_err_name(err), uv_strerror(err));
-    assert(err == 0);
-
-    return NULL;
-  }
-
   bare_module_context_t *context = malloc(sizeof(bare_module_context_t));
 
   if (context == NULL) {
-    bare_module__release_env(env);
-
     err = js_throw_error(env, uv_err_name(UV_ENOMEM), uv_strerror(UV_ENOMEM));
     assert(err == 0);
 
@@ -693,41 +594,15 @@ bare_module_init(js_env_t *env, js_callback_info_t *info) {
 
   if (err < 0) {
     bare_module__destroy_context(env, context);
-    bare_module__release_env(env);
 
     return NULL;
   }
 
   err = js_add_type_tag(env, argv[0], &bare_module__context_tag);
 
-  if (err < 0) {
-    if (bare_module__release_wrap(env, argv[0])) {
-      bare_module__destroy_context(env, context);
-    }
-
-    bare_module__release_env(env);
-
-    return NULL;
+  if (err < 0 && bare_module__release_wrap(env, argv[0])) {
+    bare_module__destroy_context(env, context);
   }
-
-  err = js_add_teardown_callback(env, bare_module__on_teardown, (void *) env);
-
-  if (err < 0) {
-    // Releasing the claim lets another call try again, so the context this call
-    // installed has to go with it. Nothing can strip the type tag, but an
-    // unwrapped receiver no longer unwraps to a context and so can't stand in
-    // for one.
-    if (bare_module__release_wrap(env, argv[0])) {
-      bare_module__destroy_context(env, context);
-    }
-
-    bare_module__release_env(env);
-
-    return NULL;
-  }
-
-  err = js_on_dynamic_import(env, bare_module__on_dynamic_import, (void *) context);
-  assert(err == 0);
 
   return NULL;
 }
@@ -736,29 +611,37 @@ static js_value_t *
 bare_module_create_function(js_env_t *env, js_callback_info_t *info) {
   int err;
 
-  size_t argc = 4;
-  js_value_t *argv[4];
+  size_t argc = 5;
+  js_value_t *argv[5];
 
   err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
   assert(err == 0);
 
-  if (!bare_module__check_string(env, argv[2], "Source must be a string")) return NULL;
+  if (!bare_module__check_context(env, argv[0])) return NULL;
+  if (!bare_module__check_string(env, argv[3], "Source must be a string")) return NULL;
 
   int32_t offset;
-  if (!bare_module__get_offset(env, argv[3], &offset)) return NULL;
+  if (!bare_module__get_offset(env, argv[4], &offset)) return NULL;
+
+  bare_module_context_t *context;
+  err = js_unwrap(env, argv[0], (void **) &context);
+  if (err < 0) return NULL;
 
   size_t file_len;
   utf8_t file[4096];
-  if (!bare_module__get_string(env, argv[0], file, sizeof(file), &file_len)) return NULL;
+  if (!bare_module__get_string(env, argv[1], file, sizeof(file), &file_len)) return NULL;
 
   uint32_t args_len;
   js_value_t *args[5];
-  if (!bare_module__get_strings(env, argv[1], args, sizeof(args) / sizeof(args[0]), &args_len, "Argument names must be strings")) return NULL;
+  if (!bare_module__get_strings(env, argv[2], args, sizeof(args) / sizeof(args[0]), &args_len, "Argument names must be strings")) return NULL;
 
-  js_value_t *source = argv[2];
+  js_value_t *source = argv[3];
 
   js_value_t *result;
   err = js_create_function_with_source(env, NULL, 0, (char *) file, file_len, args, args_len, offset, source, &result);
+  if (err < 0) return NULL;
+
+  err = js_on_function_dynamic_import(env, result, bare_module__on_dynamic_import, (void *) context);
   if (err < 0) return NULL;
 
   return result;
@@ -840,6 +723,17 @@ bare_module_create_module(js_env_t *env, js_callback_info_t *info) {
     return NULL;
   }
 
+  err = js_on_module_dynamic_import(env, module, bare_module__on_dynamic_import, (void *) context);
+
+  if (err < 0) {
+    err = js_delete_module(env, module);
+    assert(err == 0);
+
+    free(handle);
+
+    return NULL;
+  }
+
   handle->module = module;
   handle->context = context;
 
@@ -898,8 +792,6 @@ bare_module_create_synthetic_module(js_env_t *env, js_callback_info_t *info) {
   uint32_t names_len;
   if (!bare_module__alloc_strings(env, argv[3], &export_names, BARE_MODULE_MAX_EXPORT_NAMES, &names_len, "Export names must be strings")) return NULL;
 
-  // Reading the export names runs whatever the array puts in the way, so the
-  // receiver is only known to be unclaimed once that has run its course.
   if (!bare_module__check_unclaimed(env, argv[1])) {
     free(export_names);
 
@@ -1093,7 +985,7 @@ bare_module_exports(js_env_t *env, js_value_t *exports) {
     assert(err == 0); \
   }
 
-  V("init", bare_module_init)
+  V("createContext", bare_module_create_context)
 
   V("createFunction", bare_module_create_function)
   V("getFunctionID", bare_module_get_function_id)
