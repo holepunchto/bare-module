@@ -286,6 +286,290 @@ The `"engines"` field defines the engine requirements of the package. During mod
 
 See the [`bare-module` reference](https://docs.pears.com/reference/bare/modules/bare-module).
 
+## CommonJS modules
+
+### `require(specifier[, options])`
+
+Used to import JavaScript or JSON modules and local files. Relative paths such as `./`, `./foo`, `./bar/baz`, and `../foo` will be resolved against the directory named by `__dirname`. POSIX style paths are resolved in an OS independent fashion, meaning that the examples above will work on Windows in the same way they would on POSIX systems.
+
+Returns the exported module contents.
+
+Options include:
+
+```js
+options = {
+  // The import attributes which instruct how the file or module should be loaded.
+  // Possible values for `type` are `script`, `module`, `json`, `bundle`,
+  // `addon`, `binary` and `text`.
+  with: { type: 'json' }
+}
+```
+
+### `require.main`
+
+The module representing the entry script where the program was launched. The same value as `module.main` for the current module.
+
+### `require.cache`
+
+A cache of loaded modules for this module. The same value as `module.cache` for the current module.
+
+### `const path = require.resolve(specifier[, parentURL])`
+
+Use the internal machinery of `require()` to resolve the `specifier` string relative to the URL `parentURL` and return the path string.
+
+### `require.addon([specifier][, parentURL])`
+
+Also used to import modules but specifically loads only addon modules. `specifier` is resolved relative to `parentURL` using the [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm) algorithm.
+
+Returns the exported module contents.
+
+A common pattern for writing an addon module is to use `require.addon()` as the JavaScript module exports:
+
+```js
+module.exports = require.addon()
+```
+
+See [`bare-addon`](https://github.com/holepunchto/bare-addon) for a template of building native addon modules.
+
+### `require.addon.host`
+
+Returns the string representation of the platform and architecture used when resolving addons with the pattern `<platform>-<arch>[-<environment>]`. Returns the same value as `Bare.Addon.host`.
+
+### `const path = require.addon.resolve([specifier][, parentURL])`
+
+Resolve the `specifier` string relative to the URL `parentURL` as an addon and returns the path string. The `specifier` is resolved using the [addon resolution algorithm](https://github.com/holepunchto/bare-addon-resolve#algorithm).
+
+### `const path = require.asset(specifier[, parentURL])`
+
+Resolve the `specifier` relative to the `parentURL` and return the path of the asset as a string.
+
+Can be used to load assets, for example the following loads `./foo.txt` from the local files:
+
+```js
+const fs = require('bare-fs')
+const contents = fs.readFileSync(require.asset('./foo.txt'))
+```
+
+## ECMAScript modules
+
+### `import defaultExport, * as name, { export1, export2 as alias2, ... } from 'specifier' with { type: 'json' }`
+
+The static `import` declaration is used to import read-only live bindings that are exported by another module. The imported bindings are called _live_ bindings because they are updated by the module that exported the binding, but cannot be re-assigned by the importing module. In brief, you can import what is exported from another module.
+
+For more information on `import` syntax, see [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import).
+
+### `import.meta.url`
+
+The string representation of the URL for the current module.
+
+### `import.meta.main`
+
+A boolean representing whether the current module is the entry script where the program was launched.
+
+### `import.meta.cache`
+
+A cache of loaded modules for this module. The same value as `module.cache` for the current module.
+
+### `import.meta.dirname`
+
+The directory name of the current module.
+
+### `import.meta.filename`
+
+The file name of the current module.
+
+### `const href = import.meta.resolve(specifier[, parentURL])`
+
+A module-relative resolution function which returns the URL string for the module. The `specifier` is a string which is resolved relative to the `parentURL` which is a WHATWG URL.
+
+### `import.meta.addon([specifier][, parentURL])`
+
+Also used to import modules but specifically loads only addon modules. `specifier` is resolved relative to `parentURL` using the [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm) algorithm.
+
+Returns the exported module contents.
+
+### `import.meta.addon.host`
+
+Returns the string representation of the platform and architecture used when resolving addons with the pattern `<platform>-<arch>[-<environment>]`. Returns the same value as `Bare.Addon.host`.
+
+### `const href = import.meta.addon.resolve([specifier][, parentURL])`
+
+Resolve the `specifier` string relative to the URL `parentURL` as an addon and returns the URL string. The `specifier` is resolved using the [addon resolution algorithm](https://github.com/holepunchto/bare-addon-resolve#algorithm).
+
+### `const href = import.meta.asset(specifier[, parentURL])`
+
+Resolve the `specifier` relative to the `parentURL` and return the URL of the asset as a string.
+
+## Custom `require()`
+
+Creating a custom require allows one to create a preconfigured `require()`. This can be useful in scenarios such as a Read-Evaluate-Print-Loop (REPL) where the parent URL is set to a directory so requiring relative paths to work correctly.
+
+### `const require = Module.createRequire(parentURL[, options])`
+
+Options include:
+
+```js
+options = {
+  // The referring module. Supplies the loader, and with it the default for
+  // every option below that the loader carries.
+  referrer: null,
+  // The assumed type of a module without a type using an ambiguous extension
+  // such as `.js`. See Module.constants. Inherited from `referrer` if it is
+  // defined, otherwise defaults to SCRIPT.
+  defaultType: Module.constants.SCRIPT,
+  // A cache of loaded modules. Inherited from `referrer` if it is defined,
+  // otherwise a fresh cache is used. Pass an explicit cache object to use it,
+  // `true` to opt in to the shared cache, or `false` to force a fresh
+  // cache.
+  cache,
+  // The ModuleProtocol used to resolve and read modules. Defaults to
+  // referrer's protocol if defined, otherwise to a protocol with no backing
+  // store.
+  protocol,
+  // A default "imports" map to apply to all specifiers. Follows the same
+  // syntax and rules as the "imports" property defined in `package.json`.
+  imports,
+  // A map of preresolved imports with keys being serialized parent URLs and
+  // values being "imports" maps.
+  resolutions,
+  // A map of builtin module specifiers to loaded modules.
+  builtins
+}
+```
+
+## Protocols
+
+Protocols define how to resolve, access and load modules. Custom protocols can be defined to extend or replace how module are resolved and loaded to support things like loading modules via a [`Hyperdrive`](https://github.com/holepunchto/hyperdrive).
+
+When no protocol is passed, modules are read through a bare `Module.Protocol`. It has no backing store of its own and in particular cannot read from the file system, so it finds nothing; pass a protocol to serve the source.
+
+### `const protocol = new Module.Protocol(methods, context = null)`
+
+Methods include:
+
+```js
+methods = {
+  // function (url): URL | Promise<URL>
+  // A function to post-process a resolved URL before it is used, for example to
+  // canonicalize symlinks with `realpath` so a module reached through different
+  // symlinks dedupes against its real location. Defaults to the identity. May
+  // return a promise to resolve asynchronously.
+  resolve,
+  // function (url): URL
+  // The synchronous variant of `resolve`, used when a graph is linked
+  // synchronously. Defaults to calling `resolve` and throwing if it returns a
+  // promise.
+  resolveSync,
+  // function (url): boolean | Promise<boolean>
+  // A function that returns whether the URL exists as a boolean. Consulted before
+  // `read`, so a candidate that does not exist is never fetched. May return a
+  // promise to answer asynchronously.
+  exists,
+  // function (url): boolean
+  // The synchronous variant of `exists`. Defaults to calling `exists` and throwing
+  // if it returns a promise.
+  existsSync,
+  // function (url): string | Buffer | null | Promise<string | Buffer | null>
+  // A function that returns the source of a URL as a string or buffer, or `null`
+  // if it does not exist. May return a promise to serve the source asynchronously.
+  read,
+  // function (url): string | Buffer | null
+  // The synchronous variant of `read`. Defaults to calling `read` and throwing if
+  // it returns a promise.
+  readSync,
+  // function* (url): Iterable<URL> | AsyncIterable<URL>
+  // A generator enumerating the URLs under a prefix, used for asset globbing.
+  // Defaults to listing nothing, in which case an asset is the prefix itself as
+  // `exists` has it, so a backing store need only provide `list` to support an
+  // asset naming a directory. Setting `resolved` on what it returns declares the
+  // URLs already resolved, sparing whoever drives the listing a `resolve` for
+  // every URL in it.
+  list,
+  // function* (url): Iterable<URL>
+  // The synchronous variant of `list`. Defaults to delegating to `list` and
+  // throwing if it returns an asynchronous iterable.
+  listSync
+}
+```
+
+Each method comes in an asynchronous and a synchronous variant. The asynchronous variants may return a promise (or, for `list`, an asynchronous iterable) to serve modules asynchronously and are driven by the asynchronous `Module` statics (`Module.load` and `Module.resolve`) and [`Loader`](#loader) methods. The synchronous `*Sync` variants are driven by the synchronous entry points (`require()`, `Module.loadSync`, `Module.resolveSync`, `loader.linkSync`, and `loader.importSync`) and default to calling their asynchronous counterpart, throwing an `UNEXPECTED_PROMISE` error if it answers asynchronously. A protocol that supports both may implement the `*Sync` variants directly; for such a protocol a statically imported module is read through the asynchronous `read` while a `require()` with a computed specifier is read through `readSync`.
+
+### `const extended = protocol.extend(methods)`
+
+Return a new `ModuleProtocol` that overrides the given `methods`, falling back to this protocol for any method not provided.
+
+## Loader
+
+A `Loader` owns a registry of module records keyed by URL and drives resolution and linking against a [protocol](#protocols). Where the `Module` statics link and evaluate in a single call, a loader exposes linking and evaluation as separate steps, as well as synchronous variants, so modules can be served from an asynchronous protocol such as one backed by a [`Hyperdrive`](https://github.com/holepunchto/hyperdrive).
+
+Linking is split into two phases. First a graph is _linked_: every module reachable from the entry is read, lexed, and recorded, and its native module is created without running any code. Then it is _evaluated_: the recorded modules run. All IO happens during linking, so evaluation is synchronous regardless of how the graph was fetched.
+
+### `const loader = new Module.Loader([options])`
+
+Options include:
+
+```js
+options = {
+  // The ModuleProtocol used to resolve and read modules. Defaults to a
+  // protocol with no backing store of its own.
+  protocol,
+  // A map of builtin module specifiers to their exports.
+  builtins,
+  // The assumed type of a module without a type using an ambiguous extension
+  // such as `.js`. See Module.constants for possible values.
+  defaultType,
+  // A default "imports" map to apply to all specifiers. Follows the same syntax
+  // and rules as the "imports" property defined in `package.json`.
+  imports,
+  // The maximum number of module reads to perform concurrently while linking.
+  // Defaults to `0`, which applies no limit.
+  concurrency: 0,
+  // The module cache. Pass an object to use it, `true` to opt in to the shared
+  // cache, or omit for a fresh cache scoped to this loader.
+  cache,
+  // A map of preresolved imports with keys being serialized parent URLs and
+  // values being "imports" maps. Defaults to following the cache: a shared cache
+  // shares its resolutions, a fresh cache gets fresh resolutions.
+  resolutions
+}
+```
+
+### `const module = await loader.link(entry[, source][, options])`
+
+Link the module graph rooted at `entry`, a WHATWG `URL`, awaiting each read through the protocol so an asynchronous protocol can serve the source. If `source` is given, it is used instead of reading `entry` through the protocol. Returns the entry module, instantiated but not yet evaluated.
+
+### `const module = loader.linkSync(entry[, source][, options])`
+
+The synchronous equivalent of `loader.link()`. It drives the protocol's synchronous methods (`resolveSync`, `existsSync`, `readSync`, and `listSync`), which throw an `UNEXPECTED_PROMISE` error when the protocol can only answer asynchronously.
+
+### `const exports = await loader.import(entry[, options])`
+
+Link and evaluate the graph rooted at `entry`, returning its exports. Awaits the entry's evaluation, so a top-level `await` in the entry settles before the exports are returned.
+
+### `const exports = loader.importSync(entry[, options])`
+
+The synchronous equivalent of `loader.import()`. It cannot await, so a top-level `await` in the entry is unsupported.
+
+### `const module = loader.get(url)`
+
+Return the module record cached under `url`, a WHATWG `URL`, or `null` if none is loaded.
+
+### `loader.main`
+
+The graph's main module: the first entry linked. `null` until the first link.
+
+### `loader.cache`
+
+The registry of loaded modules, keyed by URL href.
+
+### `loader.resolutions`
+
+The graph's resolution cache, keyed by referrer URL, aggregated as modules are linked.
+
+### `loader.protocol`, `loader.builtins`, `loader.imports`, `loader.defaultType`, `loader.conditions`
+
+The loader configuration, mirroring the like-named getters on a `module`.
+
 ## Threat model
 
 `bare-module` is one of the addons Bare compiles into its binary, so it inherits [Bare's threat model](https://github.com/holepunchto/bare/blob/main/docs/threat-model.md). See [`docs/threat-model.md`](docs/threat-model.md) for where this addon sits in it.
