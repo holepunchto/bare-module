@@ -562,13 +562,9 @@ The graph's main module: the first entry linked. `null` until the first link.
 
 The registry of loaded modules, keyed by URL href.
 
-### `loader.resolutions`
+### `loader.protocol`
 
-The graph's resolution cache, keyed by referrer URL, aggregated as modules are linked.
-
-### `loader.protocol`, `loader.builtins`, `loader.imports`, `loader.defaultType`, `loader.conditions`
-
-The loader configuration, as given when the loader was constructed.
+The `ModuleProtocol` modules are resolved and read through, shared with every module of the loader's graph.
 
 ## Threat model
 

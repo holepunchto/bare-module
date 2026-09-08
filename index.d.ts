@@ -106,9 +106,6 @@ declare namespace Module {
     asset: (specifier: string, parentURL?: URL) => string
   }
 
-  export const protocol: Protocol
-  export const cache: Cache
-
   /**
    * Load a module with the provided `url`. `url` is a WHATWG `URL`. If provided, the `source` will
    * be passed to the matching `extension` for the `url`.

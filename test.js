@@ -2227,6 +2227,140 @@ test('import map with protocol', async (t) => {
   )
 })
 
+test('loadSync', (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs' || url.href === root + '/bar.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return "module.exports = require('/bar.cjs')"
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = Module.loadSync(new URL(root + '/foo.cjs'), { protocol })
+
+  t.is(exports, 42)
+})
+
+test('loadSync with source', (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = Module.loadSync(
+    new URL(root + '/foo.cjs'),
+    Buffer.from("module.exports = require('/bar.cjs')"),
+    { protocol, cache: Object.create(null) }
+  )
+
+  t.is(exports, 42)
+})
+
+test('loadSync .mjs', (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.mjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'export default 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = Module.loadSync(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(exports.default, 42)
+})
+
+test('loadSync with string url', (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = Module.loadSync(root + '/foo.cjs', { protocol })
+
+  t.is(exports, 42)
+})
+
+test('loadSync throws when protocol read is asynchronous', (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    async read(url) {
+      return 'module.exports = 42'
+    }
+  })
+
+  t.exception(() => Module.loadSync(new URL(root + '/foo.cjs'), { protocol }), {
+    code: 'UNEXPECTED_PROMISE'
+  })
+})
+
+test('loadSync with top-level await returns before evaluation finishes', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.mjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return `
+          export let done = false
+          await new Promise((resolve) => setImmediate(resolve))
+          done = true
+        `
+      }
+
+      t.fail()
+    }
+  })
+
+  // There is nothing to await the evaluation on here, so the module is handed
+  // back as soon as its evaluation is started.
+  const { exports } = Module.loadSync(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(exports.done, false, 'evaluation has not passed the await yet')
+
+  await new Promise((resolve) => setImmediate(resolve))
+
+  t.is(exports.done, true, 'the live binding reflects the finished evaluation')
+})
+
 test('loader importSync', (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
@@ -2395,11 +2529,13 @@ test('loader addons', async (t) => {
     }
   })
 
-  const loader = new Module.Loader({ protocol })
+  const resolutions = Object.create(null)
+
+  const loader = new Module.Loader({ protocol, resolutions })
 
   await loader.link(new URL(root + '/foo.js'))
 
-  t.is(loader.resolutions[root + '/foo.js']['.'], pathToFileURL(require.addon.resolve('.')).href)
+  t.is(resolutions[root + '/foo.js']['.'], pathToFileURL(require.addon.resolve('.')).href)
 })
 
 test('loader addons resolved during evaluation', async (t) => {
