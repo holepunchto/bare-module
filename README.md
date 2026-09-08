@@ -307,11 +307,11 @@ options = {
 
 ### `require.main`
 
-The module representing the entry script where the program was launched. The same value as `module.main` for the current module.
+The module representing the entry script where the program was launched.
 
 ### `require.cache`
 
-A cache of loaded modules for this module. The same value as `module.cache` for the current module.
+The registry of loaded modules for this module's graph, keyed by URL href.
 
 ### `const path = require.resolve(specifier[, parentURL])`
 
@@ -365,10 +365,6 @@ The string representation of the URL for the current module.
 ### `import.meta.main`
 
 A boolean representing whether the current module is the entry script where the program was launched.
-
-### `import.meta.cache`
-
-A cache of loaded modules for this module. The same value as `module.cache` for the current module.
 
 ### `import.meta.dirname`
 
@@ -568,7 +564,7 @@ The graph's resolution cache, keyed by referrer URL, aggregated as modules are l
 
 ### `loader.protocol`, `loader.builtins`, `loader.imports`, `loader.defaultType`, `loader.conditions`
 
-The loader configuration, mirroring the like-named getters on a `module`.
+The loader configuration, as given when the loader was constructed.
 
 ## Threat model
 
