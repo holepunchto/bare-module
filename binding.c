@@ -424,10 +424,10 @@ bare_module__on_dynamic_import(js_env_t *env, js_value_t *specifier, js_value_t 
   err = js_get_reference_value(env, context->on_dynamic_import, &on_dynamic_import);
   assert(err == 0);
 
-  js_value_t *args[3] = {specifier, referrer, id};
+  js_value_t *args[4] = {specifier, assertions, referrer, id};
 
   js_value_t *result;
-  err = js_call_function(env, ctx, on_dynamic_import, 3, args, &result);
+  err = js_call_function(env, ctx, on_dynamic_import, 4, args, &result);
   if (err < 0) goto err;
 
   err = js_escape_handle(env, scope, result, &result);

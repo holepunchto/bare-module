@@ -1,6 +1,5 @@
 import Buffer from 'bare-buffer'
 import URL from 'bare-url'
-import { Builtins, Conditions, ImportsMap, ResolutionsMap } from 'bare-module-resolve'
 import { constants } from 'bare-module-traverse'
 import Protocol from './lib/protocol'
 import Loader from './lib/loader'
@@ -20,23 +19,6 @@ interface Attributes {
 }
 
 interface Module {
-  /** A map of builtin module specifiers mapped to the loaded module. */
-  readonly builtins: Builtins
-  /**
-   * The cache of loaded modules that the module was loaded through, shared with every other module
-   * of its graph.
-   */
-  readonly cache: Cache
-  /**
-   * An array of conditions used to resolve dependencies while loading the module. See [Conditional
-   * exports](https://github.com/holepunchto/bare-module#conditional-exports) for possible values.
-   */
-  readonly conditions: Conditions
-  /**
-   * The assumed type of a module without a `type` using an ambiguous extension, such as `.js`. See
-   * `Module.constants.types` for possible values.
-   */
-  readonly defaultType: number
   /** The directory portion of `module.url`. */
   readonly dirname: string
   /** The exports from the module. */
@@ -44,23 +26,12 @@ interface Module {
   /** The file portion of `module.url`. */
   readonly filename: string
   readonly id: string
-  /** The import map when the module was loaded. */
-  readonly imports: ImportsMap
-  /** The module representing the entry script where the program was launched. */
-  readonly main: Module
   readonly path: string
   /**
    * The `ModuleProtocol` class for resolving, reading and loading modules. See
    * [Protocols](https://github.com/holepunchto/bare-module#protocols) for usage.
    */
   readonly protocol: Protocol
-  /**
-   * A map of preresolved imports with keys being serialized parent URLs and values being
-   * `"imports"` maps.
-   */
-  readonly resolutions: ResolutionsMap
-  /** The type of the module. See `Module.constants.types` for possible values. */
-  readonly type: number
   /** The WHATWG `URL` identifier of the module. */
   readonly url: URL
 }
@@ -134,9 +105,6 @@ declare namespace Module {
      */
     asset: (specifier: string, parentURL?: URL) => string
   }
-
-  export const protocol: Protocol
-  export const cache: Cache
 
   /**
    * Load a module with the provided `url`. `url` is a WHATWG `URL`. If provided, the `source` will

@@ -1552,7 +1552,7 @@ test('load .cjs with data: protocol require', async (t) => {
 
     read(url) {
       if (url.href === root + '/foo.cjs') {
-        return `module.exports = require('data:,${encodeURIComponent('module.exports = 42')}')`
+        return `module.exports = require('data:text/javascript,${encodeURIComponent('module.exports = 42')}')`
       }
 
       t.fail()
@@ -1572,7 +1572,7 @@ test('load .mjs with data: protocol import', async (t) => {
 
     read(url) {
       if (url.href === root + '/foo.mjs') {
-        return `export { default } from 'data:,${encodeURIComponent('export default 42')}'`
+        return `export { default } from 'data:text/javascript,${encodeURIComponent('export default 42')}'`
       }
 
       t.fail()
@@ -1592,7 +1592,7 @@ test('load .cjs with computed data: protocol require', async (t) => {
 
     read(url) {
       if (url.href === root + '/foo.cjs') {
-        return `module.exports = require('data:,' + '${encodeURIComponent('module.exports = 42')}')`
+        return `module.exports = require('data:text/javascript,' + '${encodeURIComponent('module.exports = 42')}')`
       }
 
       t.fail()
@@ -1612,7 +1612,30 @@ test('load .mjs with computed data: protocol import', async (t) => {
 
     read(url) {
       if (url.href === root + '/foo.mjs') {
-        return `export default await import('data:,' + '${encodeURIComponent('export default 42')}')`
+        return `export default await import('data:text/javascript,' + '${encodeURIComponent('export default 42')}')`
+      }
+
+      t.fail()
+    }
+  })
+
+  // A dynamic import names either a script or a module, and a computed
+  // specifier carries no attributes to say which.
+  await t.exception.all(
+    Module.load(new URL(root + '/foo.mjs'), { protocol }),
+    /AMBIGUOUS_MODULE_TYPE/
+  )
+})
+
+test('load .mjs with computed data: protocol import and type attribute', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.mjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return `export default await import('data:text/javascript,' + '${encodeURIComponent('export default 42')}', { with: { type: 'module' } })`
       }
 
       t.fail()
@@ -1624,6 +1647,78 @@ test('load .mjs with computed data: protocol import', async (t) => {
   t.is(exports.default.default, 42)
 })
 
+test('load .mjs with computed dynamic import and conflicting type attribute', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.mjs' || url.href === root + '/bar.json'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return `
+          await import('/bar' + '.json', { with: { type: 'json' } })
+          export default await import('/bar' + '.json', { with: { type: 'text' } })
+        `
+      }
+
+      if (url.href === root + '/bar.json') {
+        return '{ "foo": 42 }'
+      }
+
+      t.fail()
+    }
+  })
+
+  // The first import caches the module as JSON, so the second must be told it
+  // cannot have it as text.
+  await t.exception.all(Module.load(new URL(root + '/foo.mjs'), { protocol }), /TYPE_INCOMPATIBLE/)
+})
+
+test('load .cjs with computed data: protocol import and script type attribute', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return `module.exports = import('data:text/javascript,' + '${encodeURIComponent('module.exports = 42')}', { with: { type: 'script' } })`
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+
+  t.is((await exports).default, 42)
+})
+
+test('load .cjs with computed data: protocol require and default type', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return `module.exports = require('data:text/javascript,' + '${encodeURIComponent('module.exports = 42')}')`
+      }
+
+      t.fail()
+    }
+  })
+
+  // A data: URL naming no type of its own follows the referrer, not the default
+  // type, so the module below stays a script rather than becoming a module.
+  const { exports } = await Module.load(new URL(root + '/foo.cjs'), {
+    protocol,
+    defaultType: Module.constants.MODULE
+  })
+
+  t.is(exports, 42)
+})
+
 test('load .cjs with absolute require from data: protocol module', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
@@ -1632,7 +1727,7 @@ test('load .cjs with absolute require from data: protocol module', async (t) => 
 
     read(url) {
       if (url.href === root + '/foo.cjs') {
-        return `module.exports = require("data:,${encodeURIComponent(`module.exports = require('${root}/bar.cjs')`)}")`
+        return `module.exports = require("data:text/javascript,${encodeURIComponent(`module.exports = require('${root}/bar.cjs')`)}")`
       }
 
       if (url.href === root + '/bar.cjs') {
@@ -1680,7 +1775,7 @@ test('load .cjs with nested data: protocol require', async (t) => {
 
     read(url) {
       if (url.href === root + '/foo.cjs') {
-        return `module.exports = require("data:,${encodeURIComponent(`module.exports = require("data:,${encodeURIComponent('module.exports = 42')}")`)}")`
+        return `module.exports = require("data:text/javascript,${encodeURIComponent(`module.exports = require("data:text/javascript,${encodeURIComponent('module.exports = 42')}")`)}")`
       }
 
       t.fail()
@@ -1720,7 +1815,7 @@ test('load .cjs with relative require from data: protocol module', async (t) => 
 
     read(url) {
       if (url.href === root + '/foo.cjs') {
-        return `module.exports = require("data:,${encodeURIComponent("module.exports = require('./bar.cjs')")}")`
+        return `module.exports = require("data:text/javascript,${encodeURIComponent("module.exports = require('./bar.cjs')")}")`
       }
 
       if (url.href === root + '/bar.cjs') {
@@ -1768,7 +1863,7 @@ test('load .cjs with bare require from data: protocol module', async (t) => {
 
     read(url) {
       if (url.href === root + '/foo.cjs') {
-        return `module.exports = require("data:,${encodeURIComponent("module.exports = require('bar')")}")`
+        return `module.exports = require("data:text/javascript,${encodeURIComponent("module.exports = require('bar')")}")`
       }
 
       if (url.href === root + '/node_modules/bar/package.json') {
@@ -1824,7 +1919,7 @@ test('load .cjs with builtin require from data: protocol module', async (t) => {
 
     read(url) {
       if (url.href === root + '/foo.cjs') {
-        return `module.exports = require("data:,${encodeURIComponent("module.exports = require('bar')")}")`
+        return `module.exports = require("data:text/javascript,${encodeURIComponent("module.exports = require('bar')")}")`
       }
 
       t.fail()
@@ -1864,7 +1959,7 @@ test('load .mjs with builtin import from data: protocol module', async (t) => {
 
 test('load data: protocol entry', async (t) => {
   const { exports } = await Module.load(
-    new URL('data:,' + encodeURIComponent('module.exports = 42'))
+    new URL('data:text/javascript,' + encodeURIComponent('module.exports = 42'))
   )
 
   t.is(exports, 42)
@@ -1885,6 +1980,72 @@ test('load data: protocol entry with JSON media type', async (t) => {
   )
 
   t.alike(exports, { foo: 42 })
+})
+
+test('load data: protocol entry without a media type', async (t) => {
+  await t.exception(
+    Module.load(new URL('data:,' + encodeURIComponent('module.exports = 42'))),
+    /UNKNOWN_DATA_URL_MEDIA_TYPE/
+  )
+})
+
+test('load .cjs with data: protocol require without a media type', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return `module.exports = require('data:,${encodeURIComponent('module.exports = 42')}')`
+      }
+
+      t.fail()
+    }
+  })
+
+  await t.exception(
+    Module.load(new URL(root + '/foo.cjs'), { protocol }),
+    /UNKNOWN_DATA_URL_MEDIA_TYPE/
+  )
+})
+
+test('load .mjs with dynamic data: protocol import without a type attribute', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.mjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return `export default await import('data:text/javascript,${encodeURIComponent('export default 42')}')`
+      }
+
+      t.fail()
+    }
+  })
+
+  await t.exception(Module.load(new URL(root + '/foo.mjs'), { protocol }), /AMBIGUOUS_MODULE_TYPE/)
+})
+
+test('load .mjs with dynamic data: protocol import with a type attribute', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.mjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return `export default await import('data:text/javascript,${encodeURIComponent('export default 42')}', { with: { type: 'module' } })`
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(exports.default.default, 42)
 })
 
 test('load .mjs with JSON data: protocol import', async (t) => {
@@ -1935,7 +2096,7 @@ test('require.resolve from data: protocol module', async (t) => {
 
     read(url) {
       if (url.href === root + '/foo.cjs') {
-        return `module.exports = require("data:,${encodeURIComponent(`module.exports = require.resolve('${root}/bar.cjs')`)}")`
+        return `module.exports = require("data:text/javascript,${encodeURIComponent(`module.exports = require.resolve('${root}/bar.cjs')`)}")`
       }
 
       if (url.href === root + '/bar.cjs') {
@@ -1959,7 +2120,7 @@ test('require.resolve relative from data: protocol module', async (t) => {
 
     read(url) {
       if (url.href === root + '/foo.cjs') {
-        return `module.exports = require("data:,${encodeURIComponent("module.exports = require.resolve('./bar.cjs')")}")`
+        return `module.exports = require("data:text/javascript,${encodeURIComponent("module.exports = require.resolve('./bar.cjs')")}")`
       }
 
       if (url.href === root + '/bar.cjs') {
@@ -1981,7 +2142,7 @@ test('require.asset from data: protocol module', async (t) => {
 
     read(url) {
       if (url.href === root + '/foo.cjs') {
-        return `module.exports = require("data:,${encodeURIComponent(`module.exports = require.asset('${root}/bar.txt')`)}")`
+        return `module.exports = require("data:text/javascript,${encodeURIComponent(`module.exports = require.asset('${root}/bar.txt')`)}")`
       }
 
       if (url.href === root + '/bar.txt') {
@@ -2005,7 +2166,7 @@ test('require.asset relative from data: protocol module', async (t) => {
 
     read(url) {
       if (url.href === root + '/foo.cjs') {
-        return `module.exports = require("data:,${encodeURIComponent("module.exports = require.asset('./bar.txt')")}")`
+        return `module.exports = require("data:text/javascript,${encodeURIComponent("module.exports = require.asset('./bar.txt')")}")`
       }
 
       if (url.href === root + '/bar.txt') {
@@ -2027,7 +2188,7 @@ test('require.addon.resolve relative from data: protocol module', async (t) => {
 
     read(url) {
       if (url.href === root + '/foo.cjs') {
-        return `module.exports = require("data:,${encodeURIComponent("module.exports = require.addon.resolve('.')")}")`
+        return `module.exports = require("data:text/javascript,${encodeURIComponent("module.exports = require.addon.resolve('.')")}")`
       }
 
       t.fail()
@@ -2064,6 +2225,140 @@ test('import map with protocol', async (t) => {
       }
     })
   )
+})
+
+test('loadSync', (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs' || url.href === root + '/bar.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return "module.exports = require('/bar.cjs')"
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = Module.loadSync(new URL(root + '/foo.cjs'), { protocol })
+
+  t.is(exports, 42)
+})
+
+test('loadSync with source', (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = Module.loadSync(
+    new URL(root + '/foo.cjs'),
+    Buffer.from("module.exports = require('/bar.cjs')"),
+    { protocol, cache: Object.create(null) }
+  )
+
+  t.is(exports, 42)
+})
+
+test('loadSync .mjs', (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.mjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'export default 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = Module.loadSync(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(exports.default, 42)
+})
+
+test('loadSync with string url', (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = Module.loadSync(root + '/foo.cjs', { protocol })
+
+  t.is(exports, 42)
+})
+
+test('loadSync throws when protocol read is asynchronous', (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    async read(url) {
+      return 'module.exports = 42'
+    }
+  })
+
+  t.exception(() => Module.loadSync(new URL(root + '/foo.cjs'), { protocol }), {
+    code: 'UNEXPECTED_PROMISE'
+  })
+})
+
+test('loadSync with top-level await returns before evaluation finishes', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.mjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return `
+          export let done = false
+          await new Promise((resolve) => setImmediate(resolve))
+          done = true
+        `
+      }
+
+      t.fail()
+    }
+  })
+
+  // There is nothing to await the evaluation on here, so the module is handed
+  // back as soon as its evaluation is started.
+  const { exports } = Module.loadSync(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(exports.done, false, 'evaluation has not passed the await yet')
+
+  await new Promise((resolve) => setImmediate(resolve))
+
+  t.is(exports.done, true, 'the live binding reflects the finished evaluation')
 })
 
 test('loader importSync', (t) => {
@@ -2234,11 +2529,13 @@ test('loader addons', async (t) => {
     }
   })
 
-  const loader = new Module.Loader({ protocol })
+  const resolutions = Object.create(null)
+
+  const loader = new Module.Loader({ protocol, resolutions })
 
   await loader.link(new URL(root + '/foo.js'))
 
-  t.is(loader.resolutions[root + '/foo.js']['.'], pathToFileURL(require.addon.resolve('.')).href)
+  t.is(resolutions[root + '/foo.js']['.'], pathToFileURL(require.addon.resolve('.')).href)
 })
 
 test('loader addons resolved during evaluation', async (t) => {
@@ -3089,6 +3386,55 @@ test('import.meta', async (t) => {
   t.is(meta.main, true)
   t.is(meta.dirname, isWindows ? 'c:\\' : '/')
   t.is(meta.filename, isWindows ? 'c:\\foo.mjs' : '/foo.mjs')
+})
+
+test('import.meta.cache', async (t) => {
+  const cache = Object.create(null)
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.mjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'export default import.meta.cache'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+
+  t.is(exports.default, cache)
+})
+
+test('import.meta.cache is require.cache of the same graph', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.mjs' || url.href === root + '/bar.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return `
+          import bar from '/bar.cjs'
+          export default import.meta.cache === bar
+        `
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = require.cache'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(exports.default, true)
 })
 
 test('import.meta.resolve', async (t) => {
@@ -5593,12 +5939,14 @@ test('load with referrer shares the loader', async (t) => {
     }
   })
 
-  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+  const cache = Object.create(null)
+
+  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
   const bar = await Module.load(new URL(root + '/bar.cjs'), { referrer: foo })
 
   t.is(foo.exports, 1)
   t.is(bar.exports, 2)
-  t.is(bar.cache, foo.cache)
+  t.is(cache[root + '/bar.cjs'], bar, 'the referrer cache is read into')
 })
 
 test('load with referrer and protocol uses the given protocol', async (t) => {
@@ -5630,7 +5978,9 @@ test('load with referrer and protocol uses the given protocol', async (t) => {
     }
   })
 
-  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+  const cache = Object.create(null)
+
+  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
   const bar = await Module.load(new URL(root + '/bar.cjs'), {
     referrer: foo,
     protocol: other
@@ -5639,8 +5989,71 @@ test('load with referrer and protocol uses the given protocol', async (t) => {
   t.is(foo.exports, 1)
   t.is(bar.exports, 2)
   t.is(bar.protocol, other, 'the given protocol wins over the referrer')
-  t.not(bar.cache, foo.cache, 'the cache is not shared across protocols')
-  t.is(bar.main, bar, 'the fork has a main of its own')
+  t.is(cache[root + '/foo.cjs'], foo, 'the referrer cache holds the referrer')
+  t.absent(cache[root + '/bar.cjs'], 'the cache is not shared across protocols')
+})
+
+test('load with referrer keeps the referrer main', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs' || url.href === root + '/bar.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = 1'
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = require.main.url.href'
+      }
+
+      t.fail()
+    }
+  })
+
+  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+  const bar = await Module.load(new URL(root + '/bar.cjs'), { referrer: foo })
+
+  t.is(bar.exports, root + '/foo.cjs', 'a shared graph keeps the main it was launched from')
+})
+
+test('load with referrer and protocol gives the fork a main of its own', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = 1'
+      }
+
+      t.fail()
+    }
+  })
+
+  const other = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = require.main.url.href'
+      }
+
+      t.fail()
+    }
+  })
+
+  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+  const bar = await Module.load(new URL(root + '/bar.cjs'), {
+    referrer: foo,
+    protocol: other
+  })
+
+  t.is(bar.exports, root + '/bar.cjs', 'a fork that reaches elsewhere is its own main')
 })
 
 test('load with referrer and protocol does not leak the referrer protocol', async (t) => {
@@ -5672,16 +6085,21 @@ test('load with referrer and protocol does not leak the referrer protocol', asyn
     }
   })
 
+  const cache = Object.create(null)
+
   const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol })
-  const bar = await Module.load(new URL(root + '/bar.cjs'), {
+
+  await Module.load(new URL(root + '/bar.cjs'), {
     referrer: foo,
-    protocol: other
+    protocol: other,
+    cache
   })
 
-  t.absent(bar.cache[root + '/foo.cjs'], 'the referrer is not in the fork cache')
+  t.ok(cache[root + '/bar.cjs'], 'the fork reads into the given cache')
+  t.absent(cache[root + '/foo.cjs'], 'the referrer is not in the fork cache')
 
-  for (const href of Object.keys(bar.cache)) {
-    t.not(bar.cache[href].protocol, protocol, `'${href}' cannot reach the referrer protocol`)
+  for (const href of Object.keys(cache)) {
+    t.not(cache[href].protocol, protocol, `'${href}' cannot reach the referrer protocol`)
   }
 })
 
@@ -5902,7 +6320,9 @@ test('load with referrer and builtins uses the given builtins', async (t) => {
     }
   })
 
-  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+  const cache = Object.create(null)
+
+  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol, cache })
   const bar = await Module.load(new URL(root + '/bar.cjs'), {
     referrer: foo,
     builtins: { baz: 42 }
@@ -5910,7 +6330,8 @@ test('load with referrer and builtins uses the given builtins', async (t) => {
 
   t.is(bar.exports, 42)
   t.is(bar.protocol, foo.protocol, 'the protocol is inherited from the referrer')
-  t.not(bar.cache, foo.cache, 'the cache is not shared across builtins')
+  t.is(cache[root + '/foo.cjs'], foo, 'the referrer cache holds the referrer')
+  t.absent(cache[root + '/bar.cjs'], 'the cache is not shared across builtins')
 })
 
 test('resolve with referrer and protocol uses the given protocol', async (t) => {

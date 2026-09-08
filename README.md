@@ -307,11 +307,11 @@ options = {
 
 ### `require.main`
 
-The module representing the entry script where the program was launched. The same value as `module.main` for the current module.
+The module representing the entry script where the program was launched.
 
 ### `require.cache`
 
-A cache of loaded modules for this module. The same value as `module.cache` for the current module.
+The registry of loaded modules for this module's graph, keyed by URL href.
 
 ### `const path = require.resolve(specifier[, parentURL])`
 
@@ -368,7 +368,7 @@ A boolean representing whether the current module is the entry script where the 
 
 ### `import.meta.cache`
 
-A cache of loaded modules for this module. The same value as `module.cache` for the current module.
+The registry of loaded modules for this module's graph, keyed by URL href. The same value as `require.cache` for a CommonJS module of the same graph.
 
 ### `import.meta.dirname`
 
@@ -562,13 +562,9 @@ The graph's main module: the first entry linked. `null` until the first link.
 
 The registry of loaded modules, keyed by URL href.
 
-### `loader.resolutions`
+### `loader.protocol`
 
-The graph's resolution cache, keyed by referrer URL, aggregated as modules are linked.
-
-### `loader.protocol`, `loader.builtins`, `loader.imports`, `loader.defaultType`, `loader.conditions`
-
-The loader configuration, mirroring the like-named getters on a `module`.
+The `ModuleProtocol` modules are resolved and read through, shared with every module of the loader's graph.
 
 ## Threat model
 
