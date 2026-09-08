@@ -3252,6 +3252,55 @@ test('import.meta', async (t) => {
   t.is(meta.filename, isWindows ? 'c:\\foo.mjs' : '/foo.mjs')
 })
 
+test('import.meta.cache', async (t) => {
+  const cache = Object.create(null)
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.mjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return 'export default import.meta.cache'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol, cache })
+
+  t.is(exports.default, cache)
+})
+
+test('import.meta.cache is require.cache of the same graph', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/foo.mjs' || url.href === root + '/bar.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.mjs') {
+        return `
+          import bar from '/bar.cjs'
+          export default import.meta.cache === bar
+        `
+      }
+
+      if (url.href === root + '/bar.cjs') {
+        return 'module.exports = require.cache'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(exports.default, true)
+})
+
 test('import.meta.resolve', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {

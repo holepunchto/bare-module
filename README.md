@@ -366,6 +366,10 @@ The string representation of the URL for the current module.
 
 A boolean representing whether the current module is the entry script where the program was launched.
 
+### `import.meta.cache`
+
+The registry of loaded modules for this module's graph, keyed by URL href. The same value as `require.cache` for a CommonJS module of the same graph.
+
 ### `import.meta.dirname`
 
 The directory name of the current module.
