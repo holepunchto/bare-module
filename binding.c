@@ -382,12 +382,12 @@ bare_module__on_import(js_env_t *env, js_value_t *specifier, js_value_t *asserti
   err = js_get_module_id(env, referrer, &id);
   assert(err == 0);
 
-  js_value_t *args[2] = {specifier, id};
+  js_value_t *args[3] = {specifier, assertions, id};
 
   js_module_t *module = NULL;
 
   js_value_t *result;
-  err = js_call_function(env, ctx, on_import, 2, args, &result);
+  err = js_call_function(env, ctx, on_import, 3, args, &result);
   if (err < 0) goto err;
 
   if (!bare_module__check_module(env, result)) goto err;

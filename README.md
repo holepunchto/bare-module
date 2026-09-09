@@ -494,6 +494,12 @@ methods = {
 
 Each method comes in an asynchronous and a synchronous variant. The asynchronous variants may return a promise (or, for `list`, an asynchronous iterable) to serve modules asynchronously and are driven by the asynchronous `Module` statics (`Module.load` and `Module.resolve`) and [`Loader`](#loader) methods. The synchronous `*Sync` variants are driven by the synchronous entry points (`require()`, `Module.loadSync`, `Module.resolveSync`, `loader.linkSync`, and `loader.importSync`) and default to calling their asynchronous counterpart, throwing an `UNEXPECTED_PROMISE` error if it answers asynchronously. A protocol that supports both may implement the `*Sync` variants directly; for such a protocol a statically imported module is read through the asynchronous `read` while a `require()` with a computed specifier is read through `readSync`.
 
+### `protocol[Symbol.for('bare.module.protocol.kind')]`
+
+The version of the protocol interface. An instance reports the same version as `Module.Protocol`.
+
+A protocol is the one capability a module system must be handed, and it travels between module systems that may be different copies of `bare-module`. A module system therefore checks this version before reading anything through a protocol, and throws a `PROTOCOL_INCOMPATIBLE` error if it does not match. Use `Module.Protocol.isProtocol(value)` to make the same check, or read the symbol directly to check against a version of your own.
+
 ### `const extended = protocol.extend(methods)`
 
 Return a new `ModuleProtocol` that overrides the given `methods`, falling back to this protocol for any method not provided.

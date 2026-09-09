@@ -1619,8 +1619,8 @@ test('load .mjs with computed data: protocol import', async (t) => {
     }
   })
 
-  // A dynamic import names either a script or a module, and a computed
-  // specifier carries no attributes to say which.
+  // A dynamic import can load either a script or a module, and a computed
+  // specifier has no attributes to say which one it wants.
   await t.exception.all(
     Module.load(new URL(root + '/foo.mjs'), { protocol }),
     /AMBIGUOUS_MODULE_TYPE/
@@ -1669,8 +1669,8 @@ test('load .mjs with computed dynamic import and conflicting type attribute', as
     }
   })
 
-  // The first import caches the module as JSON, so the second must be told it
-  // cannot have it as text.
+  // The first import caches the module as JSON, so the second one cannot then
+  // have it as text.
   await t.exception.all(Module.load(new URL(root + '/foo.mjs'), { protocol }), /TYPE_INCOMPATIBLE/)
 })
 
@@ -1709,8 +1709,8 @@ test('load .cjs with computed data: protocol require and default type', async (t
     }
   })
 
-  // A data: URL naming no type of its own follows the referrer, not the default
-  // type, so the module below stays a script rather than becoming a module.
+  // A data: URL has no type of its own, so it follows the require that named it
+  // rather than the default type, and stays a script.
   const { exports } = await Module.load(new URL(root + '/foo.cjs'), {
     protocol,
     defaultType: Module.constants.MODULE
@@ -2350,8 +2350,8 @@ test('loadSync with top-level await returns before evaluation finishes', async (
     }
   })
 
-  // There is nothing to await the evaluation on here, so the module is handed
-  // back as soon as its evaluation is started.
+  // There is nothing here to await the evaluation on, so the module comes back
+  // as soon as evaluation starts.
   const { exports } = Module.loadSync(new URL(root + '/foo.mjs'), { protocol })
 
   t.is(exports.done, false, 'evaluation has not passed the await yet')
@@ -2994,6 +2994,122 @@ test('link uses asynchronous protocol variants when both are provided', async (t
   const { exports } = await Module.load(new URL(root + '/index.js'), { protocol })
 
   t.is(exports, 42)
+})
+
+test('protocol version', (t) => {
+  const kind = Symbol.for('bare.module.protocol.kind')
+
+  const protocol = new Module.Protocol()
+
+  t.is(protocol[kind], Module.Protocol[kind], 'an instance reports the version of its class')
+  t.is(protocol.extend({})[kind], Module.Protocol[kind], 'so does an extended protocol')
+})
+
+test('Module.Protocol.isProtocol', (t) => {
+  const kind = Symbol.for('bare.module.protocol.kind')
+
+  t.ok(Module.Protocol.isProtocol(new Module.Protocol()))
+  t.ok(Module.Protocol.isProtocol(new Module.Protocol().extend({})))
+  t.ok(
+    Module.Protocol.isProtocol({ [kind]: Module.Protocol[kind] }),
+    'another copy of this version is a protocol'
+  )
+  t.absent(Module.Protocol.isProtocol({ [kind]: Module.Protocol[kind] + 1 }))
+  t.absent(Module.Protocol.isProtocol({ exists() {}, read() {} }))
+  t.absent(Module.Protocol.isProtocol(null))
+})
+
+test('load with a protocol of another version', async (t) => {
+  const kind = Symbol.for('bare.module.protocol.kind')
+
+  // A protocol from a module system that speaks a different interface. Its
+  // methods may look right and still mean something else.
+  const protocol = {
+    [kind]: Module.Protocol[kind] + 1,
+
+    exists(url) {
+      t.fail()
+    },
+
+    read(url) {
+      t.fail()
+    }
+  }
+
+  await t.exception(Module.load(new URL(root + '/foo.cjs'), { protocol }), {
+    code: 'PROTOCOL_INCOMPATIBLE'
+  })
+})
+
+test('load with a protocol from another copy of this version', async (t) => {
+  const kind = Symbol.for('bare.module.protocol.kind')
+
+  const protocol = {
+    [kind]: Module.Protocol[kind],
+
+    exists(url) {
+      return url.href === root + '/foo.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/foo.cjs') {
+        return 'module.exports = 42'
+      }
+
+      return null
+    },
+
+    existsSync(url) {
+      return this.exists(url)
+    },
+
+    readSync(url) {
+      return this.read(url)
+    },
+
+    resolve(url) {
+      return url
+    },
+
+    resolveSync(url) {
+      return url
+    },
+
+    list(url) {
+      return []
+    },
+
+    listSync(url) {
+      return []
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+
+  t.is(exports, 42)
+})
+
+test('load with something that is not a protocol', async (t) => {
+  await t.exception(
+    Module.load(new URL(root + '/foo.cjs'), { protocol: { exists() {}, read() {} } }),
+    { code: 'PROTOCOL_INCOMPATIBLE' }
+  )
+})
+
+test('loader with a protocol of another version', (t) => {
+  const kind = Symbol.for('bare.module.protocol.kind')
+
+  t.exception(() => new Module.Loader({ protocol: { [kind]: Module.Protocol[kind] + 1 } }), {
+    code: 'PROTOCOL_INCOMPATIBLE'
+  })
+})
+
+test('createRequire with a protocol of another version', (t) => {
+  const kind = Symbol.for('bare.module.protocol.kind')
+
+  t.exception(() => Module.createRequire(root + '/foo.cjs', { protocol: { [kind]: -1 } }), {
+    code: 'PROTOCOL_INCOMPATIBLE'
+  })
 })
 
 test('protocol uses asynchronous variants for static imports and synchronous variants for computed specifiers', async (t) => {
@@ -5550,6 +5666,159 @@ test('load .js with .txt require, asserted type', async (t) => {
   const { exports } = await Module.load(new URL(root + '/index.js'), { protocol })
 
   t.is(exports, 'hello world')
+})
+
+test('load .js with require and conflicting binary require', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.js' || url.href === root + '/index.js'
+    },
+
+    read(url) {
+      if (url.href === root + '/index.js') {
+        return "module.exports = [require('./bar.js'), require('./bar.js', { with: { type: 'binary' } })]"
+      }
+
+      if (url.href === root + '/bar.js') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  // The plain require must not get the module's source bytes just because the
+  // require next to it asked for them.
+  await t.exception(Module.load(new URL(root + '/index.js'), { protocol }), /TYPE_INCOMPATIBLE/)
+})
+
+test('load .js with binary require and conflicting require', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.js' || url.href === root + '/index.js'
+    },
+
+    read(url) {
+      if (url.href === root + '/index.js') {
+        return "module.exports = [require('./bar.js', { with: { type: 'binary' } }), require('./bar.js')]"
+      }
+
+      if (url.href === root + '/bar.js') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  await t.exception(Module.load(new URL(root + '/index.js'), { protocol }), /TYPE_INCOMPATIBLE/)
+})
+
+test('load .js with computed require of a coerced module', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.js' || url.href === root + '/index.js'
+    },
+
+    read(url) {
+      if (url.href === root + '/index.js') {
+        return `
+          require('./bar.js', { with: { type: 'binary' } })
+          module.exports = require('${root}/bar.js'.slice(0))
+        `
+      }
+
+      if (url.href === root + '/bar.js') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  // The traversal never sees a computed specifier, so only the loader can catch
+  // this one.
+  await t.exception(Module.load(new URL(root + '/index.js'), { protocol }), /TYPE_INCOMPATIBLE/)
+})
+
+test('load .js with computed binary require of a coerced module', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.js' || url.href === root + '/index.js'
+    },
+
+    read(url) {
+      if (url.href === root + '/index.js') {
+        return `
+          require('./bar.js', { with: { type: 'binary' } })
+          module.exports = require('${root}/bar.js'.slice(0), { with: { type: 'binary' } }).byteLength
+        `
+      }
+
+      if (url.href === root + '/bar.js') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/index.js'), { protocol })
+
+  t.is(exports, 19)
+})
+
+test('load .js with computed require of a redundantly asserted module', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar.bin' || url.href === root + '/index.js'
+    },
+
+    read(url) {
+      if (url.href === root + '/index.js') {
+        return `
+          require('./bar.bin', { with: { type: 'binary' } })
+          module.exports = require('${root}/bar.bin'.slice(0)).byteLength
+        `
+      }
+
+      if (url.href === root + '/bar.bin') {
+        return 'hello'
+      }
+
+      t.fail()
+    }
+  })
+
+  // The attribute matches the type '.bin' already has, so it changed nothing and
+  // the computed require should still get the module.
+  const { exports } = await Module.load(new URL(root + '/index.js'), { protocol })
+
+  t.is(exports, 5)
+})
+
+test('load .mjs with static import and coercing type attribute', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/bar' || url.href === root + '/index.mjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/index.mjs') {
+        return "import d from '/bar' with { type: 'json' }\nexport default d.foo"
+      }
+
+      if (url.href === root + '/bar') {
+        return '{ "foo": 42 }'
+      }
+
+      t.fail()
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/index.mjs'), { protocol })
+
+  t.is(exports.default, 42)
 })
 
 test('load .js with .txt require, asserted type mismatch', async (t) => {
