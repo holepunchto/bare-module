@@ -1,6 +1,8 @@
 import URL from 'bare-url'
 import Buffer from 'bare-buffer'
 
+declare const kind: unique symbol
+
 interface ModuleProtocol {
   /**
    * Resolve a module `URL` to the `URL` that should be linked. The default implementation returns
@@ -41,6 +43,9 @@ interface ModuleProtocol {
    * overriding.
    */
   extend(methods: Partial<ModuleProtocol>): ModuleProtocol
+
+  /** The version of the protocol interface. The same value as on the class. */
+  readonly [kind]: number
 }
 
 declare class ModuleProtocol {
@@ -50,6 +55,21 @@ declare class ModuleProtocol {
    * @param context - An existing protocol to fall back to for any method not provided in `methods`.
    */
   constructor(methods?: Partial<ModuleProtocol>, context?: ModuleProtocol)
+
+  /**
+   * The version of the protocol interface, read through the well known symbol
+   * `Symbol.for('bare.module.protocol.kind')`. An instance reports the same version as its class. A
+   * protocol travels between module systems, which may be different copies of this one, so a
+   * module system reads this to tell a protocol it can use from one it cannot.
+   */
+  static readonly [kind]: number
+
+  /**
+   * @param value - The value to test.
+   * @returns Whether `value` is a protocol of the same version as this one, whichever copy of
+   * `bare-module` created it.
+   */
+  static isProtocol(value: unknown): boolean
 }
 
 export = ModuleProtocol
