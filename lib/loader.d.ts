@@ -34,7 +34,7 @@ declare class ModuleLoader {
 declare namespace ModuleLoader {
   export interface Options {
     builtins?: Builtins
-    cache?: Cache | boolean
+    cache?: Cache
     concurrency?: number
     defaultType?: number
     imports?: ImportsMap

@@ -27,6 +27,8 @@ Two things from Bare's document live here.
 
 **The protocol rule.** A module graph reaches as far as the protocol it was handed and no further. This addon is what holds that up. It reaches no store on its own, and every read goes through a protocol the embedder gave it, which is why code loaded without one reads nothing.
 
+**Builtins are the other half of that reach.** A builtin is an object the embedder handed over, so it is a power in the same way a protocol is. A graph reaches its protocol and its builtins, and nothing else, and the two travel together: a referrer hands on both, and narrowing one does not narrow the other. Load untrusted code with a protocol of your own and it still holds every builtin the referrer was given, so pass builtins of your own as well. A cache carries both, which is why one is claimed by the first loader to take it and refused to a loader that does not reach as far.
+
 **The one power.** Addon specifiers are resolved here, and the addon is loaded through `Bare.Addon`. So this addon is the thing that asks for the one power Bare hands out. It does not decide the answer. The seal does.
 
 ## Where the risk is
@@ -37,8 +39,9 @@ It resolves, parses and links code it may not trust, which Bare names as a risky
 
 ## What to report
 
-- Any way for a module graph to end up with a protocol it was not handed
+- Any way for a module graph to end up with a protocol or a builtin it was not handed
 - Any way for a specifier to resolve to something the protocol should not reach
+- Any way for a protocol narrowed by `extend()` to read what it does not allow
 - Any addon load that gets to `Bare.Addon` when the seal should have stopped it
 - Memory bugs in `binding.c` that JavaScript can reach
 - Anything on Bare's report list

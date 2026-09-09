@@ -417,10 +417,10 @@ options = {
   // such as `.js`. See Module.constants. Inherited from `referrer` if it is
   // defined, otherwise defaults to SCRIPT.
   defaultType: Module.constants.SCRIPT,
-  // A cache of loaded modules. Inherited from `referrer` if it is defined,
-  // otherwise a fresh cache is used. Pass an explicit cache object to use it,
-  // `true` to opt in to the shared cache, or `false` to force a fresh
-  // cache.
+  // A cache of loaded modules. Inherited from `referrer` only while `protocol`
+  // and `builtins` are also inherited, as a cache holds the modules of a single
+  // graph; narrowing either starts a graph of its own with a fresh cache. Pass
+  // a cache object to share one, including a fresh object to share nothing.
   cache,
   // The ModuleProtocol used to resolve and read modules. Defaults to
   // referrer's protocol if defined, otherwise to a protocol with no backing
@@ -430,11 +430,25 @@ options = {
   // syntax and rules as the "imports" property defined in `package.json`.
   imports,
   // A map of preresolved imports with keys being serialized parent URLs and
-  // values being "imports" maps.
+  // values being "imports" maps. Follows the cache, and like it is an object or
+  // omitted.
   resolutions,
-  // A map of builtin module specifiers to loaded modules.
+  // A map of builtin module specifiers to loaded modules. Inherited from
+  // `referrer` if it is defined, including when `protocol` narrows, so pass
+  // this too to narrow what the module reaches.
   builtins
 }
+```
+
+A module reaches as far as its `protocol` and its `builtins`, and a referrer hands on both. Narrowing one does not narrow the other, so code that should not reach what the referrer reaches must be given both:
+
+```js
+// The module reads only through `protocol`, but still reaches every builtin the
+// referrer was given.
+Module.createRequire(parentURL, { referrer, protocol })
+
+// The module reaches no further than what is passed here.
+Module.createRequire(parentURL, { referrer, protocol, builtins })
 ```
 
 ## Protocols
@@ -502,7 +516,23 @@ A protocol is the one capability a module system must be handed, and it travels 
 
 ### `const extended = protocol.extend(methods)`
 
-Return a new `ModuleProtocol` that overrides the given `methods`, falling back to this protocol for any method not provided.
+Return a new `ModuleProtocol` that overrides the given `methods`, falling back to this protocol for any method not provided. Each method is passed this protocol as its first argument, ahead of the arguments the method normally takes, so an override can defer to what it extends.
+
+A method and its `*Sync` variant answer the same question, so overriding either governs both and neither is inherited from this protocol. Overriding the asynchronous variant alone is usually what you want, as the synchronous variant then defaults to calling it. Overriding the synchronous variant alone leaves the asynchronous one at its default, which finds nothing; override both to serve both paths. An extension is therefore never half applied, and a protocol narrowed by one reaches no further than the extension allows on either path:
+
+```js
+// Reads nothing outside `/public/`, whether the graph is linked synchronously
+// or asynchronously.
+const restricted = protocol.extend({
+  exists(protocol, url) {
+    return url.href.startsWith('file:///public/') && protocol.exists(url)
+  },
+
+  read(protocol, url) {
+    return url.href.startsWith('file:///public/') ? protocol.read(url) : null
+  }
+})
+```
 
 ## Loader
 
@@ -519,7 +549,8 @@ options = {
   // The ModuleProtocol used to resolve and read modules. Defaults to a
   // protocol with no backing store of its own.
   protocol,
-  // A map of builtin module specifiers to their exports.
+  // A map of builtin module specifiers to their exports. Only the map's own
+  // keys are builtins; a name reached through its prototype chain is not.
   builtins,
   // The assumed type of a module without a type using an ambiguous extension
   // such as `.js`. See Module.constants for possible values.
@@ -530,12 +561,17 @@ options = {
   // The maximum number of module reads to perform concurrently while linking.
   // Defaults to `0`, which applies no limit.
   concurrency: 0,
-  // The module cache. Pass an object to use it, `true` to opt in to the shared
-  // cache, or omit for a fresh cache scoped to this loader.
+  // The module cache. Pass an object to share one, or omit for a fresh cache
+  // scoped to this loader. It is an object or nothing; there is no flag for
+  // either sharing or not sharing, because a cache holds the modules of a
+  // single graph and which graph that is comes of naming the object. A cache is
+  // claimed by the first loader to take it, and a later loader that reads
+  // through a different protocol or different builtins is turned down with a
+  // CACHE_INCOMPATIBLE error.
   cache,
   // A map of preresolved imports with keys being serialized parent URLs and
-  // values being "imports" maps. Defaults to following the cache: a shared cache
-  // shares its resolutions, a fresh cache gets fresh resolutions.
+  // values being "imports" maps. Like the cache it is an object or omitted, and
+  // omitting it gives a fresh map scoped to this loader.
   resolutions
 }
 ```
