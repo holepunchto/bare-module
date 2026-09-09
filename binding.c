@@ -11,8 +11,8 @@
 #define BARE_MODULE_MAX_EXPORT_NAMES 0x100000
 
 typedef struct {
-  js_env_t *env;
-  js_ref_t *ctx;
+  uint32_t refs;
+
   js_ref_t *on_import;
   js_ref_t *on_dynamic_import;
   js_ref_t *on_evaluate;
@@ -371,7 +371,7 @@ bare_module__on_import(js_env_t *env, js_value_t *specifier, js_value_t *asserti
   assert(err == 0);
 
   js_value_t *ctx;
-  err = js_get_reference_value(env, context->ctx, &ctx);
+  err = js_get_undefined(env, &ctx);
   assert(err == 0);
 
   js_value_t *on_import;
@@ -417,7 +417,7 @@ bare_module__on_dynamic_import(js_env_t *env, js_value_t *specifier, js_value_t 
   assert(err == 0);
 
   js_value_t *ctx;
-  err = js_get_reference_value(env, context->ctx, &ctx);
+  err = js_get_undefined(env, &ctx);
   assert(err == 0);
 
   js_value_t *on_dynamic_import;
@@ -456,7 +456,7 @@ bare_module__on_evaluate(js_env_t *env, js_module_t *module, void *data) {
   assert(err == 0);
 
   js_value_t *ctx;
-  err = js_get_reference_value(env, context->ctx, &ctx);
+  err = js_get_undefined(env, &ctx);
   assert(err == 0);
 
   js_value_t *on_evaluate;
@@ -494,7 +494,7 @@ bare_module__on_meta(js_env_t *env, js_module_t *module, js_value_t *meta, void 
   assert(err == 0);
 
   js_value_t *ctx;
-  err = js_get_reference_value(env, context->ctx, &ctx);
+  err = js_get_undefined(env, &ctx);
   assert(err == 0);
 
   js_value_t *on_meta;
@@ -537,15 +537,27 @@ bare_module__destroy_context(js_env_t *env, bare_module_context_t *context) {
   err = js_delete_reference(env, context->on_meta);
   assert(err == 0);
 
-  err = js_delete_reference(env, context->ctx);
-  assert(err == 0);
-
   free(context);
 }
 
 static void
+bare_module__retain_context(bare_module_context_t *context) {
+  context->refs++;
+}
+
+static void
+bare_module__release_context(js_env_t *env, bare_module_context_t *context) {
+  if (--context->refs == 0) bare_module__destroy_context(env, context);
+}
+
+static void
 bare_module__on_finalize_context(js_env_t *env, void *data, void *finalize_hint) {
-  bare_module__destroy_context(env, (bare_module_context_t *) data);
+  bare_module__release_context(env, (bare_module_context_t *) data);
+}
+
+static void
+bare_module__on_finalize_unit(js_env_t *env, void *data, void *finalize_hint) {
+  bare_module__release_context(env, (bare_module_context_t *) data);
 }
 
 static js_value_t *
@@ -573,10 +585,7 @@ bare_module_create_context(js_env_t *env, js_callback_info_t *info) {
     return NULL;
   }
 
-  context->env = env;
-
-  err = js_create_reference(env, argv[0], 1, &context->ctx);
-  assert(err == 0);
+  context->refs = 1; // Held by the wrap installed below.
 
   err = js_create_reference(env, argv[1], 1, &context->on_import);
   assert(err == 0);
@@ -644,6 +653,16 @@ bare_module_create_function(js_env_t *env, js_callback_info_t *info) {
   err = js_on_function_dynamic_import(env, result, bare_module__on_dynamic_import, (void *) context);
   if (err < 0) return NULL;
 
+  bare_module__retain_context(context);
+
+  err = js_add_finalizer(env, result, (void *) context, bare_module__on_finalize_unit, NULL, NULL);
+
+  if (err < 0) {
+    bare_module__release_context(env, context);
+
+    return NULL;
+  }
+
   return result;
 }
 
@@ -674,6 +693,8 @@ bare_module__on_finalize(js_env_t *env, void *data, void *finalize_hint) {
 
   err = js_delete_module(env, handle->module);
   assert(err == 0);
+
+  bare_module__release_context(env, handle->context);
 
   free(handle);
 }
@@ -748,6 +769,8 @@ bare_module_create_module(js_env_t *env, js_callback_info_t *info) {
     return NULL;
   }
 
+  bare_module__retain_context(context);
+
   err = js_add_type_tag(env, argv[1], &bare_module__module_tag);
 
   if (err < 0) {
@@ -756,6 +779,8 @@ bare_module_create_module(js_env_t *env, js_callback_info_t *info) {
       assert(err == 0);
 
       free(handle);
+
+      bare_module__release_context(env, context);
     }
 
     return NULL;
@@ -834,6 +859,8 @@ bare_module_create_synthetic_module(js_env_t *env, js_callback_info_t *info) {
     return NULL;
   }
 
+  bare_module__retain_context(context);
+
   err = js_add_type_tag(env, argv[1], &bare_module__synthetic_module_tag);
 
   if (err < 0) {
@@ -842,6 +869,8 @@ bare_module_create_synthetic_module(js_env_t *env, js_callback_info_t *info) {
       assert(err == 0);
 
       free(handle);
+
+      bare_module__release_context(env, context);
     }
 
     return NULL;

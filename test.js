@@ -1934,6 +1934,39 @@ test('load .cjs with builtin require from data: protocol module', async (t) => {
   t.is(exports, 42)
 })
 
+test('a builtin is served only for a name the builtins own', async (t) => {
+  // The resolver's allowlist is the own keys of the builtins, so a name reached
+  // only through the prototype chain is not among what was granted.
+  const builtins = Object.create({ inherited: 'inherited' })
+  builtins.own = 'own'
+
+  const load = (name) => {
+    const protocol = new Module.Protocol({
+      exists(url) {
+        return url.href === root + '/foo.cjs'
+      },
+
+      read(url) {
+        if (url.href === root + '/foo.cjs') {
+          return `module.exports = require(${JSON.stringify('builtin:' + name)})`
+        }
+
+        t.fail()
+      }
+    })
+
+    return Module.load(new URL(root + '/foo.cjs'), { protocol, builtins })
+  }
+
+  const { exports } = await load('own')
+
+  t.is(exports, 'own')
+
+  for (const name of ['inherited', 'constructor', '__proto__', 'hasOwnProperty']) {
+    await t.exception(load(name), /MODULE_NOT_FOUND/, `'${name}' is not a builtin`)
+  }
+})
+
 test('load .mjs with builtin import from data: protocol module', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
@@ -3003,6 +3036,127 @@ test('protocol version', (t) => {
 
   t.is(protocol[kind], Module.Protocol[kind], 'an instance reports the version of its class')
   t.is(protocol.extend({})[kind], Module.Protocol[kind], 'so does an extended protocol')
+})
+
+test('an extended protocol applies an override to both halves of a pair', (t) => {
+  const url = new URL(root + '/index.js')
+
+  // A context that answers both halves itself, so nothing falls back to the
+  // defaults on `ModuleProtocol.prototype`.
+  const context = new Module.Protocol({
+    resolve: () => new URL(root + '/context'),
+    resolveSync: () => new URL(root + '/context'),
+    exists: () => true,
+    existsSync: () => true,
+    read: () => 'context',
+    readSync: () => 'context',
+    list: () => [new URL(root + '/context')],
+    listSync: () => [new URL(root + '/context')]
+  })
+
+  const overrides = {
+    resolve: () => new URL(root + '/override'),
+    resolveSync: () => new URL(root + '/override'),
+    exists: () => false,
+    existsSync: () => false,
+    read: () => 'override',
+    readSync: () => 'override',
+    list: () => [new URL(root + '/override')],
+    listSync: () => [new URL(root + '/override')]
+  }
+
+  // What the context answers, what an override answers, and what the default on
+  // `ModuleProtocol.prototype` answers once nothing is inherited.
+  const answers = {
+    resolve: [root + '/context', root + '/override', url.href],
+    exists: [true, false, false],
+    read: ['context', 'override', null],
+    list: [root + '/context', root + '/override', undefined]
+  }
+
+  const read = {
+    resolve: (value) => value.href,
+    exists: (value) => value,
+    read: (value) => value,
+    list: (value) => [...value].map((url) => url.href)[0]
+  }
+
+  for (const [name, syncName] of [
+    ['resolve', 'resolveSync'],
+    ['exists', 'existsSync'],
+    ['read', 'readSync'],
+    ['list', 'listSync']
+  ]) {
+    const [inherited, overridden, fallback] = answers[name]
+
+    const asyncOverride = context.extend({ [name]: overrides[name] })
+
+    t.is(read[name](asyncOverride[name](url)), overridden)
+    t.is(
+      read[name](asyncOverride[syncName](url)),
+      overridden,
+      `overriding ${name} governs ${syncName}`
+    )
+
+    const syncOverride = context.extend({ [syncName]: overrides[syncName] })
+
+    t.is(read[name](syncOverride[syncName](url)), overridden)
+    t.is(
+      read[name](syncOverride[name](url)),
+      fallback,
+      `overriding ${syncName} leaves ${name} at the default rather than ${inherited}`
+    )
+  }
+})
+
+test('an extended protocol cannot be read past on the path it did not name', (t) => {
+  const sources = {
+    [root + '/public/index.js']: `module.exports = require('/private/key.js')`,
+    [root + '/private/key.js']: `module.exports = 'secret'`
+  }
+
+  const context = new Module.Protocol({
+    exists: (url) => url.href in sources,
+    existsSync: (url) => url.href in sources,
+    read: (url) => sources[url.href] || null,
+    readSync: (url) => sources[url.href] || null
+  })
+
+  const protocol = context.extend({
+    exists(context, url) {
+      return url.href.startsWith(root + '/public/') && context.exists(url)
+    },
+
+    read(context, url) {
+      return url.href.startsWith(root + '/public/') ? context.read(url) : null
+    }
+  })
+
+  t.exception(
+    () => Module.loadSync(new URL(root + '/public/index.js'), { protocol }),
+    /MODULE_NOT_FOUND/,
+    'the restriction holds on the synchronous path'
+  )
+})
+
+test('load .bundle through a protocol with synchronous methods', (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('./bar')", { main: true })
+    .write('/bar.js', 'module.exports = 42')
+    .toBuffer()
+
+  const sources = { [root + '/app.bundle']: bundle }
+
+  const protocol = new Module.Protocol({
+    exists: (url) => url.href in sources,
+    existsSync: (url) => url.href in sources,
+    read: (url) => sources[url.href] || null,
+    readSync: (url) => sources[url.href] || null
+  })
+
+  const { exports } = Module.loadSync(new URL(root + '/app.bundle'), { protocol })
+
+  t.is(exports, 42)
 })
 
 test('Module.Protocol.isProtocol', (t) => {
@@ -5122,6 +5276,26 @@ test('load non-file: URL with missing import using the default protocol', async 
   )
 })
 
+test('load non-file: URL with encoded NUL throws', async (t) => {
+  const url = new URL('protocol:/foo%00bar.cjs')
+
+  const protocol = new Module.Protocol({
+    exists(u) {
+      return u.href === url.href
+    },
+
+    read(u) {
+      if (u.href === url.href) {
+        return 'module.exports = __filename'
+      }
+
+      t.fail()
+    }
+  })
+
+  await t.exception(Module.load(url, { protocol }), /INVALID_URL_PATH/)
+})
+
 test('load non-file: URL with encoded slash throws', async (t) => {
   const url = new URL('protocol:/foo%2fbar.cjs')
 
@@ -6762,8 +6936,8 @@ test('load without cache', async (t) => {
     }
   })
 
-  const a = await Module.load(new URL(root + '/index.cjs'), { protocol, cache: false })
-  const b = await Module.load(new URL(root + '/index.cjs'), { protocol, cache: false })
+  const a = await Module.load(new URL(root + '/index.cjs'), { protocol })
+  const b = await Module.load(new URL(root + '/index.cjs'), { protocol })
 
   t.is(a.exports, 42)
   t.is(b.exports, 42)
@@ -6840,14 +7014,14 @@ test('load addon without cache', async (t) => {
     }
   })
 
-  const a = await Module.load(new URL(root + '/index.cjs'), { protocol, cache: false })
-  const b = await Module.load(new URL(root + '/index.cjs'), { protocol, cache: false })
+  const a = await Module.load(new URL(root + '/index.cjs'), { protocol })
+  const b = await Module.load(new URL(root + '/index.cjs'), { protocol })
 
   t.not(a.exports, b.exports)
   t.alike(Object.keys(a.exports), Object.keys(b.exports))
 })
 
-test('load with the shared cache', async (t) => {
+test('load with a shared cache', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/shared.cjs'
@@ -6862,15 +7036,17 @@ test('load with the shared cache', async (t) => {
     }
   })
 
-  const a = await Module.load(new URL(root + '/shared.cjs'), { protocol, cache: true })
-  const b = await Module.load(new URL(root + '/shared.cjs'), { protocol, cache: true })
+  const cache = Object.create(null)
+
+  const a = await Module.load(new URL(root + '/shared.cjs'), { protocol, cache })
+  const b = await Module.load(new URL(root + '/shared.cjs'), { protocol, cache })
 
   t.is(a.exports, 42)
   t.is(b.exports, 42)
   t.is(a, b)
 })
 
-test('load without a cache does not use the shared cache', async (t) => {
+test('load without a cache shares nothing', async (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
       return url.href === root + '/index.cjs'
@@ -6893,6 +7069,62 @@ test('load without a cache does not use the shared cache', async (t) => {
   t.not(a, b)
 })
 
+test('a cache and its resolutions are an object or nothing', async (t) => {
+  const protocol = new Module.Protocol()
+
+  // Whether a graph is shared is said by naming the object, so neither the
+  // boolean that used to reach a process-wide cache nor the one that used to
+  // stand for a fresh one is a cache. Resolutions follow a cache, and neither
+  // has a value standing for no map at all.
+  for (const name of ['cache', 'resolutions']) {
+    for (const value of [true, false, null, 0, 'map']) {
+      await t.exception.all(
+        () => new Module.Loader({ protocol, [name]: value }),
+        TypeError,
+        `${typeof value} ${value} is not a ${name} map`
+      )
+
+      await t.exception.all(
+        () => Module.load(new URL(root + '/index.cjs'), { protocol, [name]: value }),
+        TypeError
+      )
+    }
+
+    t.execution(() => new Module.Loader({ protocol, [name]: Object.create(null) }))
+  }
+
+  t.execution(() => new Module.Loader({ protocol }), 'omitting them gives fresh maps')
+})
+
+test('a fork is given a fresh cache by naming one', (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/index.cjs'
+    },
+
+    read(url) {
+      if (url.href === root + '/index.cjs') {
+        return 'module.exports = 42'
+      }
+
+      t.fail()
+    }
+  })
+
+  const referrer = Module.loadSync(new URL(root + '/index.cjs'), { protocol })
+
+  const shared = Module.loadSync(new URL(root + '/index.cjs'), { referrer, concurrency: 1 })
+
+  t.is(shared, referrer, 'a fork that reaches as far shares the graph')
+
+  const fresh = Module.loadSync(new URL(root + '/index.cjs'), {
+    referrer,
+    cache: Object.create(null)
+  })
+
+  t.not(fresh, referrer, 'naming a cache of its own starts a graph of its own')
+})
+
 test('over-long module url is refused', async (t) => {
   const url = root + '/' + 'a'.repeat(5000) + '.mjs'
 
@@ -6913,16 +7145,51 @@ test('over-long module url is refused', async (t) => {
   await t.exception(Module.load(new URL(url), { protocol }), { code: 'ENAMETOOLONG' })
 })
 
-test('module context cannot be initialized twice', async (t) => {
-  await t.exception.all(() => binding.init({}, noop, noop, noop, noop))
-})
-
-test('module context cannot be initialized from another addon instance', async (t) => {
+test('an environment may hold more than one module context', (t) => {
   const addon = new Bare.Addon(pathToFileURL(require.addon.resolve('.')))
 
-  t.not(addon.exports, binding)
+  t.not(addon.exports, binding, 'a second instance of this addon')
 
-  await t.exception.all(() => addon.exports.init({}, noop, noop, noop, noop))
+  // Every unit carries its own hooks, so contexts don't compete for one
+  // environment-wide callback and a second one is safe. There is one whenever
+  // this module is bundled twice.
+  const a = createContext()
+  const b = createContext()
+
+  const other = {}
+  addon.exports.createContext(other, noop, noop, noop, noop)
+
+  t.ok(binding.createModule(a, {}, root + '/a.mjs', 'export default 1', 0))
+  t.ok(binding.createModule(b, {}, root + '/b.mjs', 'export default 2', 0))
+  t.ok(addon.exports.createModule(other, {}, root + '/c.mjs', 'export default 3', 0))
+})
+
+test('a module context outlives the object it was created on', (t) => {
+  // Every unit holds the context it was made with, so dropping the object and
+  // collecting it must neither free the context out from under them nor keep
+  // every context that was ever made alive.
+  for (let i = 0; i < 1000; i++) {
+    const context = createContext()
+
+    binding.createModule(context, {}, root + '/' + i + '.mjs', 'export default 1', 0)
+    binding.createSyntheticModule(context, {}, root + '/' + i + '.cjs', ['default'])
+    binding.createFunction(context, root + '/' + i + '.js', [], 'return 1', 0)
+
+    new Array(1024).fill(i)
+  }
+
+  t.pass()
+})
+
+test('a module cannot cross module contexts', async (t) => {
+  const a = createContext()
+  const b = createContext()
+
+  const module = {}
+  binding.createModule(a, module, root + '/index.mjs', 'export default 1', 0)
+
+  await t.exception.all(() => binding.runModule(b, module, noop))
+  await t.exception.all(() => binding.getModuleNamespace(b, module))
 })
 
 test('module context is required to create, run and read modules', async (t) => {
