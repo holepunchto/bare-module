@@ -9,7 +9,13 @@ interface Cache {
   [href: string]: Module
 }
 
-/** Import attributes instructing how a module should be loaded. */
+/** The import condition a specifier is resolved for. */
+type Condition = 'require' | 'import' | 'asset' | 'addon'
+
+/**
+ * Import attributes instructing how a module should be loaded. A `type` that is not one of the
+ * known strings is turned down rather than passed over.
+ */
 interface Attributes {
   /**
    * How the module should be loaded: one of `'script'`, `'module'`, `'json'`, `'bundle'`,
@@ -41,7 +47,7 @@ declare class Module {
 }
 
 declare namespace Module {
-  export { type Attributes, type Cache, Loader, Protocol, constants }
+  export { type Attributes, type Cache, type Condition, Loader, Protocol, constants }
 
   export interface LoadOptions extends Loader.Options, Loader.LinkOptions {
     /** The referring module. */
@@ -154,13 +160,14 @@ declare namespace Module {
    * found.
    * @throws {ADDON_NOT_FOUND} the `'addon'` condition was used and no matching addon could be
    * found.
-   * @throws {TypeError} `specifier` is not a string.
+   * @throws {TypeError} `specifier` is not a string, `parentURL` is not a WHATWG `URL`, or
+   * `condition` is not a known condition.
    */
   export function resolve(specifier: string, parentURL: URL, opts?: ResolveOptions): Promise<URL>
   export function resolve(
     specifier: string,
     parentURL: URL,
-    condition: string,
+    condition: Condition,
     opts?: ResolveOptions
   ): Promise<URL>
 
@@ -175,13 +182,14 @@ declare namespace Module {
    * @throws {UNEXPECTED_PROMISE} the protocol answered asynchronously.
    * @throws {MODULE_NOT_FOUND} no module matching `specifier` could be found relative to
    * `parentURL`.
-   * @throws {TypeError} `specifier` is not a string.
+   * @throws {TypeError} `specifier` is not a string, `parentURL` is not a WHATWG `URL`, or
+   * `condition` is not a known condition.
    */
   export function resolveSync(specifier: string, parentURL: URL, opts?: ResolveOptions): URL
   export function resolveSync(
     specifier: string,
     parentURL: URL,
-    condition: string,
+    condition: Condition,
     opts?: ResolveOptions
   ): URL
 
@@ -193,6 +201,8 @@ declare namespace Module {
    * @param opts - Options for the created `require()`, such as its `protocol` and `cache`.
    * @returns A `require()` bound to `parentURL`, with `main`, `cache`, `resolve`, `addon`, and
    * `asset` attached.
+   * @throws {TypeError} `parentURL` is neither a string nor a WHATWG `URL`, and no `referrer` was
+   * given.
    */
   export function createRequire(parentURL: string | URL, opts?: CreateRequireOptions): Require
 }

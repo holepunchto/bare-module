@@ -299,8 +299,9 @@ Options include:
 ```js
 options = {
   // The import attributes which instruct how the file or module should be loaded.
-  // Possible values for `type` are `script`, `module`, `json`, `bundle`,
-  // `addon`, `binary` and `text`.
+  // `type` is one of the strings `script`, `module`, `json`, `bundle`, `addon`,
+  // `binary` and `text`. A type that is not one of them is turned down rather
+  // than passed over, as is a `type` that is not a string.
   with: { type: 'json' }
 }
 ```
@@ -414,7 +415,7 @@ options = {
   // every option below that the loader carries.
   referrer: null,
   // The assumed type of a module without a type using an ambiguous extension
-  // such as `.js`. See Module.constants. Inherited from `referrer` if it is
+  // such as `.js`. One of Module.constants. Inherited from `referrer` if it is
   // defined, otherwise defaults to SCRIPT.
   defaultType: Module.constants.SCRIPT,
   // A cache of loaded modules. Inherited from `referrer` only while `protocol`
@@ -426,16 +427,18 @@ options = {
   // referrer's protocol if defined, otherwise to a protocol with no backing
   // store.
   protocol,
-  // A default "imports" map to apply to all specifiers. Follows the same
-  // syntax and rules as the "imports" property defined in `package.json`.
+  // A default "imports" map to apply to all specifiers. An object or omitted,
+  // following the same syntax and rules as the "imports" property defined in
+  // `package.json`.
   imports,
   // A map of preresolved imports with keys being serialized parent URLs and
   // values being "imports" maps. Follows the cache, and like it is an object or
   // omitted.
   resolutions,
-  // A map of builtin module specifiers to loaded modules. Inherited from
-  // `referrer` if it is defined, including when `protocol` narrows, so pass
-  // this too to narrow what the module reaches.
+  // A map of builtin module specifiers to loaded modules, or omitted. Only the
+  // map's own keys are builtins. Inherited from `referrer` if it is defined,
+  // including when `protocol` narrows, so pass this too to narrow what the
+  // module reaches.
   builtins
 }
 ```
@@ -549,17 +552,19 @@ options = {
   // The ModuleProtocol used to resolve and read modules. Defaults to a
   // protocol with no backing store of its own.
   protocol,
-  // A map of builtin module specifiers to their exports. Only the map's own
-  // keys are builtins; a name reached through its prototype chain is not.
+  // A map of builtin module specifiers to their exports, or omitted. Only the
+  // map's own keys are builtins; a name reached through its prototype chain is
+  // not.
   builtins,
   // The assumed type of a module without a type using an ambiguous extension
-  // such as `.js`. See Module.constants for possible values.
+  // such as `.js`. One of Module.constants.
   defaultType,
-  // A default "imports" map to apply to all specifiers. Follows the same syntax
-  // and rules as the "imports" property defined in `package.json`.
+  // A default "imports" map to apply to all specifiers. An object or omitted,
+  // following the same syntax and rules as the "imports" property defined in
+  // `package.json`.
   imports,
   // The maximum number of module reads to perform concurrently while linking.
-  // Defaults to `0`, which applies no limit.
+  // A non-negative integer, defaulting to `0`, which applies no limit.
   concurrency: 0,
   // The module cache. Pass an object to share one, or omit for a fresh cache
   // scoped to this loader. It is an object or nothing; there is no flag for

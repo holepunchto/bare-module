@@ -1,4 +1,4 @@
-const { pathToFileURL } = require('bare-url')
+const { isURL, pathToFileURL } = require('bare-url')
 const { constants } = require('bare-module-traverse')
 const Module = require('./lib/module')
 const ModuleProtocol = require('./lib/protocol')
@@ -20,6 +20,8 @@ exports.load = async function load(url, source = null, opts = {}) {
     source = null
   }
 
+  opts = optionsFor(opts)
+
   const loader = loaderFor(opts)
 
   const record = await loader.link(url, source, opts)
@@ -34,6 +36,8 @@ exports.loadSync = function loadSync(url, source = null, opts = {}) {
     opts = source
     source = null
   }
+
+  opts = optionsFor(opts)
 
   const loader = loaderFor(opts)
 
@@ -50,7 +54,7 @@ exports.resolve = async function resolve(specifier, parentURL, condition = 'requ
     condition = 'require'
   }
 
-  const { loader, parent } = resolveWith(specifier, parentURL, opts)
+  const { loader, parent } = resolveWith(specifier, parentURL, condition, optionsFor(opts))
 
   return await loader._resolve(specifier, parent, condition)
 }
@@ -61,15 +65,23 @@ exports.resolveSync = function resolveSync(specifier, parentURL, condition = 're
     condition = 'require'
   }
 
-  const { loader, parent } = resolveWith(specifier, parentURL, opts)
+  const { loader, parent } = resolveWith(specifier, parentURL, condition, optionsFor(opts))
 
   return loader._resolveSync(specifier, parent, condition)
 }
 
-function resolveWith(specifier, parentURL, opts) {
+const conditions = ['require', 'import', 'asset', 'addon']
+
+function resolveWith(specifier, parentURL, condition, opts) {
   if (typeof specifier !== 'string') {
     throw new TypeError(
       `Specifier must be a string. Received type ${typeof specifier} (${specifier})`
+    )
+  }
+
+  if (conditions.includes(condition) === false) {
+    throw new TypeError(
+      `Condition must be one of ${conditions.join(', ')}. Received type ${typeof condition} (${condition})`
     )
   }
 
@@ -81,10 +93,26 @@ function resolveWith(specifier, parentURL, opts) {
     parentURL = new URL(parentURL)
   }
 
-  return { loader: loaderFor(opts), parent: parentURL }
+  return { loader: loaderFor(opts), parent: assertURL(parentURL, 'Parent URL') }
+}
+
+function assertURL(url, name) {
+  if (isURL(url)) return url
+
+  throw new TypeError(`${name} must be a URL. Received type ${typeof url} (${url})`)
+}
+
+function optionsFor(opts) {
+  if (opts === undefined || opts === null) return {}
+
+  if (typeof opts === 'object') return opts
+
+  throw new TypeError(`Options must be an object. Received type ${typeof opts} (${opts})`)
 }
 
 exports.createRequire = function createRequire(parentURL, opts = {}) {
+  opts = optionsFor(opts)
+
   let referrer = opts.referrer || null
 
   const loader = loaderFor(opts)
@@ -93,6 +121,8 @@ exports.createRequire = function createRequire(parentURL, opts = {}) {
     if (typeof parentURL === 'string') {
       parentURL = URL.parse(parentURL) || pathToFileURL(parentURL)
     }
+
+    assertURL(parentURL, 'Parent URL')
 
     referrer = new Module(
       loader,
