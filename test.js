@@ -7096,6 +7096,348 @@ test('a cache and its resolutions are an object or nothing', async (t) => {
   t.execution(() => new Module.Loader({ protocol }), 'omitting them gives fresh maps')
 })
 
+test('loader options are checked', async (t) => {
+  const protocol = new Module.Protocol()
+
+  // Every one of these is read as the shape it should have been, so a wrong one
+  // is not ignored but quietly answers for something. A string read as builtins
+  // has a builtin at every index.
+  const rejected = {
+    builtins: [42, 'abc', true],
+    imports: [42, 'abc', true],
+    defaultType: ['module', 999, 1.5, -1],
+    concurrency: ['4', -1, 1.5, NaN, Infinity, null, {}]
+  }
+
+  for (const name in rejected) {
+    for (const value of rejected[name]) {
+      await t.exception.all(
+        () => new Module.Loader({ protocol, [name]: value }),
+        TypeError,
+        `${name}: ${typeof value} ${value}`
+      )
+    }
+  }
+
+  t.execution(() => new Module.Loader({ protocol, builtins: {}, imports: {} }))
+  t.execution(() => new Module.Loader({ protocol, defaultType: Module.constants.MODULE }))
+  t.execution(() => new Module.Loader({ protocol, defaultType: 0, concurrency: 0 }))
+  t.execution(() => new Module.Loader({ protocol, builtins: null, imports: null }))
+})
+
+test('a builtins map is read for its own keys only', async (t) => {
+  // A string is an object of sorts, but not one of these.
+  await t.exception.all(() => new Module.Loader({ builtins: 'abc' }), TypeError)
+
+  const loader = new Module.Loader({ builtins: { 1: 'own' } })
+
+  t.is(loader.importSync(new URL('builtin:1')), 'own')
+})
+
+test('an entry is a URL', async (t) => {
+  const protocol = new Module.Protocol()
+  const loader = new Module.Loader({ protocol })
+
+  for (const entry of [42, null, {}, 'file:///index.cjs']) {
+    await t.exception.all(() => loader.linkSync(entry), TypeError, `linkSync(${entry})`)
+    await t.exception.all(() => loader.link(entry), TypeError, `link(${entry})`)
+    await t.exception.all(() => loader.get(entry), TypeError, `get(${entry})`)
+  }
+
+  t.execution(() => loader.get(new URL(root + '/index.cjs')))
+})
+
+test('a resolve condition is one this module system knows', async (t) => {
+  const protocol = new Module.Protocol()
+  const parentURL = new URL(root + '/')
+
+  for (const condition of ['bogus', 42, true, '']) {
+    await t.exception.all(
+      () => Module.resolveSync('./foo.js', parentURL, condition, { protocol }),
+      TypeError,
+      `condition: ${condition}`
+    )
+  }
+
+  // An unknown condition used to resolve as though nothing had been asked for.
+  for (const condition of ['require', 'import', 'asset', 'addon']) {
+    await t.exception.all(
+      () => Module.resolveSync('./foo.js', parentURL, condition, { protocol }),
+      /NOT_FOUND/,
+      `condition: ${condition}`
+    )
+  }
+})
+
+test('a parent URL is a URL', async (t) => {
+  const protocol = new Module.Protocol()
+
+  for (const parentURL of [42, {}, true]) {
+    await t.exception.all(
+      () => Module.resolveSync('./foo.js', parentURL, { protocol }),
+      TypeError,
+      `resolveSync(${parentURL})`
+    )
+
+    await t.exception.all(
+      () => Module.createRequire(parentURL, { protocol }),
+      TypeError,
+      `createRequire(${parentURL})`
+    )
+  }
+
+  t.execution(() => Module.createRequire(root + '/', { protocol }))
+  t.execution(() => Module.createRequire(new URL(root + '/'), { protocol }))
+})
+
+test('options are an object', async (t) => {
+  const url = new URL(root + '/index.cjs')
+
+  for (const opts of [42, true, 'options']) {
+    await t.exception.all(() => Module.loadSync(url, null, opts), TypeError, `loadSync(${opts})`)
+    await t.exception.all(() => Module.createRequire(url, opts), TypeError)
+    await t.exception.all(() => Module.resolveSync('./foo.js', url, 'require', opts), TypeError)
+  }
+
+  // A second argument that is neither source nor options used to be taken for
+  // options, dropping the protocol with it. A string is source, not options.
+  for (const opts of [42, true]) {
+    await t.exception.all(() => Module.loadSync(url, opts), TypeError, `loadSync(url, ${opts})`)
+  }
+})
+
+test('an import attribute names a type this module system knows', (t) => {
+  const store = {
+    // The type is held in a variable so the attribute is not one the lexer can
+    // read off the specifier, which is what puts the question to the loader
+    // rather than to the traversal.
+    [root + '/index.cjs']: `
+      require('./dep.js')
+
+      const answer = (type) => {
+        try { return ['ok', require('./dep.js', { with: { type } })] }
+        catch (e) { return ['threw', e.code] }
+      }
+
+      module.exports = { answer }
+    `,
+    [root + '/dep.js']: 'module.exports = 42'
+  }
+
+  const protocol = new Module.Protocol({
+    exists: (url) => url.href in store,
+    read: (url) => store[url.href] || null
+  })
+
+  const { answer } = Module.loadSync(new URL(root + '/index.cjs'), { protocol }).exports
+
+  t.alike(answer('script'), ['ok', 42], 'the type it is')
+  t.alike(answer('json'), ['threw', 'TYPE_INCOMPATIBLE'], 'a type it is not')
+
+  // A type nobody defines used to be passed over, handing back whatever the
+  // module happened to be rather than saying the request could not be met.
+  for (const type of ['bogus', 'constructor', '__proto__', '']) {
+    t.alike(answer(type), ['threw', 'UNKNOWN_MODULE_TYPE'], `type: '${type}'`)
+  }
+})
+
+test('an import attribute type is a string', async (t) => {
+  const store = {
+    [root + '/index.cjs']: `
+      require('./dep.js')
+
+      module.exports = {
+        type: (type) => require('./dep.js', { with: { type } }),
+        attributes: (attributes) => require('./dep.js', { with: attributes })
+      }
+    `,
+    [root + '/dep.js']: 'module.exports = 42'
+  }
+
+  const protocol = new Module.Protocol({
+    exists: (url) => url.href in store,
+    read: (url) => store[url.href] || null
+  })
+
+  const require = Module.loadSync(new URL(root + '/index.cjs'), { protocol }).exports
+
+  // A value that is not a string used to be read as no type at all, so an
+  // attribute the module system could not read went unanswered. An array of one
+  // string is the sharp case: it reads as a type but is not one.
+  for (const type of [null, 42, true, {}, ['script'], Symbol('script')]) {
+    await t.exception.all(() => require.type(type), TypeError, `type: ${String(type)}`)
+  }
+
+  for (const attributes of [42, 'script', true]) {
+    await t.exception.all(
+      () => require.attributes(attributes),
+      TypeError,
+      `with: ${String(attributes)}`
+    )
+  }
+
+  t.is(require.type(undefined), 42, 'no type asked')
+  t.is(require.attributes(undefined), 42, 'no attributes at all')
+  t.is(require.attributes(null), 42)
+
+  // The same holds where attributes reach the traversal rather than the check.
+  for (const attributes of [{ type: 42 }, { type: null }, { type: ['script'] }, 42]) {
+    await t.exception.all(
+      () => Module.loadSync(new URL(root + '/dep.js'), { protocol, attributes }),
+      TypeError,
+      `attributes: ${JSON.stringify(attributes)}`
+    )
+  }
+})
+
+test('nested conditional exports resolve for the running host', async (t) => {
+  const [platform] = host.split('-')
+
+  const store = {
+    [root + '/node_modules/foo/package.json']: JSON.stringify({
+      name: 'foo',
+      version: '1.0.0',
+      exports: {
+        '.': { require: { [platform]: './host.cjs', default: './other.cjs' } },
+        './entry.mjs': { import: { [platform]: './host.mjs', default: './other.mjs' } },
+        './asset.txt': { asset: { [platform]: './asset-host.txt', default: './asset-other.txt' } }
+      }
+    }),
+    [root + '/node_modules/foo/host.cjs']: `module.exports = 'host'`,
+    [root + '/node_modules/foo/other.cjs']: `module.exports = 'other'`,
+    [root + '/node_modules/foo/host.mjs']: `export default 'host'`,
+    [root + '/node_modules/foo/other.mjs']: `export default 'other'`,
+    [root + '/node_modules/foo/asset-host.txt']: 'host asset',
+    [root + '/node_modules/foo/asset-other.txt']: 'other asset',
+    [root + '/index.cjs']: `module.exports = [require('foo'), require.asset('foo/asset.txt')]`,
+    [root + '/index.mjs']: `export { default } from 'foo/entry.mjs'`
+  }
+
+  const protocol = new Module.Protocol({
+    exists: (url) => url.href in store,
+    read: (url) => store[url.href] || null
+  })
+
+  t.is(
+    (await Module.resolve('foo', new URL(root + '/'), { protocol })).href,
+    root + '/node_modules/foo/host.cjs',
+    'a nested require condition'
+  )
+
+  t.is(
+    (await Module.resolve('foo/asset.txt', new URL(root + '/'), 'asset', { protocol })).href,
+    root + '/node_modules/foo/asset-host.txt',
+    'a nested asset condition'
+  )
+
+  const [required, asset] = Module.loadSync(new URL(root + '/index.cjs'), { protocol }).exports
+
+  t.is(required, 'host', 'require() through a nested condition')
+  const assetPath = '/node_modules/foo/asset-host.txt'
+
+  t.is(asset, isWindows ? 'c:' + assetPath.replace(/\//g, '\\') : assetPath, 'require.asset()')
+
+  t.is(
+    Module.loadSync(new URL(root + '/index.mjs'), { protocol }).exports.default,
+    'host',
+    'import through a nested condition'
+  )
+})
+
+test('a preresolved nested condition is not passed over for its default', (t) => {
+  const [platform] = host.split('-')
+
+  const store = {
+    [root + '/index.cjs']: `module.exports = require('foo')`,
+    [root + '/host.cjs']: `module.exports = 'host'`,
+    [root + '/other.cjs']: `module.exports = 'other'`
+  }
+
+  const protocol = new Module.Protocol({
+    exists: (url) => url.href in store,
+    read: (url) => store[url.href] || null
+  })
+
+  const load = (foo) =>
+    Module.loadSync(new URL(root + '/index.cjs'), {
+      protocol,
+      resolutions: { [root + '/index.cjs']: { foo } }
+    }).exports
+
+  // A map that names more than one host cannot be flattened, as it is whenever
+  // a bundle is built for several. The condition beside `default` is one only
+  // the resolver matches, so `default` is not the answer left over.
+  t.is(
+    load({ require: { [platform]: root + '/host.cjs', default: root + '/other.cjs' } }),
+    'host',
+    'a host condition beside a default'
+  )
+
+  t.is(
+    load({ require: { [platform]: root + '/host.cjs', unmatched: root + '/other.cjs' } }),
+    'host',
+    'a host condition beside another'
+  )
+
+  // The flat shapes are still answered without going back to the resolver.
+  t.is(load({ require: root + '/host.cjs', default: root + '/other.cjs' }), 'host')
+  t.is(load({ import: root + '/other.cjs', default: root + '/host.cjs' }), 'host')
+  t.is(load(root + '/host.cjs'), 'host')
+})
+
+test('export names are gathered through a resolution the map cannot be read for', (t) => {
+  const [platform] = host.split('-')
+  const otherHost = platform === 'linux' ? 'darwin-arm64' : 'linux-x64'
+
+  const store = {
+    [root + '/index.mjs']: `import { fromHost } from './re.cjs'\nexport default fromHost`,
+    [root + '/re.cjs']: `module.exports = require('bar')`,
+    [root + '/node_modules/bar/package.json']: JSON.stringify({
+      name: 'bar',
+      version: '1.0.0',
+      exports: { '.': { [platform]: './host.cjs', default: './other.cjs' } }
+    }),
+    [root + '/node_modules/bar/host.cjs']: `exports.fromHost = 'host'`,
+    [root + '/node_modules/bar/other.cjs']: `exports.fromOther = 'other'`
+  }
+
+  const protocol = new Module.Protocol({
+    exists: (url) => url.href in store,
+    read: (url) => store[url.href] || null
+  })
+
+  // Traversed for two hosts, so the recorded resolution keeps a condition only
+  // the resolver matches and the names of the re-export have to be found
+  // through it rather than read off the map.
+  const { exports } = Module.loadSync(new URL(root + '/index.mjs'), {
+    protocol,
+    hosts: [host, otherHost]
+  })
+
+  t.is(exports.default, 'host')
+})
+
+test('export names are gathered through a re-exported builtin', (t) => {
+  const store = {
+    [root + '/index.mjs']: `import { hello } from './re.cjs'\nexport default hello`,
+    [root + '/re.cjs']: `module.exports = require('greet')`
+  }
+
+  const protocol = new Module.Protocol({
+    exists: (url) => url.href in store,
+    read: (url) => store[url.href] || null
+  })
+
+  // A builtin has no record until one is asked for, so gathering names has to
+  // ask rather than look only at what the traversal left behind.
+  const { exports } = Module.loadSync(new URL(root + '/index.mjs'), {
+    protocol,
+    builtins: { greet: { hello: 'world' } }
+  })
+
+  t.is(exports.default, 'world')
+})
+
 test('a fork is given a fresh cache by naming one', (t) => {
   const protocol = new Module.Protocol({
     exists(url) {
