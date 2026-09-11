@@ -1067,6 +1067,50 @@ test('load .bundle without a main', async (t) => {
   t.is(exports, null)
 })
 
+test('read a .bundle through the protocol of a module it holds', async (t) => {
+  const bundle = new Bundle()
+    .write(
+      '/foo.js',
+      "module.exports = module.protocol.readSync(new URL('./bar.js', module.url)).toString()",
+      { main: true }
+    )
+    .write('/bar.js', 'module.exports = 42')
+    .toBuffer()
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle)
+
+  t.is(exports, 'module.exports = 42')
+})
+
+test('list outside a .bundle through the protocol of a module it holds', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', 'module.exports = module.protocol', { main: true })
+    .toBuffer()
+
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/app.bundle'
+    },
+
+    read(url) {
+      return url.href === root + '/app.bundle' ? bundle : null
+    },
+
+    list(url) {
+      return url.href === root + '/dir' ? [new URL(root + '/dir/a.txt')] : []
+    }
+  })
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), { protocol })
+
+  const listing = [...exports.listSync(new URL(root + '/dir'))]
+
+  t.alike(
+    listing.map((url) => url.href),
+    [root + '/dir/a.txt']
+  )
+})
+
 test('import named exports from .bundle with .mjs main', async (t) => {
   const bundle = new Bundle().write('/foo.mjs', 'export const foo = 42', { main: true }).toBuffer()
 
