@@ -2859,6 +2859,140 @@ test('asset missing with asynchronous protocol', async (t) => {
   )
 })
 
+test('resolve missing module lists the candidates', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return false
+    }
+  })
+
+  try {
+    await Module.resolve('./foo', new URL(root + '/'), { protocol })
+
+    t.fail('resolve should throw')
+  } catch (err) {
+    t.is(err.code, 'MODULE_NOT_FOUND')
+    t.is(err.specifier, './foo')
+    t.is(err.referrer.href, root + '/')
+
+    t.alike(
+      err.candidates.map((url) => url.href),
+      [
+        root + '/foo',
+        root + '/foo.js',
+        root + '/foo.cjs',
+        root + '/foo.mjs',
+        root + '/foo.ts',
+        root + '/foo.cts',
+        root + '/foo.mts',
+        root + '/foo.json',
+        root + '/foo.bare',
+        root + '/foo.node',
+        root + '/foo/index.js',
+        root + '/foo/index.cjs',
+        root + '/foo/index.mjs',
+        root + '/foo/index.ts',
+        root + '/foo/index.cts',
+        root + '/foo/index.mts',
+        root + '/foo/index.json',
+        root + '/foo/index.bare',
+        root + '/foo/index.node'
+      ]
+    )
+  }
+})
+
+test('resolve missing module lists the candidates, synchronously', (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return false
+    }
+  })
+
+  try {
+    Module.resolveSync('./foo', new URL(root + '/'), { protocol })
+
+    t.fail('resolve should throw')
+  } catch (err) {
+    t.is(err.code, 'MODULE_NOT_FOUND')
+
+    t.alike(
+      err.candidates.map((url) => url.href),
+      [
+        root + '/foo',
+        root + '/foo.js',
+        root + '/foo.cjs',
+        root + '/foo.mjs',
+        root + '/foo.ts',
+        root + '/foo.cts',
+        root + '/foo.mts',
+        root + '/foo.json',
+        root + '/foo.bare',
+        root + '/foo.node',
+        root + '/foo/index.js',
+        root + '/foo/index.cjs',
+        root + '/foo/index.mjs',
+        root + '/foo/index.ts',
+        root + '/foo/index.cts',
+        root + '/foo/index.mts',
+        root + '/foo/index.json',
+        root + '/foo/index.bare',
+        root + '/foo/index.node'
+      ]
+    )
+  }
+})
+
+test('resolve missing asset lists the candidates', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return false
+    }
+  })
+
+  try {
+    await Module.resolve('./foo.txt', new URL(root + '/'), 'asset', { protocol })
+
+    t.fail('resolve should throw')
+  } catch (err) {
+    t.is(err.code, 'ASSET_NOT_FOUND')
+
+    t.alike(
+      err.candidates.map((url) => url.href),
+      [root + '/foo.txt', root + '/foo.txt/']
+    )
+  }
+})
+
+test('resolve missing addon lists the candidates', async (t) => {
+  const protocol = new Module.Protocol({
+    exists(url) {
+      return url.href === root + '/package.json'
+    },
+
+    read(url) {
+      if (url.href === root + '/package.json') {
+        return '{ "name": "foo", "version": "1.0.0" }'
+      }
+
+      t.fail()
+    }
+  })
+
+  try {
+    await Module.resolve('.', new URL(root + '/'), 'addon', { protocol })
+
+    t.fail('resolve should throw')
+  } catch (err) {
+    t.is(err.code, 'ADDON_NOT_FOUND')
+
+    t.alike(
+      err.candidates.slice(0, 2).map((url) => url.href),
+      [prebuilds + '/foo@1.0.0.bare', prebuilds + '/foo@1.0.0.node']
+    )
+  }
+})
+
 test('resolve asset directory through protocol list', async (t) => {
   const protocol = new Module.Protocol({
     *list(url) {
