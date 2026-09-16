@@ -6,6 +6,7 @@ const binding = require('./binding')
 
 const isWindows = Bare.platform === 'win32'
 
+const platform = Bare.platform
 const host = Bare.Addon.host
 const root = isWindows ? 'file:///c:' : 'file://'
 const prebuilds = root + '/prebuilds/' + host
@@ -1261,6 +1262,145 @@ test('load .bundle with resolutions map, missing entry', async (t) => {
   }
 
   await t.execution(Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {}))
+})
+
+test('load .bundle with resolutions map, conditional on the host', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('./bar')", { main: true })
+    .write('/baz.js', 'module.exports = 42')
+    .write('/qux.js', 'module.exports = 43')
+
+  bundle.resolutions = {
+    '/foo.js': {
+      './bar': {
+        ios: '/qux.js',
+        [platform]: '/baz.js'
+      }
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  t.is(exports, 42)
+})
+
+test('load .bundle with resolutions map, conditional on another host', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('./bar')", { main: true })
+    .write('/qux.js', 'module.exports = 43')
+    .write('/quux.js', 'module.exports = 44')
+
+  bundle.resolutions = {
+    '/foo.js': {
+      './bar': {
+        ios: '/qux.js',
+        android: '/quux.js'
+      }
+    }
+  }
+
+  await t.exception(
+    Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {}),
+    /MODULE_NOT_FOUND/
+  )
+})
+
+test('load .bundle with resolutions map, default before the condition', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('./bar')", { main: true })
+    .write('/baz.js', 'module.exports = 42')
+    .write('/qux.js', 'module.exports = 43')
+
+  bundle.resolutions = {
+    '/foo.js': {
+      './bar': {
+        default: '/baz.js',
+        require: '/qux.js'
+      }
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  t.is(exports, 42)
+})
+
+test('load .bundle with linked addon', async (t) => {
+  const bundle = new Bundle().write('/foo.js', "module.exports = require.addon.resolve('.')", {
+    main: true
+  })
+
+  bundle.resolutions = {
+    '/foo.js': {
+      '.': 'linked:foo.1.2.3'
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  t.is(exports, 'linked:foo.1.2.3')
+})
+
+test('load .bundle with linked addon, conditional on the host', async (t) => {
+  const bundle = new Bundle().write('/foo.js', "module.exports = require.addon.resolve('.')", {
+    main: true
+  })
+
+  bundle.resolutions = {
+    '/foo.js': {
+      '.': {
+        ios: 'linked:bar.1.2.3',
+        [platform]: 'linked:foo.1.2.3'
+      }
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  t.is(exports, 'linked:foo.1.2.3')
+})
+
+test('load .bundle with linked addon, conditional on another host', async (t) => {
+  const bundle = new Bundle().write('/foo.js', "module.exports = require.addon.resolve('.')", {
+    main: true
+  })
+
+  bundle.resolutions = {
+    '/foo.js': {
+      '.': {
+        ios: 'linked:bar.1.2.3',
+        android: 'linked:baz.1.2.3'
+      }
+    }
+  }
+
+  await t.exception(
+    Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {}),
+    /ADDON_NOT_FOUND/
+  )
+})
+
+// Naming a parent URL, even the module's own, asks the resolver rather than the
+// resolution the module recorded.
+test('load .bundle with linked addon, resolved with a parent URL', async (t) => {
+  const bundle = new Bundle().write(
+    '/foo.js',
+    "module.exports = require.addon.resolve('.', new URL(module.url))",
+    { main: true }
+  )
+
+  bundle.resolutions = {
+    '/foo.js': {
+      '.': {
+        ios: 'linked:bar.1.2.3',
+        [platform]: 'linked:foo.1.2.3'
+      }
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  t.is(exports, 'linked:foo.1.2.3')
 })
 
 test('load unknown extension', async (t) => {
