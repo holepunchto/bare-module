@@ -223,6 +223,27 @@ test('load .bundle with resolutions map', async (t) => {
   await t.execution(Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {}))
 })
 
+test('load .bundle with resolutions map, package declaring a module type', async (t) => {
+  const bundle = new Bundle()
+    .write('/package.json', '{ "type": "module" }')
+    .write('/foo.js', "export { default } from './bar.js'", { main: true })
+    .write('/bar.js', 'export default 42')
+
+  bundle.resolutions = {
+    '/foo.js': {
+      '#package': '/package.json',
+      './bar.js': '/bar.js'
+    },
+    '/bar.js': {
+      '#package': '/package.json'
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  t.is(exports.default, 42)
+})
+
 test('load .bundle with resolutions map, missing entry', async (t) => {
   const bundle = new Bundle()
     .write('/dir/foo.js', "module.exports = require('./bar')", { main: true })
