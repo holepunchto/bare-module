@@ -445,3 +445,362 @@ test('load .bundle with asset import, resolutions map pointing outside .bundle',
 
   t.is(exports, path('/bar.txt'))
 })
+
+// A module that the main of a bundle names only through a computed specifier is
+// not linked with the main, but must still see the resolutions the bundle holds
+// for it.
+test('load .bundle with resolutions map, module linked after the main', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('./' + 'bar')", { main: true })
+    .write('/bar.js', "module.exports = require('./baz')")
+    .write('/baz.js', 'module.exports = 1')
+    .write('/qux.js', 'module.exports = 2')
+
+  bundle.resolutions = {
+    '/bar.js': {
+      './baz': '/qux.js'
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  t.is(exports, 2)
+})
+
+test('load .bundle with resolutions map, module linked after the main, synchronously', (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('./' + 'bar')", { main: true })
+    .write('/bar.js', "module.exports = require('./baz')")
+    .write('/baz.js', 'module.exports = 1')
+    .write('/qux.js', 'module.exports = 2')
+
+  bundle.resolutions = {
+    '/bar.js': {
+      './baz': '/qux.js'
+    }
+  }
+
+  const { exports } = Module.loadSync(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  t.is(exports, 2)
+})
+
+test('load .bundle with resolutions map, module imported after the main', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.mjs', "export default () => import('./' + 'bar.mjs')", { main: true })
+    .write('/bar.mjs', "export { default } from './baz.mjs'")
+    .write('/baz.mjs', 'export default 1')
+    .write('/qux.mjs', 'export default 2')
+
+  bundle.resolutions = {
+    '/bar.mjs': {
+      './baz.mjs': '/qux.mjs'
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  const { default: value } = await exports.default()
+
+  t.is(value, 2)
+})
+
+test('load .bundle with resolutions map, module linked after the main, dependency', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('./' + 'bar')", { main: true })
+    .write('/bar.js', "module.exports = require('./lib')")
+    .write('/lib.js', "module.exports = require('./baz')")
+    .write('/baz.js', 'module.exports = 1')
+    .write('/qux.js', 'module.exports = 2')
+
+  bundle.resolutions = {
+    '/lib.js': {
+      './baz': '/qux.js'
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  t.is(exports, 2)
+})
+
+test('load .bundle with resolutions map, module linked after the main, pointing outside .bundle', async (t) => {
+  const protocol = sources({ [root + '/qux.js']: 'module.exports = 2' })
+
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('./' + 'bar')", { main: true })
+    .write('/bar.js', "module.exports = require('./baz')")
+    .write('/baz.js', 'module.exports = 1')
+
+  bundle.resolutions = {
+    '/bar.js': {
+      './baz': root + '/qux.js'
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {
+    protocol
+  })
+
+  t.is(exports, 2)
+})
+
+test('load .bundle with resolutions map, module linked after the main, missing entry', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('./' + 'bar')", { main: true })
+    .write('/bar.js', "module.exports = require('./baz')")
+    .write('/baz.js', 'module.exports = 1')
+
+  bundle.resolutions = {
+    '/bar.js': {}
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  t.is(exports, 1)
+})
+
+test('load .bundle with resolutions map, module linked after the main, conditional on the host', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('./' + 'bar')", { main: true })
+    .write('/bar.js', "module.exports = require('./baz')")
+    .write('/baz.js', 'module.exports = 1')
+    .write('/qux.js', 'module.exports = 2')
+    .write('/quux.js', 'module.exports = 3')
+
+  bundle.resolutions = {
+    '/bar.js': {
+      './baz': {
+        ios: '/quux.js',
+        [platform]: '/qux.js'
+      }
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  t.is(exports, 2)
+})
+
+test('load .bundle with resolutions map, module linked after the main, package declaring a module type', async (t) => {
+  const bundle = new Bundle()
+    .write('/package.json', '{ "type": "module" }')
+    .write('/foo.js', "export default () => import('./' + 'bar.js')", { main: true })
+    .write('/bar.js', "export { default } from './baz.js'")
+    .write('/baz.js', 'export default 1')
+    .write('/qux.js', 'export default 2')
+
+  bundle.resolutions = {
+    '/foo.js': {
+      '#package': '/package.json'
+    },
+    '/bar.js': {
+      '#package': '/package.json',
+      './baz.js': '/qux.js'
+    },
+    '/qux.js': {
+      '#package': '/package.json'
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  const { default: value } = await exports.default()
+
+  t.is(value, 2)
+})
+
+test('load .bundle with linked addon, module linked after the main', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('./' + 'bar')", { main: true })
+    .write('/bar.js', "module.exports = require.addon.resolve('.')")
+
+  bundle.resolutions = {
+    '/bar.js': {
+      '.': 'linked:foo.1.2.3'
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  t.is(exports, 'linked:foo.1.2.3')
+})
+
+test('load .bundle with asset import, module linked after the main', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('./' + 'bar')", { main: true })
+    .write('/bar.js', "module.exports = require.asset('./bar.txt')")
+    .write('/baz.txt', 'hello world', { asset: true })
+
+  bundle.resolutions = {
+    '/bar.js': {
+      './bar.txt': {
+        asset: '/baz.txt'
+      }
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  t.is(exports, path('/app.bundle/baz.txt'))
+})
+
+test('load .bundle with resolutions map, resolved with the parent URL of a module not yet linked', async (t) => {
+  const bundle = new Bundle()
+    .write(
+      '/foo.js',
+      "module.exports = require.resolve('./baz', new URL('./bar.js', module.url))",
+      {
+        main: true
+      }
+    )
+    .write('/bar.js', "module.exports = require('./baz')")
+    .write('/baz.js', 'module.exports = 1')
+    .write('/qux.js', 'module.exports = 2')
+
+  bundle.resolutions = {
+    '/bar.js': {
+      './baz': '/qux.js'
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  t.is(exports, path('/app.bundle/qux.js'))
+})
+
+test('load .bundle with resolutions map, exposed through module.resolutions', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', 'module.exports = module.resolutions', { main: true })
+    .write('/bar.js', "module.exports = require('./baz')")
+    .write('/baz.js', 'module.exports = 1')
+    .write('/qux.js', 'module.exports = 2')
+
+  bundle.resolutions = {
+    '/bar.js': {
+      './baz': '/qux.js'
+    }
+  }
+
+  const module = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  t.is(module.exports, module.resolutions, 'the modules of a bundle share the resolutions map')
+  t.is(
+    module.resolutions[root + '/app.bundle/bar.js']['./baz'],
+    root + '/app.bundle/qux.js',
+    'a module not yet linked is included'
+  )
+})
+
+test('load .bundle with resolutions map, merged into the resolutions map of the loader', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', 'module.exports = 42', { main: true })
+    .write('/bar.js', "module.exports = require('./baz')")
+    .write('/qux.js', 'module.exports = 2')
+
+  bundle.resolutions = {
+    '/bar.js': {
+      './baz': '/qux.js'
+    }
+  }
+
+  const resolutions = {}
+
+  await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), { resolutions })
+
+  t.is(resolutions[root + '/app.bundle/bar.js']['./baz'], root + '/app.bundle/qux.js')
+})
+
+test('load .bundle with resolutions map, existing entry of the loader', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('./' + 'bar')", { main: true })
+    .write('/bar.js', "module.exports = require('./baz')")
+    .write('/baz.js', 'module.exports = 1')
+    .write('/qux.js', 'module.exports = 2')
+
+  bundle.resolutions = {
+    '/bar.js': {
+      './baz': '/qux.js'
+    }
+  }
+
+  const resolutions = {
+    [root + '/app.bundle/bar.js']: {
+      './baz': root + '/app.bundle/baz.js'
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {
+    resolutions
+  })
+
+  t.is(exports, 1, 'the entry of the loader is not replaced')
+})
+
+test('load .bundle with resolutions map, several bundles', async (t) => {
+  const bundle = (value) => {
+    const bundle = new Bundle()
+      .write('/foo.js', "module.exports = require('./' + 'bar')", { main: true })
+      .write('/bar.js', "module.exports = require('./baz')")
+      .write('/baz.js', 'module.exports = 0')
+      .write('/qux.js', `module.exports = ${value}`)
+
+    bundle.resolutions = {
+      '/bar.js': {
+        './baz': '/qux.js'
+      }
+    }
+
+    return bundle.toBuffer()
+  }
+
+  const a = await Module.load(new URL(root + '/a.bundle'), bundle(1), {})
+  const b = await Module.load(new URL(root + '/b.bundle'), bundle(2), { referrer: a })
+
+  t.is(a.exports, 1)
+  t.is(b.exports, 2)
+  t.is(a.resolutions, b.resolutions, 'the bundles share the resolutions map')
+})
+
+test('load .bundle with resolutions map, nested bundle', async (t) => {
+  const inner = new Bundle()
+    .write('/foo.js', "module.exports = require('./' + 'bar')", { main: true })
+    .write('/bar.js', "module.exports = require('./baz')")
+    .write('/baz.js', 'module.exports = 1')
+    .write('/qux.js', 'module.exports = 2')
+
+  inner.resolutions = {
+    '/bar.js': {
+      './baz': '/qux.js'
+    }
+  }
+
+  const outer = new Bundle()
+    .write('/foo.js', "module.exports = require('./inner.bundle')", { main: true })
+    .write('/inner.bundle', inner.toBuffer())
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), outer.toBuffer(), {})
+
+  t.is(exports, 2)
+})
+
+test('load .bundle with resolutions map, not shared with a fork given another protocol', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', 'module.exports = 42', { main: true })
+    .write('/bar.js', "module.exports = require('./baz')")
+    .write('/qux.js', 'module.exports = 2')
+
+  bundle.resolutions = {
+    '/bar.js': {
+      './baz': '/qux.js'
+    }
+  }
+
+  const referrer = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {})
+
+  const other = sources({ [root + '/index.js']: 'module.exports = 42' })
+
+  const fork = await Module.load(new URL(root + '/index.js'), { referrer, protocol: other })
+
+  t.absent(fork.resolutions[root + '/app.bundle/bar.js'])
+})

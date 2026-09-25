@@ -1,5 +1,6 @@
 import Buffer from 'bare-buffer'
 import URL from 'bare-url'
+import { ResolutionsMap } from 'bare-module-resolve'
 import { constants } from 'bare-module-traverse'
 import Protocol from './lib/protocol'
 import Loader from './lib/loader'
@@ -38,6 +39,11 @@ interface Module {
    * [Protocols](https://github.com/holepunchto/bare-module#protocols) for usage.
    */
   readonly protocol: Protocol
+  /**
+   * The resolutions map of the module graph, with keys being serialized parent URLs and values
+   * being `"imports"` maps.
+   */
+  readonly resolutions: ResolutionsMap
   /** The WHATWG `URL` identifier of the module. */
   readonly url: URL
 }

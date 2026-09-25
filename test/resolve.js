@@ -592,7 +592,7 @@ test('pkg.engines with invalid range', async (t) => {
 })
 
 test('resolve caches the result in resolutions map', async (t) => {
-  const resolutions = {}
+  const resolutions = { [root + '/']: {} }
 
   const protocol = sources({
     [root + '/node_modules/foo/package.json']: '{}',
@@ -604,6 +604,113 @@ test('resolve caches the result in resolutions map', async (t) => {
   t.is(href, root + '/node_modules/foo/index.js')
 
   t.is(resolutions[root + '/'].foo.require, root + '/node_modules/foo/index.js')
+})
+
+test('resolve does not start an entry for a parent that has none', async (t) => {
+  const resolutions = {}
+
+  const protocol = sources({
+    [root + '/node_modules/foo/package.json']: '{}',
+    [root + '/node_modules/foo/index.js']: null
+  })
+
+  await Module.resolve('foo', new URL(root + '/'), { protocol, resolutions })
+
+  t.absent(root + '/' in resolutions)
+})
+
+test('resolve caches the result in the entry of a linked module', (t) => {
+  const protocol = sources({
+    [root + '/foo.cjs']: "exports.bar = () => require('./' + 'bar')",
+    [root + '/bar.cjs']: 'module.exports = 42'
+  })
+
+  const foo = Module.loadSync(new URL(root + '/foo.cjs'), { protocol })
+
+  t.absent('./bar' in foo.resolutions[root + '/foo.cjs'], 'a computed import is not linked')
+
+  foo.exports.bar()
+
+  t.is(foo.resolutions[root + '/foo.cjs']['./bar'].require, root + '/bar.cjs')
+})
+
+test('resolve from a module not yet linked leaves its imports to be linked', (t) => {
+  const protocol = sources({
+    [root + '/index.cjs']: '',
+    [root + '/foo.cjs']: "require('./bar')",
+    [root + '/bar.cjs']: 'module.exports = 42',
+    [root + '/baz.cjs']: 'module.exports = 43'
+  })
+
+  const require = Module.createRequire(new URL(root + '/index.cjs'), { protocol })
+
+  require.resolve('./baz.cjs', new URL(root + '/foo.cjs'))
+
+  const foo = Module.loadSync(new URL(root + '/foo.cjs'), { referrer: require.main })
+
+  t.is(foo.resolutions[root + '/foo.cjs']['./bar'], root + '/bar.cjs')
+})
+
+test('resolve from a module not yet linked leaves its package scope to be linked', async (t) => {
+  const protocol = sources({
+    [root + '/package.json']: '{ "type": "module" }',
+    [root + '/index.js']: '',
+    [root + '/foo.js']: "export { default } from './bar.js'",
+    [root + '/bar.js']: 'export default 42',
+    [root + '/baz.js']: 'export default 43'
+  })
+
+  const require = Module.createRequire(new URL(root + '/index.js'), { protocol })
+
+  require.resolve('./baz.js', new URL(root + '/foo.js'))
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { referrer: require.main })
+
+  t.is(exports.default, 42)
+})
+
+test('resolve from a module not yet linked leaves its package scope to be linked, resolutions map', async (t) => {
+  const resolutions = {}
+
+  const protocol = sources({
+    [root + '/package.json']: '{ "type": "module" }',
+    [root + '/foo.js']: "export { default } from './bar.js'",
+    [root + '/bar.js']: 'export default 42',
+    [root + '/baz.js']: 'export default 43'
+  })
+
+  await Module.resolve('./baz.js', new URL(root + '/foo.js'), { protocol, resolutions })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol, resolutions })
+
+  t.is(exports.default, 42)
+})
+
+test('module.resolutions holds the resolutions of the linked graph', (t) => {
+  const protocol = sources({
+    [root + '/foo.cjs']: "exports.bar = () => require('./bar')",
+    [root + '/bar.cjs']: 'module.exports = 42'
+  })
+
+  const foo = Module.loadSync(new URL(root + '/foo.cjs'), { protocol })
+
+  t.is(
+    foo.resolutions[root + '/foo.cjs']['./bar'],
+    root + '/bar.cjs',
+    'an import not yet evaluated is resolved'
+  )
+})
+
+test('module.resolutions is the resolutions map of the loader', (t) => {
+  const resolutions = {}
+
+  const protocol = sources({
+    [root + '/foo.cjs']: 'module.exports = 42'
+  })
+
+  const foo = Module.loadSync(new URL(root + '/foo.cjs'), { protocol, resolutions })
+
+  t.is(foo.resolutions, resolutions)
 })
 
 test('resolve reuses a cached resolution without touching the protocol', async (t) => {
@@ -649,7 +756,7 @@ test('resolve does not reuse a require resolution for an import', async (t) => {
 })
 
 test('asset caches the result in resolutions map', async (t) => {
-  const resolutions = {}
+  const resolutions = { [root + '/']: {} }
 
   const protocol = sources({ [root + '/foo.txt']: null })
 
@@ -661,6 +768,16 @@ test('asset caches the result in resolutions map', async (t) => {
   t.is(href, root + '/foo.txt')
 
   t.is(resolutions[root + '/']['./foo.txt'].asset, root + '/foo.txt')
+})
+
+test('asset does not start an entry for a parent that has none', async (t) => {
+  const resolutions = {}
+
+  const protocol = sources({ [root + '/foo.txt']: null })
+
+  await Module.resolve('./foo.txt', new URL(root + '/'), 'asset', { protocol, resolutions })
+
+  t.absent(root + '/' in resolutions)
 })
 
 test('asset reuses a cached resolution without touching the protocol', async (t) => {
