@@ -221,7 +221,7 @@ test('loader addons', async (t) => {
 
   await loader.link(new URL(root + '/foo.js'))
 
-  t.is(resolutions[root + '/foo.js']['.'], addon().href)
+  t.alike(resolutions[root + '/foo.js']['.'], { addon: addon().href })
 })
 
 test('loader addons resolved during evaluation', async (t) => {
