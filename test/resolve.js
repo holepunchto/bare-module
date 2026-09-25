@@ -1,7 +1,10 @@
 const test = require('brittle')
 const { pathToFileURL } = require('bare-url')
 const Module = require('..')
-const { host, path, prebuilds, root, sources } = require('./helpers')
+const { asyncSources, host, path, prebuilds, root, sources } = require('./helpers')
+
+// The resolutions map of a loader and the entries it records have no prototype.
+const plain = (map) => JSON.parse(JSON.stringify(map))
 
 // Everything `./foo` may denote, in the order the resolver tries it.
 const moduleCandidates = [
@@ -711,6 +714,242 @@ test('module.resolutions is the resolutions map of the loader', (t) => {
   const foo = Module.loadSync(new URL(root + '/foo.cjs'), { protocol, resolutions })
 
   t.is(foo.resolutions, resolutions)
+})
+
+test('linking records the imports of every module of the graph', (t) => {
+  const protocol = sources({
+    [root + '/package.json']: '{}',
+    [root + '/foo.cjs']: "require('./bar')\nexports.qux = () => require('./qux')",
+    [root + '/bar.cjs']: "require('./baz')",
+    [root + '/baz.cjs']: '',
+    [root + '/qux.cjs']: ''
+  })
+
+  const foo = Module.loadSync(new URL(root + '/foo.cjs'), { protocol })
+
+  t.alike(plain(foo.resolutions), {
+    [root + '/package.json']: {},
+    [root + '/foo.cjs']: {
+      '#package': root + '/package.json',
+      './bar': root + '/bar.cjs',
+      './qux': root + '/qux.cjs'
+    },
+    [root + '/bar.cjs']: {
+      '#package': root + '/package.json',
+      './baz': root + '/baz.cjs'
+    },
+    [root + '/baz.cjs']: {
+      '#package': root + '/package.json'
+    },
+    [root + '/qux.cjs']: {
+      '#package': root + '/package.json'
+    }
+  })
+})
+
+test('linking records the imports of every module of the graph, asynchronously', async (t) => {
+  const protocol = asyncSources({
+    [root + '/foo.mjs']: "import './bar.mjs'\nexport * from './baz.mjs'",
+    [root + '/bar.mjs']: "export { default } from './qux.mjs'",
+    [root + '/baz.mjs']: '',
+    [root + '/qux.mjs']: 'export default 42'
+  })
+
+  const foo = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.alike(plain(foo.resolutions), {
+    [root + '/foo.mjs']: {
+      './bar.mjs': root + '/bar.mjs',
+      './baz.mjs': root + '/baz.mjs'
+    },
+    [root + '/bar.mjs']: {
+      './qux.mjs': root + '/qux.mjs'
+    },
+    [root + '/baz.mjs']: {},
+    [root + '/qux.mjs']: {}
+  })
+})
+
+test('linking records bare specifiers, package imports and builtins', (t) => {
+  const protocol = sources({
+    [root + '/package.json']: '{ "imports": { "#bar": "./bar.cjs" } }',
+    [root + '/foo.cjs']: "require('baz')\nrequire('#bar')\nrequire('qux')",
+    [root + '/bar.cjs']: '',
+    [root + '/node_modules/baz/package.json']:
+      '{ "exports": { "require": "./require.js", "import": "./import.js" } }',
+    [root + '/node_modules/baz/require.js']: ''
+  })
+
+  const foo = Module.loadSync(new URL(root + '/foo.cjs'), { protocol, builtins: { qux: {} } })
+
+  t.alike(plain(foo.resolutions), {
+    [root + '/package.json']: {},
+    [root + '/foo.cjs']: {
+      '#package': root + '/package.json',
+      baz: root + '/node_modules/baz/require.js',
+      '#bar': root + '/bar.cjs',
+      qux: 'builtin:qux'
+    },
+    [root + '/bar.cjs']: {
+      '#package': root + '/package.json'
+    },
+    [root + '/node_modules/baz/package.json']: {},
+    [root + '/node_modules/baz/require.js']: {
+      '#package': root + '/node_modules/baz/package.json'
+    }
+  })
+})
+
+test('linking records unresolved imports and assets', (t) => {
+  const protocol = sources({
+    [root + '/foo.cjs']: "try { require('bar') } catch {}\nrequire.asset('./baz.txt')",
+    [root + '/baz.txt']: 'hello world'
+  })
+
+  const foo = Module.loadSync(new URL(root + '/foo.cjs'), { protocol })
+
+  t.alike(plain(foo.resolutions), {
+    [root + '/foo.cjs']: {
+      bar: 'deferred:bar',
+      './baz.txt': root + '/baz.txt'
+    }
+  })
+})
+
+test('evaluation records computed resolutions in the entry of the module', async (t) => {
+  const protocol = sources({
+    [root + '/foo.cjs']: `
+      require('./' + 'bar')
+      require.resolve('./' + 'baz')
+      require.asset('./' + 'qux.txt')
+      exports.quux = () => import('./' + 'quux.mjs')
+    `,
+    [root + '/bar.cjs']: '',
+    [root + '/baz.cjs']: '',
+    [root + '/qux.txt']: 'hello world',
+    [root + '/quux.mjs']: "export default import.meta.resolve('./' + 'corge.mjs')",
+    [root + '/corge.mjs']: ''
+  })
+
+  const foo = Module.loadSync(new URL(root + '/foo.cjs'), { protocol })
+
+  await foo.exports.quux()
+
+  t.alike(plain(foo.resolutions), {
+    [root + '/foo.cjs']: {
+      './bar': { require: root + '/bar.cjs' },
+      './baz': { require: root + '/baz.cjs' },
+      './qux.txt': { asset: root + '/qux.txt' },
+      './quux.mjs': { import: root + '/quux.mjs' }
+    },
+    [root + '/bar.cjs']: {},
+    [root + '/quux.mjs']: {
+      './corge.mjs': { import: root + '/corge.mjs' }
+    }
+  })
+})
+
+test('evaluation does not replace a resolution recorded by linking', (t) => {
+  const protocol = sources({
+    [root + '/foo.cjs']:
+      "require('./bar')\nrequire(['.', 'bar'].join('/'))\nrequire.resolve('./bar')",
+    [root + '/bar.cjs']: ''
+  })
+
+  const foo = Module.loadSync(new URL(root + '/foo.cjs'), { protocol })
+
+  t.is(foo.resolutions[root + '/foo.cjs']['./bar'], root + '/bar.cjs')
+})
+
+test('linking records into the resolutions map of the loader', async (t) => {
+  const resolutions = {}
+
+  const protocol = asyncSources({
+    [root + '/foo.cjs']: "require('./bar')",
+    [root + '/bar.cjs']: ''
+  })
+
+  const loader = new Module.Loader({ protocol, resolutions })
+
+  await loader.link(new URL(root + '/foo.cjs'))
+
+  t.alike(plain(resolutions), {
+    [root + '/foo.cjs']: { './bar': root + '/bar.cjs' },
+    [root + '/bar.cjs']: {}
+  })
+})
+
+test('linking with a referrer records into the resolutions map of the referrer', (t) => {
+  const protocol = sources({
+    [root + '/foo.cjs']: '',
+    [root + '/bar.cjs']: "require('./baz')",
+    [root + '/baz.cjs']: ''
+  })
+
+  const foo = Module.loadSync(new URL(root + '/foo.cjs'), { protocol })
+
+  Module.loadSync(new URL(root + '/bar.cjs'), { referrer: foo })
+
+  t.alike(plain(foo.resolutions), {
+    [root + '/foo.cjs']: {},
+    [root + '/bar.cjs']: { './baz': root + '/baz.cjs' },
+    [root + '/baz.cjs']: {}
+  })
+})
+
+test('resolve reuses a resolution recorded by linking without touching the protocol', (t) => {
+  let locked = false
+
+  const store = {
+    [root + '/foo.cjs']: "exports.resolve = () => require.resolve('./bar')\nrequire('./bar')",
+    [root + '/bar.cjs']: ''
+  }
+
+  const protocol = sources(store, {
+    exists(url) {
+      if (locked) t.fail('the protocol was asked')
+
+      return url.href in store
+    },
+
+    read(url) {
+      if (locked) t.fail('the protocol was read')
+
+      return store[url.href] ?? null
+    }
+  })
+
+  const foo = Module.loadSync(new URL(root + '/foo.cjs'), { protocol })
+
+  locked = true
+
+  t.is(foo.exports.resolve(), path('/bar.cjs'))
+})
+
+test('resolve reuses a resolution recorded by evaluation without asking for other candidates', (t) => {
+  const asked = []
+
+  const store = {
+    [root + '/foo.cjs']: "module.exports = () => require.resolve('./' + 'bar')",
+    [root + '/bar.cjs']: ''
+  }
+
+  const protocol = sources(store, {
+    exists(url) {
+      asked.push(url.href)
+
+      return url.href in store
+    }
+  })
+
+  const foo = Module.loadSync(new URL(root + '/foo.cjs'), { protocol })
+
+  t.is(foo.exports(), path('/bar.cjs'))
+
+  asked.length = 0
+
+  t.is(foo.exports(), path('/bar.cjs'))
+  t.alike(asked, [root + '/bar.cjs'])
 })
 
 test('resolve reuses a cached resolution without touching the protocol', async (t) => {
