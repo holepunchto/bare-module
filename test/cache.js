@@ -119,6 +119,18 @@ test('a fork is given a fresh cache by naming one', (t) => {
   t.not(fresh, referrer, 'naming a cache of its own starts a graph of its own')
 })
 
+test('load with referrer shares the referrer resolutions', async (t) => {
+  const protocol = sources({
+    [root + '/foo.cjs']: 'module.exports = 1',
+    [root + '/bar.cjs']: 'module.exports = 2'
+  })
+
+  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+  const bar = await Module.load(new URL(root + '/bar.cjs'), { referrer: foo })
+
+  t.is(bar.resolutions, foo.resolutions)
+})
+
 test('load with referrer and protocol uses the given protocol', async (t) => {
   const protocol = sources({ [root + '/foo.cjs']: 'module.exports = 1' })
   const other = sources({ [root + '/bar.cjs']: 'module.exports = 2' })
@@ -171,6 +183,17 @@ test('load with referrer and protocol does not leak the referrer protocol', asyn
   for (const href of Object.keys(cache)) {
     t.not(cache[href].protocol, protocol, `'${href}' cannot reach the referrer protocol`)
   }
+})
+
+test('load with referrer and protocol does not leak the referrer resolutions', async (t) => {
+  const protocol = sources({ [root + '/foo.cjs']: 'module.exports = 1' })
+  const other = sources({ [root + '/bar.cjs']: 'module.exports = 2' })
+
+  const foo = await Module.load(new URL(root + '/foo.cjs'), { protocol })
+  const bar = await Module.load(new URL(root + '/bar.cjs'), { referrer: foo, protocol: other })
+
+  t.not(bar.resolutions, foo.resolutions)
+  t.absent(bar.resolutions[root + '/foo.cjs'], 'the referrer is not in the fork resolutions')
 })
 
 test('load with referrer and protocol cannot read through the referrer', async (t) => {
