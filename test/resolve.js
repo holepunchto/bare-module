@@ -811,7 +811,7 @@ test('linking records unresolved imports and assets', (t) => {
   t.alike(plain(foo.resolutions), {
     [root + '/foo.cjs']: {
       bar: 'deferred:bar',
-      './baz.txt': root + '/baz.txt'
+      './baz.txt': { asset: root + '/baz.txt' }
     }
   })
 })
