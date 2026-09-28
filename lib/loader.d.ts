@@ -24,6 +24,15 @@ interface ModuleLoader {
   patch(bundle: Bundle): URL[]
   evict(urls: URL | string | Iterable<URL | string>): URL[]
 
+  instantiate(
+    urls: URL | string | Iterable<URL | string>,
+    opts?: ModuleLoader.LinkOptions
+  ): Promise<Module[]>
+  instantiateSync(
+    urls: URL | string | Iterable<URL | string>,
+    opts?: ModuleLoader.LinkOptions
+  ): Module[]
+
   link(
     entry: URL,
     source?: Buffer | string | null,

@@ -589,6 +589,18 @@ Link the module graph rooted at `entry`, a WHATWG `URL`, awaiting each read thro
 
 The synchronous equivalent of `loader.link()`. It drives the protocol's synchronous methods (`resolveSync`, `existsSync`, `readSync`, and `listSync`), which throw an `UNEXPECTED_PROMISE` error when the protocol can only answer asynchronously.
 
+### `const modules = await loader.instantiate(urls[, options])`
+
+Compile the modules at `urls` and everything they reach, without evaluating any of them. `urls` is a WHATWG `URL`, a string, or any number of either. Returns the module records.
+
+This is the phase `loader.link()` performs on the way to an entry, for modules the graph already holds and is not entering through, so it answers whether a source can be run at all without any of the consequences of running it. Unlike `link()` it does not set `loader.main`.
+
+A module the graph has already compiled is left as it is, so this is asked after a `patch()` rather than before one. What it answers is whether the source compiles, and not whether everything it names exists: an unresolved specifier is deferred, which is what lets a module name something that is not there on this platform and never ask for it.
+
+### `const modules = loader.instantiateSync(urls[, options])`
+
+The synchronous equivalent of `loader.instantiate()`.
+
 ### `const exports = await loader.import(entry[, options])`
 
 Link and evaluate the graph rooted at `entry`, returning its exports. Awaits the entry's evaluation, so a top-level `await` in the entry settles before the exports are returned.
@@ -596,6 +608,16 @@ Link and evaluate the graph rooted at `entry`, returning its exports. Awaits the
 ### `const exports = loader.importSync(entry[, options])`
 
 The synchronous equivalent of `loader.import()`. It cannot await, so a top-level `await` in the entry is unsupported.
+
+### `const urls = loader.patch(bundle)`
+
+Make the contents of `bundle` what the graph reads, in front of whatever it read before, and forget what it knew about each key. Returns the URLs the patch covers. A later patch of the same key wins over an earlier one.
+
+Forgetting a module is not re-reading it: nothing runs again until something asks for it, and whoever already imported it keeps what it exported. Reaching a patched module through an importer the graph still holds requires evicting that importer too.
+
+### `const urls = loader.evict(urls)`
+
+Forget what the graph knows about the modules at `urls`, a WHATWG `URL`, a string, or any number of either, so that they are read and resolved again when next asked for. Returns the URLs that were known.
 
 ### `const module = loader.get(url)`
 
