@@ -1,7 +1,8 @@
 import Buffer from 'bare-buffer'
+import Bundle from 'bare-bundle'
 import URL from 'bare-url'
 import { Builtins, ImportsMap, ResolutionsMap } from 'bare-module-resolve'
-import { Attributes, Cache, Module } from '..'
+import Module, { Attributes, Cache } from '..'
 import Protocol from './protocol'
 
 interface ModuleLoader {
@@ -20,11 +21,27 @@ interface ModuleLoader {
 
   get(url: URL): Module | null
 
-  link(entry: URL, source?: Buffer | string | null, opts?: LinkOptions): Promise<Module>
-  linkSync(entry: URL, source?: Buffer | string | null, opts?: LinkOptions): Module
+  patch(bundle: Bundle): URL[]
+  evict(urls: URL | string | Iterable<URL | string>): URL[]
 
-  import(entry: URL, opts?: ImportOptions): Promise<unknown>
-  importSync(entry: URL, opts?: ImportOptions): unknown
+  instantiate(
+    urls: URL | string | Iterable<URL | string>,
+    opts?: ModuleLoader.LinkOptions
+  ): Promise<Module[]>
+  instantiateSync(
+    urls: URL | string | Iterable<URL | string>,
+    opts?: ModuleLoader.LinkOptions
+  ): Module[]
+
+  link(
+    entry: URL,
+    source?: Buffer | string | null,
+    opts?: ModuleLoader.LinkOptions
+  ): Promise<Module>
+  linkSync(entry: URL, source?: Buffer | string | null, opts?: ModuleLoader.LinkOptions): Module
+
+  import(entry: URL, opts?: ModuleLoader.ImportOptions): Promise<unknown>
+  importSync(entry: URL, opts?: ModuleLoader.ImportOptions): unknown
 }
 
 declare class ModuleLoader {
