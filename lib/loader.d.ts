@@ -1,4 +1,5 @@
 import Buffer from 'bare-buffer'
+import Bundle from 'bare-bundle'
 import URL from 'bare-url'
 import { Builtins, ImportsMap, ResolutionsMap } from 'bare-module-resolve'
 import { Attributes, Cache, Module } from '..'
@@ -19,6 +20,9 @@ interface ModuleLoader {
   readonly protocol: Protocol
 
   get(url: URL): Module | null
+
+  patch(bundle: Bundle): URL[]
+  evict(urls: URL | string | Iterable<URL | string>): URL[]
 
   link(entry: URL, source?: Buffer | string | null, opts?: LinkOptions): Promise<Module>
   linkSync(entry: URL, source?: Buffer | string | null, opts?: LinkOptions): Module
