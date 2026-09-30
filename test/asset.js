@@ -35,6 +35,17 @@ test('load .mjs with asset import', async (t) => {
   t.is(exports.default, root + '/foo.txt')
 })
 
+test('load .mjs with asset import with parentURL', async (t) => {
+  const protocol = sources({
+    [root + '/index.mjs']: `export default import.meta.asset('./foo.txt', new URL('${root}/dir/'))`,
+    [root + '/dir/foo.txt']: null
+  })
+
+  const { exports } = await Module.load(new URL(root + '/index.mjs'), { protocol })
+
+  t.is(exports.default, root + '/dir/foo.txt')
+})
+
 test('load .js with asset import of a .js file', async (t) => {
   const protocol = sources({
     [root + '/index.js']: "module.exports = require.asset('./foo.js')",

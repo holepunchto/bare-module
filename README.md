@@ -301,7 +301,9 @@ options = {
   // The import attributes which instruct how the file or module should be loaded.
   // `type` is one of the strings `script`, `module`, `json`, `bundle`, `addon`,
   // `binary` and `text`. A type that is not one of them is turned down rather
-  // than passed over, as is a `type` that is not a string.
+  // than passed over, as is a `type` that is not a string. `imports` is the
+  // specifier of an "imports" map to apply to the module and its dependencies,
+  // resolved relative to the module calling `require()`.
   with: { type: 'json' }
 }
 ```
@@ -314,9 +316,25 @@ The module representing the entry script where the program was launched.
 
 The registry of loaded modules for this module's graph, keyed by URL href.
 
-### `const path = require.resolve(specifier[, parentURL])`
+### `const path = require.resolve(specifier[, parentURL][, options])`
 
 Use the internal machinery of `require()` to resolve the `specifier` string relative to the URL `parentURL` and return the path string.
+
+Options include:
+
+```js
+options = {
+  // The import attributes which instruct how the file or module would be
+  // loaded, as for `require()`. If passed, the graph of the resolved module is
+  // linked, but not evaluated, with the attributes applied so that its
+  // resolutions are recorded in `module.resolutions`. This allows the module to
+  // later be prepared from its path alone, such as when spawning a thread with
+  // an imports map applied.
+  with: { imports: './imports.json' }
+}
+```
+
+When `parentURL` is passed, the resolutions are recorded for `parentURL` rather than the calling module. This is useful when resolving on behalf of another module.
 
 ### `require.addon([specifier][, parentURL])`
 
@@ -379,9 +397,11 @@ The directory name of the current module.
 
 The file name of the current module.
 
-### `const href = import.meta.resolve(specifier[, parentURL])`
+### `const href = import.meta.resolve(specifier[, parentURL][, options])`
 
 A module-relative resolution function which returns the URL string for the module. The `specifier` is a string which is resolved relative to the `parentURL` which is a WHATWG URL.
+
+Options are the same as for [`require.resolve()`](#const-path--requireresolvespecifier-parenturl-options).
 
 ### `import.meta.addon([specifier][, parentURL])`
 
