@@ -1042,3 +1042,145 @@ test('asset reuses a cached resolution without touching the protocol', async (t)
 
   t.is(href, root + '/foo.txt')
 })
+
+test('require.resolve with imports attribute records the resolved graph without evaluating it', (t) => {
+  const protocol = sources({
+    [root + '/foo.js']: `
+      const id = './bar.js'
+      module.exports = require.resolve(id, { with: { imports: './imports.json' } })
+    `,
+    [root + '/bar.js']: "require('baz'); throw new Error('bar was evaluated')",
+    [root + '/baz.js']: "throw new Error('baz was evaluated')",
+    [root + '/imports.json']: '{ "baz": "./baz.js" }'
+  })
+
+  const foo = Module.loadSync(new URL(root + '/foo.js'), { protocol })
+
+  t.is(foo.exports, path('/bar.js'))
+  t.is(foo.resolutions[root + '/foo.js']['./imports.json'].default, root + '/imports.json')
+  t.is(foo.resolutions[root + '/bar.js'].baz, root + '/baz.js')
+})
+
+test('require.resolve with imports attribute and base URL', (t) => {
+  const protocol = sources({
+    [root + '/foo.js']: `
+      const id = './bar.js'
+      module.exports = require.resolve(id, __filename, { with: { imports: './imports.json' } })
+    `,
+    [root + '/bar.js']: "require('baz'); throw new Error('bar was evaluated')",
+    [root + '/baz.js']: "throw new Error('baz was evaluated')",
+    [root + '/imports.json']: '{ "baz": "./baz.js" }'
+  })
+
+  const foo = Module.loadSync(new URL(root + '/foo.js'), { protocol })
+
+  t.is(foo.exports, path('/bar.js'))
+  t.is(foo.resolutions[root + '/bar.js'].baz, root + '/baz.js')
+})
+
+test('require.resolve with imports attribute on behalf of another module', (t) => {
+  const protocol = sources({
+    [root + '/foo.js']: `
+      const parentURL = require.resolve('./lib/index.js')
+      module.exports = require.resolve('./bar.js', parentURL, { with: { imports: './imports.json' } })
+    `,
+    [root + '/lib/index.js']: '',
+    [root + '/lib/bar.js']: "require('baz'); throw new Error('bar was evaluated')",
+    [root + '/lib/baz.js']: "throw new Error('baz was evaluated')",
+    [root + '/lib/imports.json']: '{ "baz": "./baz.js" }'
+  })
+
+  const foo = Module.loadSync(new URL(root + '/foo.js'), { protocol })
+
+  t.is(foo.exports, path('/lib/bar.js'))
+
+  const { resolutions } = foo
+
+  t.is(resolutions[root + '/lib/index.js']['./bar.js'].require, root + '/lib/bar.js')
+  t.is(resolutions[root + '/lib/index.js']['./imports.json'].default, root + '/lib/imports.json')
+  t.is(resolutions[root + '/lib/bar.js'].baz, root + '/lib/baz.js')
+  t.absent('./bar.js' in resolutions[root + '/foo.js'])
+})
+
+test('require.resolve with URL base is not taken as options', (t) => {
+  const protocol = sources({
+    [root + '/foo.js']:
+      "module.exports = require.resolve('./bar.js', new URL('./lib/', module.url))",
+    [root + '/lib/bar.js']: ''
+  })
+
+  const foo = Module.loadSync(new URL(root + '/foo.js'), { protocol })
+
+  t.is(foo.exports, path('/lib/bar.js'))
+})
+
+test('import.meta.resolve with imports attribute records the resolved graph without evaluating it', async (t) => {
+  const protocol = sources({
+    [root + '/foo.mjs']: `
+      const id = './bar.mjs'
+      export default import.meta.resolve(id, { with: { imports: './imports.json' } })
+    `,
+    [root + '/bar.mjs']: "import 'baz'; throw new Error('bar was evaluated')",
+    [root + '/baz.mjs']: "throw new Error('baz was evaluated')",
+    [root + '/imports.json']: '{ "baz": "./baz.mjs" }'
+  })
+
+  const foo = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(foo.exports.default, root + '/bar.mjs')
+  t.is(foo.resolutions[root + '/foo.mjs']['./imports.json'].default, root + '/imports.json')
+  t.is(foo.resolutions[root + '/bar.mjs'].baz, root + '/baz.mjs')
+})
+
+test('import.meta.resolve with imports attribute and base URL', async (t) => {
+  const protocol = sources({
+    [root + '/foo.mjs']: `
+      const id = './bar.mjs'
+      export default import.meta.resolve(id, import.meta.url, { with: { imports: './imports.json' } })
+    `,
+    [root + '/bar.mjs']: "import 'baz'; throw new Error('bar was evaluated')",
+    [root + '/baz.mjs']: "throw new Error('baz was evaluated')",
+    [root + '/imports.json']: '{ "baz": "./baz.mjs" }'
+  })
+
+  const foo = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(foo.exports.default, root + '/bar.mjs')
+  t.is(foo.resolutions[root + '/bar.mjs'].baz, root + '/baz.mjs')
+})
+
+test('import.meta.resolve with imports attribute on behalf of another module', async (t) => {
+  const protocol = sources({
+    [root + '/foo.mjs']: `
+      const parentURL = import.meta.resolve('./lib/index.mjs')
+      export default import.meta.resolve('./bar.mjs', parentURL, { with: { imports: './imports.json' } })
+    `,
+    [root + '/lib/index.mjs']: '',
+    [root + '/lib/bar.mjs']: "import 'baz'; throw new Error('bar was evaluated')",
+    [root + '/lib/baz.mjs']: "throw new Error('baz was evaluated')",
+    [root + '/lib/imports.json']: '{ "baz": "./baz.mjs" }'
+  })
+
+  const foo = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(foo.exports.default, root + '/lib/bar.mjs')
+
+  const { resolutions } = foo
+
+  t.is(resolutions[root + '/lib/index.mjs']['./bar.mjs'].import, root + '/lib/bar.mjs')
+  t.is(resolutions[root + '/lib/index.mjs']['./imports.json'].default, root + '/lib/imports.json')
+  t.is(resolutions[root + '/lib/bar.mjs'].baz, root + '/lib/baz.mjs')
+  t.absent('./bar.mjs' in resolutions[root + '/foo.mjs'])
+})
+
+test('import.meta.resolve with URL base is not taken as options', async (t) => {
+  const protocol = sources({
+    [root + '/foo.mjs']:
+      "export default import.meta.resolve('./bar.mjs', new URL('./lib/', import.meta.url))",
+    [root + '/lib/bar.mjs']: ''
+  })
+
+  const foo = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(foo.exports.default, root + '/lib/bar.mjs')
+})

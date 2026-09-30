@@ -205,6 +205,22 @@ test('load .js with imports attribute, required package', async (t) => {
   t.is(exports, 42)
 })
 
+test('load .js with imports attribute, computed specifier', async (t) => {
+  const protocol = sources({
+    [root + '/foo.js']: `
+      const id = './bar.js'
+      module.exports = require(id, { with: { imports: './imports.json' } })
+    `,
+    [root + '/bar.js']: "module.exports = require('baz')",
+    [root + '/baz.js']: 'module.exports = 42',
+    [root + '/imports.json']: '{ "baz": "./baz.js" }'
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, 42)
+})
+
 test('load .js with imports attribute, invalid map', async (t) => {
   const protocol = sources({
     [root + '/foo.js']:
@@ -219,6 +235,23 @@ test('load .js with imports attribute, invalid map', async (t) => {
 test('load .mjs with imports attribute', async (t) => {
   const protocol = sources({
     [root + '/foo.mjs']: "export { default } from './bar.js' with { imports: './imports.json' }",
+    [root + '/bar.js']: "module.exports = require('baz')",
+    [root + '/baz.js']: 'module.exports = 42',
+    [root + '/imports.json']: '{ "baz": "./baz.js" }'
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(exports.default, 42)
+})
+
+test('load .mjs with imports attribute, computed specifier', async (t) => {
+  const protocol = sources({
+    [root + '/foo.mjs']: `
+      const id = './bar.js'
+      const { default: bar } = await import(id, { with: { imports: './imports.json' } })
+      export default bar
+    `,
     [root + '/bar.js']: "module.exports = require('baz')",
     [root + '/baz.js']: 'module.exports = 42',
     [root + '/imports.json']: '{ "baz": "./baz.js" }'

@@ -22,7 +22,12 @@ interface Attributes {
    * How the module should be loaded: one of `'script'`, `'module'`, `'json'`, `'bundle'`,
    * `'addon'`, `'binary'`, or `'text'`.
    */
-  type: Lowercase<keyof typeof constants>
+  type?: Lowercase<keyof typeof constants>
+  /**
+   * The specifier of an `"imports"` map to apply to the module and its dependencies, resolved
+   * relative to the parent URL.
+   */
+  imports?: string
 }
 
 interface Module {
@@ -98,7 +103,22 @@ declare namespace Module {
     (parentURL: string | URL, opts?: RequireOptions): unknown
     main: Module
     cache: Cache
-    resolve: (specifier: string, parentURL?: URL) => string
+    /**
+     * Resolve `specifier` relative to `parentURL` without evaluating the matching module. If
+     * import attributes are passed, the graph of the module is linked with them so that its
+     * resolutions are recorded.
+     * @param specifier - The module specifier to resolve.
+     * @param parentURL - The WHATWG `URL` to resolve `specifier` relative to. Defaults to the URL
+     * of the module that `require()` was created for.
+     * @param opts - Resolve options; `with` holds the import attributes.
+     * @returns The path of the resolved module.
+     * @throws {MODULE_NOT_FOUND} no module matching `specifier` could be found relative to
+     * `parentURL`.
+     */
+    resolve: {
+      (specifier: string, opts?: RequireOptions): string
+      (specifier: string, parentURL?: string | URL, opts?: RequireOptions): string
+    }
     /**
      * Resolve `specifier` relative to `parentURL` and evaluate the matching addon.
      * @param specifier - The addon specifier to resolve. Defaults to `'.'`.

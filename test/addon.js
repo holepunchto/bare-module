@@ -164,6 +164,23 @@ test('import.meta.addon', async (t) => {
   t.alike(Object.keys(exports.default), Object.keys(require.addon('..')))
 })
 
+test('import.meta.addon with parentURL', async (t) => {
+  const protocol = sources(
+    {
+      [root + '/foo.mjs']: `export default import.meta.addon('.', new URL('${root}/dir/'))`,
+      [root + '/dir/package.json']: '{ "name": "bar", "version": "1.2.3" }',
+      [root + '/dir/prebuilds/' + host + '/bar.bare']: null
+    },
+    {
+      resolve: () => addon()
+    }
+  )
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.alike(Object.keys(exports.default), Object.keys(require.addon('..')))
+})
+
 test('import.meta.addon is cached', async (t) => {
   const protocol = sources(
     {
@@ -201,6 +218,18 @@ test('import.meta.addon.resolve', async (t) => {
   const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
 
   t.is(exports.default, root + '/prebuilds/' + host + '/foo.bare')
+})
+
+test('import.meta.addon.resolve with parentURL', async (t) => {
+  const protocol = sources({
+    [root + '/foo.mjs']: `export default import.meta.addon.resolve('.', new URL('${root}/dir/'))`,
+    [root + '/dir/package.json']: '{ "name": "bar", "version": "1.2.3" }',
+    [root + '/dir/prebuilds/' + host + '/bar.bare']: null
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(exports.default, root + '/dir/prebuilds/' + host + '/bar.bare')
 })
 
 test('loader addons', async (t) => {
