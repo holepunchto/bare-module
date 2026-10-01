@@ -1,6 +1,6 @@
 {
   "name": "bare-module",
-  "version": "7.2.0",
+  "version": "7.2.1",
   "description": "The module system that powers Bare",
   "exports": {
     "./package": "./package.json",
