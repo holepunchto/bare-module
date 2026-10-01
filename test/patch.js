@@ -132,3 +132,38 @@ test('a module that reaches a patched one is the caller to evict', (t) => {
 
   t.is(l.importSync(new URL(root + '/foo.js')), 2)
 })
+
+test('patch leaves the protocol the cache is claimed with', (t) => {
+  const protocol = sources({ [root + '/foo.js']: 'module.exports = 1' })
+
+  const l = new Module.Loader({ protocol })
+
+  l.patch(new Bundle().write(root + '/foo.js', 'module.exports = 2'))
+
+  t.is(l.protocol, protocol)
+
+  const other = new Module.Loader({ protocol, cache: l.cache })
+
+  t.is(
+    other.importSync(new URL(root + '/foo.js')),
+    2,
+    'a loader sharing the cache shares the patch'
+  )
+})
+
+test('patch is shared with a fork that shares the cache', async (t) => {
+  const protocol = sources({
+    [root + '/foo.js']: 'module.exports = 1',
+    [root + '/bar.js']: 'module.exports = 2'
+  })
+
+  const cache = Object.create(null)
+
+  const foo = await Module.load(new URL(root + '/foo.js'), { protocol, cache })
+
+  foo._loader.patch(new Bundle().write(root + '/bar.js', 'module.exports = 3'))
+
+  const bar = await Module.load(new URL(root + '/bar.js'), { referrer: foo, imports: {} })
+
+  t.is(bar.exports, 3)
+})

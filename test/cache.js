@@ -368,6 +368,16 @@ test('load over a cache read through a different protocol throws', async (t) => 
   )
 })
 
+test('load over a cache read through the default protocol', async (t) => {
+  const cache = Object.create(null)
+
+  const foo = await Module.load(new URL(root + '/foo.cjs'), 'module.exports = 1', { cache })
+  const bar = await Module.load(new URL(root + '/bar.cjs'), 'module.exports = 2', { cache })
+
+  t.is(foo.exports, 1)
+  t.is(bar.exports, 2)
+})
+
 test('load over a cache claimed by a loader that reaches elsewhere throws', async (t) => {
   const cache = Object.create(null)
 
