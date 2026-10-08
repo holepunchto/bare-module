@@ -1,7 +1,7 @@
 const test = require('brittle')
 const Bundle = require('bare-bundle')
 const Module = require('..')
-const { path, root, sources } = require('./helpers')
+const { asyncSources, host, path, root, sources } = require('./helpers')
 
 const platform = Bare.platform
 
@@ -803,4 +803,173 @@ test('load .bundle with resolutions map, not shared with a fork given another pr
   const fork = await Module.load(new URL(root + '/index.js'), { referrer, protocol: other })
 
   t.absent(fork.resolutions[root + '/app.bundle/bar.js'])
+})
+
+test('load .bundle with module outside .bundle', async (t) => {
+  const protocol = sources({ [root + '/bar.js']: 'module.exports = 2' })
+
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('../bar.js')", { main: true })
+    .write('/../bar.js', 'module.exports = 1')
+    .toBuffer()
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle, { protocol })
+
+  t.is(exports, 2, 'the module is read through the protocol')
+})
+
+test('load .bundle with module outside .bundle, missing from the protocol', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('../bar.js')", { main: true })
+    .write('/../bar.js', 'module.exports = 1')
+    .toBuffer()
+
+  await t.exception(
+    Module.load(new URL(root + '/app.bundle'), bundle, { protocol: sources({}) }),
+    /MODULE_NOT_FOUND/
+  )
+})
+
+test('load .bundle with module outside .bundle, resolutions map not merged', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', 'module.exports = 42', { main: true })
+    .write('/../bar.js', "module.exports = require('./baz')")
+
+  bundle.resolutions = {
+    '/../bar.js': {
+      './baz': '/../qux.js'
+    }
+  }
+
+  const resolutions = {}
+
+  await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), { resolutions })
+
+  t.absent(resolutions[root + '/bar.js'])
+})
+
+test('load .bundle with offloaded asset', async (t) => {
+  const protocol = sources({ [root + '/bar.txt']: null })
+
+  const bundle = new Bundle().write('/foo.js', "module.exports = require.asset('./bar.txt')", {
+    main: true
+  })
+
+  bundle.resolutions = {
+    '/foo.js': {
+      './bar.txt': {
+        asset: '/../bar.txt'
+      }
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {
+    protocol
+  })
+
+  t.is(exports, path('/bar.txt'))
+})
+
+test('load .bundle with offloaded addon', async (t) => {
+  const protocol = sources({ [root + '/prebuilds/' + host + '/foo.bare']: null })
+
+  const bundle = new Bundle().write('/foo.js', "module.exports = require.addon.resolve('.')", {
+    main: true
+  })
+
+  bundle.resolutions = {
+    '/foo.js': {
+      '.': '/../prebuilds/' + host + '/foo.bare'
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {
+    protocol
+  })
+
+  t.is(exports, path('/prebuilds/' + host + '/foo.bare'))
+})
+
+test('load .bundle through an asynchronous protocol', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('./bar')", { main: true })
+    .write('/bar.js', 'module.exports = 42')
+    .toBuffer()
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle, {
+    protocol: asyncSources({})
+  })
+
+  t.is(exports, 42)
+})
+
+test('load .bundle with module outside .bundle, asynchronous protocol', async (t) => {
+  const protocol = asyncSources({ [root + '/bar.js']: 'module.exports = 2' })
+
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('../bar.js')", { main: true })
+    .write('/../bar.js', 'module.exports = 1')
+    .toBuffer()
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle, { protocol })
+
+  t.is(exports, 2, 'the module is read through the protocol')
+})
+
+test('load .bundle with offloaded asset, asynchronous protocol', async (t) => {
+  const protocol = asyncSources({ [root + '/bar.txt']: null })
+
+  const bundle = new Bundle().write('/foo.js', "module.exports = require.asset('./bar.txt')", {
+    main: true
+  })
+
+  bundle.resolutions = {
+    '/foo.js': {
+      './bar.txt': {
+        asset: '/../bar.txt'
+      }
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {
+    protocol
+  })
+
+  t.is(exports, path('/bar.txt'))
+})
+
+test('load .bundle with offloaded addon, asynchronous protocol', async (t) => {
+  const protocol = asyncSources({ [root + '/prebuilds/' + host + '/foo.bare']: null })
+
+  const bundle = new Bundle().write('/foo.js', "module.exports = require.addon.resolve('.')", {
+    main: true
+  })
+
+  bundle.resolutions = {
+    '/foo.js': {
+      '.': '/../prebuilds/' + host + '/foo.bare'
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle.toBuffer(), {
+    protocol
+  })
+
+  t.is(exports, path('/prebuilds/' + host + '/foo.bare'))
+})
+
+test('load .bundle from .mjs through an asynchronous protocol', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.mjs', "export { default } from '../bar.js'", { main: true })
+    .toBuffer()
+
+  const protocol = asyncSources({
+    [root + '/index.mjs']: "export { default } from './app.bundle'",
+    [root + '/app.bundle']: bundle,
+    [root + '/bar.js']: 'module.exports = 42'
+  })
+
+  const { exports } = await Module.load(new URL(root + '/index.mjs'), { protocol })
+
+  t.is(exports.default, 42)
 })
