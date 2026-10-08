@@ -48,7 +48,7 @@
   "dependencies": {
     "bare-bundle": "^1.11.0",
     "bare-module-lexer": "^1.7.0",
-    "bare-module-resolve": "^1.12.3",
+    "bare-module-resolve": "^1.12.6",
     "bare-module-traverse": "~2.5.7",
     "bare-path": "^3.0.0",
     "bare-type-stripper": "^0.1.2",

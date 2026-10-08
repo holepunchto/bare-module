@@ -272,6 +272,59 @@ test('asset missing with asynchronous protocol', async (t) => {
   )
 })
 
+test('require missing module with asynchronous protocol', async (t) => {
+  const protocol = asyncSources({
+    [root + '/index.cjs']: "module.exports = require('./missing')"
+  })
+
+  await t.exception(Module.load(new URL(root + '/index.cjs'), { protocol }), /MODULE_NOT_FOUND/)
+})
+
+test('require missing package with asynchronous protocol', async (t) => {
+  const protocol = asyncSources({
+    [root + '/package.json']: '{}',
+    [root + '/index.cjs']: "module.exports = require('missing')"
+  })
+
+  await t.exception(Module.load(new URL(root + '/index.cjs'), { protocol }), /MODULE_NOT_FOUND/)
+})
+
+test('require.asset missing with asynchronous protocol', async (t) => {
+  const protocol = asyncSources({
+    [root + '/index.cjs']: "module.exports = require.asset('./missing.txt')"
+  })
+
+  await t.exception(Module.load(new URL(root + '/index.cjs'), { protocol }), /ASSET_NOT_FOUND/)
+})
+
+test('require computed specifier with asynchronous protocol', async (t) => {
+  const protocol = asyncSources({
+    [root + '/index.cjs']: "module.exports = require('./' + 'missing')"
+  })
+
+  await t.exception(
+    Module.load(new URL(root + '/index.cjs'), { protocol }),
+    /UNEXPECTED_PROMISE/,
+    'a specifier the graph never resolved cannot be answered synchronously'
+  )
+})
+
+test('require module added after linking with synchronous protocol', async (t) => {
+  const store = {
+    [root + '/index.cjs']: "module.exports = () => require('./later')"
+  }
+
+  const { exports } = await Module.load(new URL(root + '/index.cjs'), {
+    protocol: sources(store)
+  })
+
+  t.exception(() => exports(), /MODULE_NOT_FOUND/)
+
+  store[root + '/later.js'] = 'module.exports = 42'
+
+  t.is(exports(), 42)
+})
+
 test('link uses asynchronous protocol variants when both are provided', async (t) => {
   const protocol = new Module.Protocol({
     async exists(url) {
