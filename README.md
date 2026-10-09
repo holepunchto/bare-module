@@ -303,9 +303,27 @@ options = {
   // `binary` and `text`. A type that is not one of them is turned down rather
   // than passed over, as is a `type` that is not a string. `imports` is the
   // specifier of an "imports" map to apply to the module and its dependencies,
-  // resolved relative to the module calling `require()`.
+  // resolved relative to the module calling `require()`. `host` is the host to
+  // resolve the addons of the module and its dependencies for, and must be one
+  // that loads on any platform, such as `wasi-wasm32`. `wasi` is the specifier
+  // of a module providing the WASI capabilities of the WebAssembly addons of
+  // the module and its dependencies, in place of the loader's `wasi` option.
   with: { type: 'json' }
 }
+```
+
+A package's addons load in one context per loader, being the host and WASI provider it's first imported under. Importing it under another throws.
+
+A WASI provider exports a function, as `module.exports` or its default export, which is called with the URL of each WebAssembly addon and returns the options for [`bare-wasi`](https://github.com/holepunchto/bare-wasi):
+
+```js
+const { MemoryDirectory } = require('bare-wasi/memory')
+
+module.exports = (url) => ({
+  version: 'preview1',
+  preopens: { '/data': new MemoryDirectory() },
+  random: (data) => crypto.getRandomValues(data)
+})
 ```
 
 ### `require.main`
@@ -597,7 +615,12 @@ options = {
   // A map of preresolved imports with keys being serialized parent URLs and
   // values being "imports" maps. Like the cache it is an object or omitted, and
   // omitting it gives a fresh map scoped to this loader.
-  resolutions
+  resolutions,
+  // A function returning the WASI options of a WebAssembly addon, given its
+  // URL, for addons not imported with a `wasi` attribute. Without it, they get
+  // no capabilities. The options are versioned, so `version` must be
+  // `'preview1'`. A cache is read with a single `wasi`, like a single protocol.
+  wasi
 }
 ```
 

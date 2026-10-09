@@ -28,6 +28,15 @@ interface Attributes {
    * relative to the parent URL.
    */
   imports?: string
+  /**
+   * The host to resolve the addons of the module and its dependencies for, such as `wasi-wasm32`.
+   */
+  host?: string
+  /**
+   * The specifier of a module providing the WASI capabilities of the WebAssembly addons of the
+   * module and its dependencies, resolved relative to the parent URL.
+   */
+  wasi?: string
 }
 
 interface Module {

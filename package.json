@@ -53,6 +53,7 @@
     "bare-path": "^3.0.0",
     "bare-type-stripper": "^0.1.2",
     "bare-url": "^2.0.1",
+    "bare-wasm-abi": "^0.1.0",
     "promaphore": "^1.0.0"
   },
   "devDependencies": {
