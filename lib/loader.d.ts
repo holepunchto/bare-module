@@ -65,6 +65,12 @@ declare namespace ModuleLoader {
      * type: 'json' }`.
      */
     attributes?: Attributes
+
+    /**
+     * The URL to mount the entry at if it's a bundle, defaulting to the URL of the bundle followed
+     * by a `/`. The bundle serves only the modules under it, so `file:///` lets it serve any file.
+     */
+    mount?: URL | string
   }
 
   export interface ImportOptions extends LinkOptions {}
