@@ -23,6 +23,34 @@ test('load .bundle with .mjs', async (t) => {
   await t.execution(Module.load(new URL(root + '/app.bundle'), bundle, {}))
 })
 
+test('load .bundle with type attribute', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('./bar.txt', { with: { type: 'binary' } })", {
+      main: true,
+      imports: { './bar.txt': '/bar.txt' }
+    })
+    .write('/bar.txt', 'hello', { imports: {} })
+    .toBuffer()
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle)
+
+  t.alike(exports, Buffer.from('hello'))
+})
+
+test('load .bundle with .mjs and type attribute', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.mjs', "export { default } from './bar.txt' with { type: 'binary' }", {
+      main: true,
+      imports: { './bar.txt': '/bar.txt' }
+    })
+    .write('/bar.txt', 'hello', { imports: {} })
+    .toBuffer()
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle)
+
+  t.alike(exports.default, Buffer.from('hello'))
+})
+
 test('load .bundle without a main', async (t) => {
   const bundle = new Bundle().write('/foo.js', 'module.exports = 42').toBuffer()
 
