@@ -973,3 +973,105 @@ test('load .bundle from .mjs through an asynchronous protocol', async (t) => {
 
   t.is(exports.default, 42)
 })
+
+test('load .bundle with absolute keys, mounted', async (t) => {
+  const bundle = new Bundle()
+    .write(root + '/app/foo.js', "module.exports = require('./bar.js')", { main: true })
+    .write(root + '/app/bar.js', 'module.exports = __filename')
+    .toBuffer()
+
+  const { exports } = await Module.load(new URL('bare:/thread.bundle'), bundle, {
+    protocol: sources({}),
+    mount: root + '/app/'
+  })
+
+  t.is(exports, path('/app/bar.js'))
+})
+
+test('load .bundle with absolute keys, mounted without a trailing slash', async (t) => {
+  const bundle = new Bundle()
+    .write(root + '/app/foo.js', 'module.exports = 42', { main: true })
+    .write(root + '/application/bar.js', 'module.exports = 1')
+    .toBuffer()
+
+  const { exports } = await Module.load(new URL('bare:/thread.bundle'), bundle, {
+    protocol: sources({}),
+    mount: root + '/app'
+  })
+
+  t.is(exports, 42)
+})
+
+test('load .bundle with absolute keys outside the mount', async (t) => {
+  const bundle = new Bundle()
+    .write(root + '/app/foo.js', "module.exports = require('../bar.js')", { main: true })
+    .write(root + '/bar.js', 'module.exports = 1')
+    .toBuffer()
+
+  await t.exception(
+    Module.load(new URL('bare:/thread.bundle'), bundle, {
+      protocol: sources({}),
+      mount: root + '/app/'
+    }),
+    /MODULE_NOT_FOUND/
+  )
+})
+
+test('load .bundle with absolute keys, mounted at the root of the file system', async (t) => {
+  const bundle = new Bundle()
+    .write(root + '/app/foo.js', "module.exports = require('../bar.js')", { main: true })
+    .write(root + '/bar.js', 'module.exports = 1')
+    .toBuffer()
+
+  const { exports } = await Module.load(new URL('bare:/thread.bundle'), bundle, {
+    protocol: sources({}),
+    mount: root + '/'
+  })
+
+  t.is(exports, 1)
+})
+
+test('load .bundle with relative keys, mounted', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', 'module.exports = __filename', { main: true })
+    .toBuffer()
+
+  const { exports } = await Module.load(new URL('bare:/thread.bundle'), bundle, {
+    protocol: sources({}),
+    mount: root + '/app/'
+  })
+
+  t.is(exports, path('/app/foo.js'))
+})
+
+test('load .bundle twice at the same mount, sharing modules', (t) => {
+  const shared = new Bundle()
+    .write(root + '/app/foo.js', "module.exports = require('./bar.js')", { main: true })
+    .write(root + '/app/bar.js', 'module.exports = {}')
+
+  const cache = Object.create(null)
+  const protocol = sources({})
+
+  const a = Module.loadSync(new URL('bare:/a.bundle'), shared.toBuffer(), {
+    protocol,
+    cache,
+    mount: root + '/app/'
+  })
+
+  const b = Module.loadSync(new URL('bare:/b.bundle'), shared.toBuffer(), {
+    protocol,
+    cache,
+    mount: root + '/app/'
+  })
+
+  t.is(a.exports, b.exports)
+})
+
+test('load .bundle with an invalid mount', (t) => {
+  const bundle = new Bundle().write('/foo.js', 'module.exports = 42', { main: true }).toBuffer()
+
+  t.exception.all(
+    () => Module.loadSync(new URL('bare:/app.bundle'), bundle, { mount: 42 }),
+    /Mount must be a URL/
+  )
+})
