@@ -1,4 +1,5 @@
 const { isURL, pathToFileURL } = require('bare-url')
+const Bundle = require('bare-bundle')
 const { constants } = require('bare-module-traverse')
 const Module = require('./lib/module')
 const ModuleProtocol = require('./lib/protocol')
@@ -15,7 +16,7 @@ exports.constants = constants
 exports.load = async function load(url, source = null, opts = {}) {
   if (typeof url === 'string') url = new URL(url)
 
-  if (source !== null && typeof source !== 'string' && !ArrayBuffer.isView(source)) {
+  if (source !== null && !isSource(source)) {
     opts = source
     source = null
   }
@@ -32,7 +33,7 @@ exports.load = async function load(url, source = null, opts = {}) {
 exports.loadSync = function loadSync(url, source = null, opts = {}) {
   if (typeof url === 'string') url = new URL(url)
 
-  if (source !== null && typeof source !== 'string' && !ArrayBuffer.isView(source)) {
+  if (source !== null && !isSource(source)) {
     opts = source
     source = null
   }
@@ -100,6 +101,10 @@ function assertURL(url, name) {
   if (isURL(url)) return url
 
   throw new TypeError(`${name} must be a URL. Received type ${typeof url} (${url})`)
+}
+
+function isSource(value) {
+  return typeof value === 'string' || ArrayBuffer.isView(value) || Bundle.isBundle(value)
 }
 
 function optionsFor(opts) {

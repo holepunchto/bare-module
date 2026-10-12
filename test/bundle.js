@@ -14,6 +14,18 @@ test('load .bundle', async (t) => {
   await t.execution(Module.load(new URL(root + '/app.bundle'), bundle, {}))
 })
 
+test('load .bundle from a parsed bundle', (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('./bar')", { main: true })
+    .write('/bar.js', 'module.exports = 42')
+
+  const { exports } = Module.loadSync(new URL(root + '/app.bundle'), bundle, {
+    protocol: sources({})
+  })
+
+  t.is(exports, 42)
+})
+
 test('load .bundle with .mjs', async (t) => {
   const bundle = new Bundle()
     .write('/foo.mjs', "export { default } from './bar'", { main: true })
