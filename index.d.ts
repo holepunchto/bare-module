@@ -1,4 +1,5 @@
 import Buffer from 'bare-buffer'
+import Bundle from 'bare-bundle'
 import URL from 'bare-url'
 import { ResolutionsMap } from 'bare-module-resolve'
 import { constants } from 'bare-module-traverse'
@@ -151,7 +152,7 @@ declare namespace Module {
   export function load(url: URL, opts: LoadOptions): Promise<Module>
   export function load(
     url: URL,
-    source?: Buffer | string | null,
+    source?: Buffer | Bundle | string | null,
     opts?: LoadOptions
   ): Promise<Module>
 
@@ -169,7 +170,11 @@ declare namespace Module {
    * the requested `type`.
    */
   export function loadSync(url: URL, opts: LoadOptions): Module
-  export function loadSync(url: URL, source?: Buffer | string | null, opts?: LoadOptions): Module
+  export function loadSync(
+    url: URL,
+    source?: Buffer | Bundle | string | null,
+    opts?: LoadOptions
+  ): Module
 
   /**
    * Resolve the module `specifier` relative to the `parentURL`. `specifier` is a string and
