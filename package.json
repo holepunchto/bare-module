@@ -43,7 +43,7 @@
   },
   "homepage": "https://github.com/holepunchto/bare-module#readme",
   "engines": {
-    "bare": ">=1.32.0"
+    "bare": ">=1.35.0"
   },
   "dependencies": {
     "bare-bundle": "^1.11.0",
