@@ -31,6 +31,8 @@ interface Attributes {
   imports?: string
   /**
    * The host to resolve the addons of the module and its dependencies for, such as `wasi-wasm32`.
+   * The conditions of the host may then also be targeted alongside those of the native host, in the
+   * order a package lists them.
    */
   host?: string
   /**

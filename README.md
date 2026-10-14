@@ -305,9 +305,12 @@ options = {
   // specifier of an "imports" map to apply to the module and its dependencies,
   // resolved relative to the module calling `require()`. `host` is the host to
   // resolve the addons of the module and its dependencies for, and must be one
-  // that loads on any platform, such as `wasi-wasm32`. `wasi` is the specifier
-  // of a module providing the WASI capabilities of the WebAssembly addons of
-  // the module and its dependencies, in place of the loader's `wasi` option.
+  // that loads on any platform, such as `wasi-wasm32`. The conditions of the
+  // host, such as `wasi` and `wasm32`, may then also be targeted alongside
+  // those of the native host, in the order a package lists them. `wasi` is the
+  // specifier of a module providing the WASI capabilities of the WebAssembly
+  // addons of the module and its dependencies, in place of the loader's `wasi`
+  // option.
   with: { type: 'json' }
 }
 ```

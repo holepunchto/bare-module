@@ -280,6 +280,285 @@ function hosted(modules) {
   return sources({ ...store, ...modules })
 }
 
+test('host attribute, conditional import', async (t) => {
+  const protocol = split({
+    [root + '/foo.js']: "module.exports = require('split', { with: { host: 'wasi-wasm32' } })"
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, 42)
+})
+
+test('host attribute, conditional import without a host attribute', async (t) => {
+  const protocol = split({
+    [root + '/foo.js']: "module.exports = require('split')"
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, 'native')
+})
+
+test('conditional import without a host attribute, native prebuild', async (t) => {
+  const dir = root + '/node_modules/split-native'
+  const prebuild = dir + '/prebuilds/' + host + '/split-native.bare'
+
+  const protocol = split(
+    {
+      [root + '/foo.js']: "module.exports = require('split')",
+      [dir + '/index.js']: "module.exports = require.addon('.')",
+      [prebuild]: null
+    },
+    (store) =>
+      sources(store, {
+        resolve: (url) => (url.href === prebuild ? addon() : url)
+      })
+  )
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.alike(Object.keys(exports), Object.keys(require.addon('..')))
+})
+
+test('conditional import without a host attribute, computed require', async (t) => {
+  const protocol = split({
+    [root + '/foo.js']: "module.exports = require('split')",
+    [root + '/node_modules/split/index.js']: "const s = '#binding'; module.exports = require(s)"
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, 'native')
+})
+
+test('conditional import without a host attribute, dynamic import', async (t) => {
+  const protocol = split({
+    [root + '/foo.mjs']: "const { default: split } = await import('split'); export default split",
+    [root + '/node_modules/split/index.js']:
+      "const s = '#binding'; module.exports = import(s).then((m) => m.default)"
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(await exports.default, 'native')
+})
+
+test('conditional import without a host attribute, asynchronous protocol', async (t) => {
+  const protocol = split({ [root + '/foo.js']: "module.exports = require('split')" }, asyncSources)
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, 'native')
+})
+
+test('host attribute, conditional import, computed require', async (t) => {
+  const protocol = split({
+    [root + '/foo.js']: "module.exports = require('split', { with: { host: 'wasi-wasm32' } })",
+    [root + '/node_modules/split/index.js']: "const s = '#binding'; module.exports = require(s)"
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, 42)
+})
+
+test('host attribute, conditional import, dynamic import', async (t) => {
+  const protocol = split({
+    [root + '/foo.mjs']:
+      "const { default: split } = await import('split', { with: { host: 'wasi-wasm32' } }); export default split",
+    [root + '/node_modules/split/index.js']:
+      "const s = '#binding'; module.exports = import(s).then((m) => m.default)"
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(await exports.default, 42)
+})
+
+test('host attribute, conditional import, resolutions map', async (t) => {
+  const protocol = split({
+    [root + '/foo.js']: "module.exports = require('split', { with: { host: 'wasi-wasm32' } })"
+  })
+
+  const dir = root + '/node_modules/'
+
+  const resolutions = {
+    [dir + 'split/index.js']: {
+      '#package': dir + 'split/package.json',
+      '#binding': {
+        require: {
+          wasi: dir + 'split-wasi-wasm32/index.js',
+          ...conditional(dir + 'split-native/index.js')
+        }
+      }
+    }
+  }
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol, resolutions })
+
+  t.is(exports, 42)
+})
+
+test('host attribute, conditional import after default import', async (t) => {
+  const protocol = split({
+    [root + '/foo.js']:
+      "require('split'); module.exports = require('split', { with: { host: 'wasi-wasm32' } })"
+  })
+
+  await t.exception(Module.load(new URL(root + '/foo.js'), { protocol }), {
+    code: 'ADDON_HOST_INCOMPATIBLE'
+  })
+})
+
+test('default import after host attribute, conditional import', async (t) => {
+  const protocol = split({
+    [root + '/foo.js']:
+      "require('split', { with: { host: 'wasi-wasm32' } }); module.exports = require('split')"
+  })
+
+  await t.exception(Module.load(new URL(root + '/foo.js'), { protocol }), {
+    code: 'ADDON_HOST_INCOMPATIBLE'
+  })
+})
+
+test('default computed import after host attribute, conditional import', async (t) => {
+  const protocol = split({
+    [root + '/foo.js']:
+      "require('split', { with: { host: 'wasi-wasm32' } }); const s = 'split'; module.exports = require(s)"
+  })
+
+  await t.exception(Module.load(new URL(root + '/foo.js'), { protocol }), {
+    code: 'ADDON_HOST_INCOMPATIBLE'
+  })
+})
+
+test('host attribute, shared module with native conditional imports', async (t) => {
+  const protocol = split({
+    [root + '/foo.js']:
+      "module.exports = [require('platform'), require('split', { with: { host: 'wasi-wasm32' } })]",
+    [root + '/node_modules/split/index.js']:
+      "require('platform'); module.exports = require('#binding')"
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.alike(exports, ['native', 42])
+})
+
+test('webassembly conditional import without a host attribute', async (t) => {
+  const protocol = wasiOnly({
+    [root + '/foo.js']: "module.exports = require('only')"
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, 42)
+})
+
+test('webassembly conditional import without a host attribute, computed require', async (t) => {
+  const protocol = wasiOnly({
+    [root + '/foo.js']: "module.exports = require('only')",
+    [root + '/node_modules/only/index.js']: "const s = '#binding'; module.exports = require(s)"
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, 42)
+})
+
+test('webassembly conditional import without a host attribute, dynamic import', async (t) => {
+  const protocol = wasiOnly({
+    [root + '/foo.mjs']: "const { default: only } = await import('only'); export default only",
+    [root + '/node_modules/only/index.js']:
+      "const s = '#binding'; module.exports = import(s).then((m) => m.default)"
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(await exports.default, 42)
+})
+
+test('webassembly conditional import without a host attribute, bundle', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.js', "module.exports = require('only')", { main: true })
+    .write(
+      '/node_modules/only/package.json',
+      JSON.stringify({
+        name: 'only',
+        imports: { '#binding': { wasi: { wasm32: 'only-wasi-wasm32' } } }
+      })
+    )
+    .write('/node_modules/only/index.js', "module.exports = require('#binding')")
+    .write('/node_modules/only-wasi-wasm32/package.json', '{ "name": "only-wasi-wasm32" }')
+    .write('/node_modules/only-wasi-wasm32/index.js', "module.exports = require.addon('.')")
+    .write('/node_modules/only-wasi-wasm32/prebuilds/wasi-wasm32/only-wasi-wasm32.wasm', wasm)
+    .toBuffer()
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle)
+
+  t.is(exports, 42)
+})
+
+// `only` imports its binding from `only-wasi-wasm32` by condition, and has no
+// native binding at all.
+function wasiOnly(modules) {
+  const dir = root + '/node_modules/'
+
+  return sources({
+    [dir + 'only/package.json']: JSON.stringify({
+      name: 'only',
+      imports: { '#binding': { wasi: { wasm32: 'only-wasi-wasm32' } } }
+    }),
+    [dir + 'only/index.js']: "module.exports = require('#binding')",
+    [dir + 'only-wasi-wasm32/package.json']: '{ "name": "only-wasi-wasm32" }',
+    [dir + 'only-wasi-wasm32/index.js']: "module.exports = require.addon('.')",
+    [dir + 'only-wasi-wasm32/prebuilds/wasi-wasm32/only-wasi-wasm32.wasm']: wasm,
+    ...modules
+  })
+}
+
+// The entry that matches the conditions of the native host.
+function conditional(target) {
+  return host
+    .split('-')
+    .reverse()
+    .reduce((entry, condition) => ({ [condition]: entry }), target)
+}
+
+// `split` imports its binding from `split-native` or `split-wasi-wasm32` by
+// condition, the way packages with a package per prebuild do, and `platform`
+// imports a module by the conditions of the native host alone.
+function split(modules, protocol = sources) {
+  const dir = root + '/node_modules/'
+
+  return protocol({
+    [dir + 'split/package.json']: JSON.stringify({
+      name: 'split',
+      imports: {
+        '#binding': {
+          wasi: { wasm32: 'split-wasi-wasm32' },
+          ...conditional('split-native')
+        }
+      }
+    }),
+    [dir + 'split/index.js']: "module.exports = require('#binding')",
+    [dir + 'split-native/package.json']: '{ "name": "split-native" }',
+    [dir + 'split-native/index.js']: "module.exports = 'native'",
+    [dir + 'split-wasi-wasm32/package.json']: '{ "name": "split-wasi-wasm32" }',
+    [dir + 'split-wasi-wasm32/index.js']: "module.exports = require.addon('.')",
+    [dir + 'split-wasi-wasm32/prebuilds/wasi-wasm32/split-wasi-wasm32.wasm']: wasm,
+    [dir + 'platform/package.json']: JSON.stringify({
+      name: 'platform',
+      imports: { '#impl': { ...conditional('./native.js'), default: './other.js' } }
+    }),
+    [dir + 'platform/index.js']: "module.exports = require('#impl')",
+    [dir + 'platform/native.js']: "module.exports = 'native'",
+    [dir + 'platform/other.js']: "module.exports = 'other'",
+    ...modules
+  })
+}
+
 test('wasi, no capabilities by default', async (t) => {
   const protocol = capable({
     [root + '/foo.js']: "module.exports = require('rand')"
