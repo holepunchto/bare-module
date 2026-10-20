@@ -43,16 +43,17 @@
   },
   "homepage": "https://github.com/holepunchto/bare-module#readme",
   "engines": {
-    "bare": ">=1.32.0"
+    "bare": ">=1.35.0"
   },
   "dependencies": {
     "bare-bundle": "^1.11.0",
     "bare-module-lexer": "^1.7.0",
     "bare-module-resolve": "^1.12.6",
-    "bare-module-traverse": "~2.6.0",
+    "bare-module-traverse": "~2.7.0",
     "bare-path": "^3.0.0",
     "bare-type-stripper": "^0.1.2",
     "bare-url": "^2.0.1",
+    "bare-wasm-abi": "^0.1.0",
     "promaphore": "^1.0.0"
   },
   "devDependencies": {

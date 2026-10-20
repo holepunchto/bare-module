@@ -57,6 +57,7 @@ declare namespace ModuleLoader {
     imports?: ImportsMap
     protocol?: Protocol
     resolutions?: ResolutionsMap
+    wasi?: (url: URL) => object
   }
 
   export interface LinkOptions {
