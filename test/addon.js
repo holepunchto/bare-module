@@ -217,7 +217,7 @@ test('host attribute, dynamic import', async (t) => {
 
 test('host attribute, inherited by computed require', async (t) => {
   const protocol = hosted({
-    [root + '/foo.js']: "module.exports = require('baz', { with: { host: 'wasi-wasm32' } })"
+    [root + '/foo.js']: "module.exports = require('computed', { with: { host: 'wasi-wasm32' } })"
   })
 
   const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
@@ -227,7 +227,8 @@ test('host attribute, inherited by computed require', async (t) => {
 
 test('host attribute, inherited by computed require.addon', async (t) => {
   const protocol = hosted({
-    [root + '/foo.js']: "module.exports = require('qux', { with: { host: 'wasi-wasm32' } })"
+    [root + '/foo.js']:
+      "module.exports = require('computed-addon', { with: { host: 'wasi-wasm32' } })"
   })
 
   const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
@@ -256,14 +257,14 @@ test('host attribute, native host', async (t) => {
   })
 })
 
-// Every addon has a native prebuild that can't be loaded, so only the
-// WebAssembly prebuild can satisfy an import.
+// Every package has a native prebuild that can't be loaded, so only the
+// WebAssembly prebuild can satisfy an import. `computed` requires `bar` by a
+// computed specifier, and `computed-addon` requires its own addon by one.
 function hosted(modules) {
   const packages = {
     bar: "module.exports = require.addon('.')",
-    baz: "const s = 'bar'; module.exports = require(s)",
-    qux: "const s = '.'; module.exports = require.addon(s)",
-    pure: 'module.exports = 42'
+    computed: "const s = 'bar'; module.exports = require(s)",
+    'computed-addon': "const s = '.'; module.exports = require.addon(s)"
   }
 
   const store = {}
@@ -559,6 +560,12 @@ function split(modules, protocol = sources) {
   })
 }
 
+const ENOTCAPABLE = 76
+
+function random(data) {
+  return data.fill(1)
+}
+
 test('wasi, no capabilities by default', async (t) => {
   const protocol = capable({
     [root + '/foo.js']: "module.exports = require('rand')"
@@ -590,6 +597,28 @@ test('wasi attribute', async (t) => {
   const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
 
   t.is(exports, 0)
+})
+
+test('wasi attribute, computed require', async (t) => {
+  const protocol = capable({
+    [root + '/foo.js']:
+      "const s = 'rand'; module.exports = require(s, { with: { wasi: './grant.js' } })"
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.js'), { protocol })
+
+  t.is(exports, 0)
+})
+
+test('wasi attribute, dynamic import', async (t) => {
+  const protocol = capable({
+    [root + '/foo.mjs']:
+      "const { default: rand } = await import('rand', { with: { wasi: './grant.js' } }); export default rand"
+  })
+
+  const { exports } = await Module.load(new URL(root + '/foo.mjs'), { protocol })
+
+  t.is(exports.default, 0)
 })
 
 test('wasi attribute overrides the loader option for its subgraph', async (t) => {
@@ -628,18 +657,22 @@ test('wasi attribute, ESM provider', async (t) => {
   t.is(exports, 0)
 })
 
-test('wasi attribute, provider is passed the addon URL', async (t) => {
+test('wasi, provider is passed the addon URL', async (t) => {
   const protocol = capable({
-    [root + '/foo.js']: "require('rand', { with: { wasi: './record.js' } })",
-    [root + '/record.js']:
-      "module.exports = (url) => { global.addonURL = url; return { version: 'preview1' } }"
+    [root + '/foo.js']: "require('rand')"
   })
 
-  await Module.load(new URL(root + '/foo.js'), { protocol })
+  let url = null
 
-  t.is(global.addonURL.href, root + '/node_modules/rand/prebuilds/wasi-wasm32/rand.wasm')
+  await Module.load(new URL(root + '/foo.js'), {
+    protocol,
+    wasi: (addonURL) => {
+      url = addonURL
+      return { version: 'preview1' }
+    }
+  })
 
-  delete global.addonURL
+  t.is(url.href, root + '/node_modules/rand/prebuilds/wasi-wasm32/rand.wasm')
 })
 
 test('wasi attribute, unversioned options', async (t) => {
@@ -660,12 +693,6 @@ test('wasi attribute, conflicting provider', async (t) => {
     code: 'ADDON_WASI_INCOMPATIBLE'
   })
 })
-
-const ENOTCAPABLE = 76
-
-function random(data) {
-  return data.fill(1)
-}
 
 // `rand` and `other` are WebAssembly addons whose exports are the error number
 // of asking WASI for randomness. `via` depends on `rand`.
