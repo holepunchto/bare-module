@@ -17,6 +17,12 @@
       "default": "./lib/loader.js"
     }
   },
+  "imports": {
+    "#wasm": {
+      "freertos": "./lib/wasm/unavailable.js",
+      "default": "bare-wasm-abi"
+    }
+  },
   "files": [
     "index.js",
     "index.d.ts",
