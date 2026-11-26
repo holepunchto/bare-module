@@ -63,6 +63,17 @@ test('load .bundle with .mjs and type attribute', async (t) => {
   t.alike(exports.default, Buffer.from('hello'))
 })
 
+test('load .bundle with recorded types', async (t) => {
+  const bundle = new Bundle()
+    .write('/foo.mjs', "module.exports = require('./bar.mjs')", { main: true, type: 'script' })
+    .write('/bar.mjs', 'module.exports = 42', { type: 'script' })
+    .toBuffer()
+
+  const { exports } = await Module.load(new URL(root + '/app.bundle'), bundle)
+
+  t.is(exports, 42)
+})
+
 test('load .bundle without a main', async (t) => {
   const bundle = new Bundle().write('/foo.js', 'module.exports = 42').toBuffer()
 

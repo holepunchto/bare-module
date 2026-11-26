@@ -86,6 +86,14 @@ test('patch replaces what the graph holds', (t) => {
   t.is(l.importSync(new URL(root + '/foo.js')), 2)
 })
 
+test('patch carries the types it was packed with', (t) => {
+  const l = loader({ [root + '/foo.mjs']: 'export default 1' })
+
+  l.patch(new Bundle().write(root + '/foo.mjs', 'module.exports = 2', { type: 'script' }))
+
+  t.is(l.importSync(new URL(root + '/foo.mjs')), 2)
+})
+
 test('patch is found before what it patches', (t) => {
   const l = loader({ [root + '/foo.js']: 'module.exports = 1' })
 
